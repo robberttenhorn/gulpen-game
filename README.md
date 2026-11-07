@@ -55,7 +55,7 @@ Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
-Voortgang wordt in de browser bewaard.
+Voortgang wordt in de browser bewaard. Een klus kun je altijd stoppen met de knop **Stoppen** op de opdrachtkaart of in het gesprekvenster (tik nogmaals om te bevestigen), of met Esc.
 
 ## Data
 

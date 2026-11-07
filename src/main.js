@@ -104,6 +104,32 @@ class Game {
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
     this.sfx.start();
+    // stopknop: eerst bevestigen, dan stoppen
+    // stopknoppen (op de opdrachtkaart en in het gesprekvenster): eerst bevestigen, dan stoppen
+    const stopBtns = [document.getElementById('btn-stop'), document.getElementById('dialog-stop')];
+    let confirming = false, confirmTimer = null;
+    const setStopLabel = () => stopBtns.forEach((b) => {
+      b.classList.toggle('confirm', confirming);
+      b.textContent = confirming ? (this.input.isTouch ? 'Zeker? Tik nogmaals' : 'Zeker? Nogmaals (of Esc)') : 'Stoppen';
+    });
+    const askStop = () => {
+      if (!this.missions.busy()) return;
+      if (confirming) {
+        clearTimeout(confirmTimer);
+        confirming = false;
+        setStopLabel();
+        this.missions.stop();
+        return;
+      }
+      confirming = true;
+      setStopLabel();
+      confirmTimer = setTimeout(() => { confirming = false; setStopLabel(); }, 3000);
+    };
+    stopBtns.forEach((b) => {
+      b.addEventListener('pointerdown', (e) => e.stopPropagation());
+      b.addEventListener('click', (e) => { e.stopPropagation(); askStop(); });
+    });
+    addEventListener('keydown', (e) => { if (e.code === 'Escape' && !this.bigmap.open) askStop(); });
     const sb = document.getElementById('btn-sound');
     const syncSound = () => { sb.classList.toggle('off', this.sfx.muted); sb.setAttribute('aria-label', this.sfx.muted ? 'Geluid aanzetten' : 'Geluid uitzetten'); };
     sb.addEventListener('click', () => { this.sfx.setMuted(!this.sfx.muted); syncSound(); });
@@ -1384,6 +1410,9 @@ class Game {
       }
     }
     this.updateLabels();
+    const busy = this.missions.busy();
+    document.getElementById('btn-stop').hidden = !busy;
+    document.getElementById('dialog-stop').hidden = !busy;
     if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin(this.time * 3) * 0.06;
     const tgt = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : this.waypoint;
     const base = this.minimap.markers;

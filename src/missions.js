@@ -257,6 +257,8 @@ export class Missions {
   async talk(npc) {
     const g = this.g, ui = g.ui, N = npc.name, n = this.npcs;
     g.player.lockedFor = true;
+    const token = (this.talkToken = (this.talkToken || 0) + 1);
+    this.talking = true;
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
@@ -272,9 +274,41 @@ export class Missions {
       }
       await (this.handlers[key] || this.extra[key])?.call(this, npc, N, ui, g);
     } finally {
+      if (this.talkToken === token) this.talking = false;
       g.player.lockedFor = false;
       npc.lookAtPlayer = false;
     }
+  }
+
+  // Iets aan de hand dat je kunt stoppen?
+  busy() {
+    const g = this.g;
+    return !!(this.active || this.talking || g.race || g.penalty || g.minigame || g.interior);
+  }
+
+  // Altijd een klus kunnen stoppen, ook midden in een gesprek, minigame of binnen.
+  stop() {
+    const g = this.g;
+    if (!this.busy()) return;
+    g.ui.cancelDialogs();
+    this.talking = false;
+    this.talkToken = (this.talkToken || 0) + 1;
+    this.abort(); // gaat ook naar buiten als je binnen bent
+    // alles wat de speler nog vasthoudt of aan zich heeft opruimen
+    g.fragile = null;
+    g.dropProp();
+    g.dropKeg();
+    g.stopPolonaise();
+    g.player.pose = null;
+    g.player.lockedFor = false;
+    g.drunk = 0;
+    g.wobble = 0;
+    g.ui.timer(null);
+    document.body.classList.remove('live');
+    document.getElementById('live-badge').hidden = true;
+    g.npcs.forEach((n) => { n.lookAtPlayer = false; });
+    g.ui.toast('Klus gestopt', 1800);
+    this.refresh();
   }
 
   abort() {

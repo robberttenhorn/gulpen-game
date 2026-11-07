@@ -80,7 +80,19 @@ export class UI {
   }
 
   // Toont een reeks regels; lines = [{name, text}] of strings. Met choices: geeft index terug.
+  // Een gestopte klus mag niet verder praten: lopende gesprekken blijven dan 'hangen'
+  // (de belofte lost nooit op) zodat de klus geen gevolgen meer heeft.
+  cancelDialogs() {
+    this.gen = (this.gen || 0) + 1;
+    this.cancelUntil = performance.now() + 1500;
+    $('dialog-choices').innerHTML = '';
+    this.close();
+  }
+
   async dialog(name, lines, choices = null) {
+    const never = () => new Promise(() => {});
+    if (performance.now() < (this.cancelUntil || 0)) return never();
+    const gen = this.gen || 0;
     if (!this.dialogOpen) this.sfx?.play('open');
     this.dialogOpen = true;
     document.body.classList.add('dialog-open');
@@ -102,19 +114,23 @@ export class UI {
         $('dialog-next').hidden = true;
         const idx = await new Promise((resolve) => {
           choices.forEach((c, k) => {
+            if (gen !== (this.gen || 0)) return;
             const b = document.createElement('button');
             b.textContent = c;
             b.addEventListener('click', () => resolve(k));
             $('dialog-choices').appendChild(b);
           });
         });
+        if (gen !== (this.gen || 0)) return never();
         $('dialog-next').hidden = false;
         $('dialog-choices').innerHTML = '';
         this.close();
         return idx;
       }
-      await this.typeText(line.text);
-      await this.waitAction();
+      await this.typeText(line.text, gen);
+      if (gen !== (this.gen || 0)) return never();
+      await this.waitAction(gen);
+      if (gen !== (this.gen || 0)) return never();
     }
     this.close();
     return -1;
@@ -127,13 +143,14 @@ export class UI {
     this.input.actionPressed = false;
   }
 
-  typeText(text) {
+  typeText(text, gen = this.gen || 0) {
     const el = $('dialog-text');
     return new Promise((resolve) => {
       let i = 0;
       el.textContent = '';
       this.input.actionPressed = false;
       const tick = () => {
+        if (gen !== (this.gen || 0)) { resolve(); return; }
         if (this.input.actionPressed) { this.input.actionPressed = false; el.textContent = text; resolve(); return; }
         i += 2;
         el.textContent = text.slice(0, i);
@@ -144,9 +161,10 @@ export class UI {
     });
   }
 
-  waitAction() {
+  waitAction(gen = this.gen || 0) {
     return new Promise((resolve) => {
       const check = () => {
+        if (gen !== (this.gen || 0)) { resolve(); return; }
         if (this.input.actionPressed) { this.input.actionPressed = false; resolve(); }
         else requestAnimationFrame(check);
       };
