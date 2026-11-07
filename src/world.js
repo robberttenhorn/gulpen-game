@@ -9,9 +9,15 @@ async function fetchJson(name) {
   return r.json();
 }
 async function fetchBin(name) {
-  const r = await fetch(DATA + name);
-  if (!r.ok) throw new Error(`Kan ${name} niet laden`);
-  return r.arrayBuffer();
+  const r = await fetch(DATA + name).catch(() => null);
+  if (r && r.ok) return r.arrayBuffer();
+  // sommige hostings serveren geen .bin; dan staat er een base64-versie naast
+  const t = await fetch(DATA + name + '.b64.txt');
+  if (!t.ok) throw new Error(`Kan ${name} niet laden`);
+  const bin = atob((await t.text()).trim());
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
 }
 
 // Deterministische random, zodat Gulpen er bij iedereen hetzelfde uitziet.
