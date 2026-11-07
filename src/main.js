@@ -16,6 +16,7 @@ import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
+import { startUpdateCheck } from './update.js';
 
 const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
 const HIGH = !isMobile;
@@ -1591,3 +1592,4 @@ document.fonts.ready.then(() => game.init()).catch((e) => {
   document.getElementById('loading-text').textContent = 'Er ging iets mis bij het laden: ' + e.message;
 });
 window.game = game;
+startUpdateCheck();

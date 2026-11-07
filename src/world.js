@@ -4,14 +4,16 @@ import { buildHardscape, surfaceLift } from './hardscape.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const DATA = import.meta.env.BASE_URL + 'data/';
+// versienummer van deze build achter elk databestand: nieuwe code krijgt nooit een oud (bewaard) bestand
+const V = typeof __BUILD__ !== 'undefined' ? `?v=${__BUILD__}` : '';
 
 async function fetchJson(name) {
-  const r = await fetch(DATA + name);
+  const r = await fetch(DATA + name + V);
   if (!r.ok) throw new Error(`Kan ${name} niet laden`);
   return r.json();
 }
 function loadTexture(name) {
-  return new Promise((res) => new THREE.TextureLoader().load(DATA + name, (t) => {
+  return new Promise((res) => new THREE.TextureLoader().load(DATA + name + V, (t) => {
     t.colorSpace = THREE.SRGBColorSpace;
     t.flipY = false;
     t.anisotropy = 8;
@@ -36,7 +38,7 @@ async function loadPhotoTextures(isMobile) {
     const ctx = cv.getContext('2d', { willReadFrequently: true });
     const data = new Uint8Array(size * size * 4 * WALL_LAYERS.length);
     const avg = [];
-    const imgs = await Promise.all(WALL_LAYERS.map((n) => loadImage(`${DATA}tex/${meta[n].id}_${kind}${sfx}.jpg`)));
+    const imgs = await Promise.all(WALL_LAYERS.map((n) => loadImage(`${DATA}tex/${meta[n].id}_${kind}${sfx}.jpg${V}`)));
     imgs.forEach((img, i) => {
       ctx.drawImage(img, 0, 0, size, size);
       const px = ctx.getImageData(0, 0, size, size).data;
@@ -67,10 +69,10 @@ async function loadPhotoTextures(isMobile) {
   return { meta, wallD: d.t, wallN: n.t, avg: d.avg, sizes: WALL_LAYERS.map((k) => meta[k].size), ground };
 }
 async function fetchBin(name) {
-  const r = await fetch(DATA + name).catch(() => null);
+  const r = await fetch(DATA + name + V).catch(() => null);
   if (r && r.ok) return r.arrayBuffer();
   // sommige hostings serveren geen .bin; dan staat er een base64-versie naast
-  const t = await fetch(DATA + name + '.b64.txt');
+  const t = await fetch(DATA + name + '.b64.txt' + V);
   if (!t.ok) throw new Error(`Kan ${name} niet laden`);
   const bin = atob((await t.text()).trim());
   const out = new Uint8Array(bin.length);
@@ -1335,9 +1337,18 @@ export class World {
     const flags = poleList.filter((x) => x[0] === 'vlaggenmast').map(([, x, z]) => [x, z]);
     const signPole = mergeGeometries([cyl(0.04, 0.04, 2.6, 0, 1.3, 0)]);
     place(new THREE.InstancedMesh(signPole, new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.7, roughness: 0.35 }), signs.length), signs, faceStreet);
-    const signFace = new THREE.CylinderGeometry(0.32, 0.32, 0.03, 24);
-    signFace.rotateX(Math.PI / 2);
-    signFace.translate(0, 2.35, 0.05);
+    // bordschijf: voorkant als cirkel (dan staat '30' rechtop), rode rand en een witte achterkant
+    const front = new THREE.CircleGeometry(0.32, 24);
+    front.translate(0, 2.35, 0.065);
+    const rim = new THREE.CylinderGeometry(0.32, 0.32, 0.03, 24, 1, true);
+    rim.rotateX(Math.PI / 2);
+    rim.translate(0, 2.35, 0.05);
+    for (let i = 0; i < rim.attributes.uv.count; i++) rim.attributes.uv.setXY(i, 0.5, 0.92);
+    const back = new THREE.CircleGeometry(0.32, 24);
+    back.rotateY(Math.PI);
+    back.translate(0, 2.35, 0.035);
+    for (let i = 0; i < back.attributes.uv.count; i++) back.attributes.uv.setXY(i, 0.02, 0.02);
+    const signFace = mergeGeometries([front, rim, back]);
     place(new THREE.InstancedMesh(signFace, new THREE.MeshStandardMaterial({ map: signFaceTexture(), roughness: 0.4 }), signs.length), signs, faceStreet);
     const bollardGeo = mergeGeometries([cyl(0.07, 0.08, 0.9, 0, 0.45, 0), cyl(0.075, 0.075, 0.08, 0, 0.75, 0)]);
     place(new THREE.InstancedMesh(bollardGeo, new THREE.MeshStandardMaterial({ color: 0x5a1e1e, roughness: 0.5, metalness: 0.3 }), bollards.length), bollards);
