@@ -73,9 +73,11 @@ NODE_USE_ENV_PROXY=1 npm run data   # NODE_USE_ENV_PROXY alleen nodig achter een
 | [NWB](https://www.pdok.nl) (Rijkswaterstaat) via PDOK | Wegennet met straatnamen | CC0 |
 | [Luchtfoto](https://www.beeldmateriaal.nl) (Beeldmateriaal Nederland) via PDOK | Zomerluchtfoto 25 cm: groen, akkers, bos, dakkleuren en het Heuvelland rondom | CC BY 4.0 |
 | [ez-tree](https://github.com/dgreenheck/ez-tree) (Daniel Greenheck) | Boommodellen met schors- en bladtexturen | MIT |
+| [Poly Haven](https://polyhaven.com) | Fototexturen voor baksteen, mergel, pleister, leien, dakpannen, asfalt, klinkers en tegels (namen en makers in `public/data/tex/tex.json`) | CC0 |
 
 Voor de 3D BAG en de luchtfoto is bronvermelding verplicht (CC BY 4.0). Die staat op het laadscherm.
 
+Texturen opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-textures.py` (Python met Pillow).
 Luchtfoto opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-ortho.py` (Python met Pillow).
 Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `node tools/bake-trees.cjs` (Playwright). Zonder `public/data/trees/` maakt de game de bomen zelf, maar laadt dan ~4 MB extra.
 
