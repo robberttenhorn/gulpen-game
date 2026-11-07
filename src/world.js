@@ -18,6 +18,54 @@ function loadTexture(name) {
     res(t);
   }, undefined, () => res(null)));
 }
+// Fototexturen (Poly Haven, CC0): muren en daken als één texture-array voor de gevelshader,
+// bestrating als losse texturen.
+const WALL_LAYERS = ['pleister', 'mergel', 'baksteen_rood', 'baksteen_bruin', 'baksteen_geel', 'grijs', 'leien', 'pannen_rood', 'pannen_antraciet', 'bitumen'];
+async function loadImage(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('kan ' + url + ' niet laden');
+  return createImageBitmap(await r.blob());
+}
+async function loadPhotoTextures(isMobile) {
+  const meta = await fetchJson('tex/tex.json');
+  const sfx = isMobile ? '_m' : '';
+  const S = isMobile ? 512 : 1024, SN = S / 2;
+  const toArray = async (kind, size, srgb) => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    const data = new Uint8Array(size * size * 4 * WALL_LAYERS.length);
+    const avg = [];
+    const imgs = await Promise.all(WALL_LAYERS.map((n) => loadImage(`${DATA}tex/${meta[n].id}_${kind}${sfx}.jpg`)));
+    imgs.forEach((img, i) => {
+      ctx.drawImage(img, 0, 0, size, size);
+      const px = ctx.getImageData(0, 0, size, size).data;
+      data.set(px, i * size * size * 4);
+      // gemiddelde helderheid (lineair), voor het mengen met de luchtfoto op daken
+      let sum = 0;
+      for (let k = 0; k < px.length; k += 64) sum += Math.pow(px[k] / 255, 2.2) * 0.3 + Math.pow(px[k + 1] / 255, 2.2) * 0.55 + Math.pow(px[k + 2] / 255, 2.2) * 0.15;
+      avg.push(sum / (px.length / 64));
+    });
+    const t = new THREE.DataArrayTexture(data, size, size, WALL_LAYERS.length);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.generateMipmaps = true;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.anisotropy = 8;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.needsUpdate = true;
+    return { t, avg };
+  };
+  const [d, n] = await Promise.all([toArray('d', S, true), toArray('n', SN, false)]);
+  const ground = {};
+  await Promise.all(['asfalt', 'klinkers', 'tegels', 'parkeer'].map(async (k) => {
+    const [map, normalMap] = await Promise.all([loadTexture(`tex/${meta[k].id}_d${sfx}.jpg`), loadTexture(`tex/${meta[k].id}_n${sfx}.jpg`)]);
+    for (const t of [map, normalMap]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.flipY = true; }
+    normalMap.colorSpace = THREE.NoColorSpace;
+    ground[k] = { map, normalMap, size: meta[k].size };
+  }));
+  return { meta, wallD: d.t, wallN: n.t, avg: d.avg, sizes: WALL_LAYERS.map((k) => meta[k].size), ground };
+}
 async function fetchBin(name) {
   const r = await fetch(DATA + name).catch(() => null);
   if (r && r.ok) return r.arrayBuffer();
@@ -55,6 +103,7 @@ export class World {
     step(0.02, 'Kaartgegevens laden...');
     this.meta = await fetchJson('meta.json');
     // luchtfoto's (PDOK, Beeldmateriaal Nederland) alvast laden
+    const photoP = loadPhotoTextures(isMobile).catch((e) => { console.warn('texturen', e); return null; });
     const orthoP = Promise.all([loadTexture(isMobile ? 'ortho-core-m.jpg' : 'ortho-core.jpg'), loadTexture('ortho-wide.jpg')]);
     const [coreBuf, wideBuf] = await Promise.all([fetchBin('terrain-core.bin'), fetchBin('terrain-wide.bin')]);
     this.coreRaw = new Float32Array(coreBuf);
@@ -71,7 +120,8 @@ export class World {
     this.buildTerrainMeshes();
 
     step(0.45, '1.872 huizen neerzetten...');
-    const [bBuf, footprints] = await Promise.all([fetchBin('buildings.bin'), fetchJson('footprints.json')]);
+    const [bBuf, footprints, photo] = await Promise.all([fetchBin('buildings.bin'), fetchJson('footprints.json'), photoP]);
+    this.photo = photo;
     this.buildBuildings(bBuf);
     this.setupCollision(footprints);
     this.buildAO();
@@ -613,6 +663,14 @@ export class World {
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uNight = night;
       Object.assign(shader.uniforms, ortho);
+      const ph = this.photo;
+      const dummyArr = new THREE.DataArrayTexture(new Uint8Array([128, 128, 255, 255]), 1, 1, 1);
+      dummyArr.needsUpdate = true;
+      shader.uniforms.uTexOn = { value: ph ? 1 : 0 };
+      shader.uniforms.uWallD = { value: ph ? ph.wallD : dummyArr };
+      shader.uniforms.uWallN = { value: ph ? ph.wallN : dummyArr };
+      shader.uniforms.uTexSize = { value: ph ? ph.sizes : new Array(10).fill(1) };
+      shader.uniforms.uTexAvg = { value: ph ? ph.avg : new Array(10).fill(0.1) };
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>
           attribute float btype;
@@ -660,6 +718,11 @@ export class World {
           uniform sampler2D uOrtho;
           uniform vec4 uOrthoBox;
           uniform float uOrthoOn;
+          uniform float uTexOn;
+          uniform highp sampler2DArray uWallD;
+          uniform highp sampler2DArray uWallN;
+          uniform float uTexSize[10];
+          uniform float uTexAvg[10];
           vec3 srgb(vec3 c){ return pow(c, vec3(2.2)); }
           float hash2(vec2 p){ p = mod(p, 997.0); return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
           float vnoise(vec2 p){
@@ -691,6 +754,9 @@ export class World {
         .replace('#include <color_fragment>', `#include <color_fragment>
           vec3 base;
           float glass = 0.0;
+          float opening = 0.0;
+          vec3 tn = vec3(0.0, 0.0, 1.0);
+          float tnAmt = 0.0;
           float lit = 0.0;
           float rough = 0.85;
           if (vType < 0.5) {
@@ -713,6 +779,16 @@ export class World {
               base = masonry(wp, vec2(0.22, 0.0625), 0.011, srgb(vec3(0.78, 0.65, 0.46)), srgb(vec3(0.8, 0.78, 0.72)), 0.2, vSeed * 50.0);
             } else {
               base = srgb(vec3(0.68, 0.67, 0.64)) * (0.94 + vnoise(wp * 3.0) * 0.08);
+            }
+            // fototextuur (per gebouw een iets andere tint)
+            if (uTexOn > 0.5) {
+              int L = int(vMat + 0.5);
+              vec2 tuv = (wp + vec2(fract(vSeed * 91.7) * 7.0, 0.0)) / uTexSize[L];
+              vec3 tc = texture(uWallD, vec3(tuv, float(L))).rgb;
+              if (L == 0) tc *= 1.18; // wit pleisterwerk
+              base = tc * (0.92 + fract(vSeed * 17.3) * 0.16);
+              tn = texture(uWallN, vec3(tuv, float(L))).xyz * 2.0 - 1.0;
+              tnAmt = 1.0;
             }
             // plint van hardsteen
             float plint = 1.0 - smoothstep(vWall.x + 0.5, vWall.x + 0.52, hgt);
@@ -745,6 +821,7 @@ export class World {
               float panel = boxMask(fract(vec2(f.x * 8.0 - 2.88, f.y * 3.0)), vec2(0.15), vec2(0.85), aa * 6.0);
               base = mix(base, srgb(vec3(0.88, 0.86, 0.82)), dframe * allowed);
               base = mix(base, dc * mix(0.75, 1.0, panel), door * allowed);
+              opening = clamp((door + dframe) * allowed, 0.0, 1.0);
               rough = mix(rough, 0.5, door * allowed);
             } else {
               vec2 lo = vec2(0.32, 0.32), hi = vec2(0.68, 0.84);
@@ -766,7 +843,9 @@ export class World {
               inside *= mix(1.0, 0.6, reveal);
               base = mix(base, inside, glass);
               lit = glass * step(r, 0.58) * uNight;
+              opening = clamp((win + frame + sill) * allowed, 0.0, 1.0);
             }
+            tnAmt *= (1.0 - opening) * (1.0 - plint);
             // vuil en schaduw onderaan de gevel
             base *= mix(0.72, 1.0, smoothstep(vWall.x, vWall.x + 1.2, hgt));
             rough = mix(rough, 0.18, glass);
@@ -798,17 +877,35 @@ export class World {
               avgL = dot(srgb(vec3(0.33, 0.33, 0.32)), vec3(0.333)) * 0.97;
               rough = 0.95;
             }
+            if (uTexOn > 0.5) {
+              int L = 6 + int(vMat - 10.0 + 0.5);
+              // soort dak kiezen op basis van de luchtfoto: roodachtig = rode pannen, anders leien of antraciet
+              if (uOrthoOn > 0.5 && vMat < 12.5) {
+                vec3 o0 = textureLod(uOrtho, (vWXZ - uOrthoBox.xy) / uOrthoBox.zw, 3.5).rgb;
+                float red = (o0.r - o0.b) / max(0.02, dot(o0, vec3(0.333)));
+                L = red > 0.35 ? 7 : (fract(vSeed * 5.3) < 0.65 ? 6 : 8);
+              }
+              base = texture(uWallD, vec3(rp / uTexSize[L], float(L))).rgb;
+              avgL = uTexAvg[L];
+            }
             // mos en verkleuring
             base *= 0.92 + vnoise(vB * 0.7) * 0.12;
             // echte dakkleur uit de luchtfoto (vervaagd, de foto staat iets scheef t.o.v. de daken)
             vec3 oc = textureLod(uOrtho, (vWXZ - uOrthoBox.xy) / uOrthoBox.zw, 3.0).rgb;
             // het patroon (pannen, leien) blijft, de kleur komt van de foto
             float pat = clamp(dot(base, vec3(0.333)) / max(0.01, avgL), 0.4, 1.6);
-            base = mix(base, oc * 1.08 * pat, 0.6 * uOrthoOn);
+            base = mix(base, oc * 1.08 * pat, (uTexOn > 0.5 ? 0.22 : 0.6) * uOrthoOn);
           }
           diffuseColor.rgb = base;`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
           roughnessFactor = rough;`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+          if (tnAmt > 0.01) {
+            vec3 Nw = normalize(vWN);
+            vec3 Tw = normalize(vec3(-Nw.z, 0.0, Nw.x) + 1e-5);
+            vec3 nw = normalize(Tw * tn.x * tnAmt + vec3(0.0, 1.0, 0.0) * tn.y * tnAmt + Nw * max(0.3, tn.z));
+            normal = normalize(mat3(viewMatrix) * nw);
+          }`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
           totalEmissiveRadiance += vec3(1.0, 0.62, 0.3) * lit * (0.5 + 0.35 * fract(vSeed * 13.7));`);
     };

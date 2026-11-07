@@ -6,6 +6,7 @@ export class UI {
     this.input = input;
     this.dialogOpen = false;
     this.toastTimer = null;
+    this.setupQuestToggle();
     $('dialog').addEventListener('pointerdown', (e) => {
       if (e.target.tagName !== 'BUTTON') this.input.actionPressed = true;
     });
@@ -25,6 +26,23 @@ export class UI {
       sync();
     });
     this.syncTranslation = sync;
+  }
+
+  // opdrachtkaartje in- en uitklappen (keuze wordt onthouden)
+  setupQuestToggle() {
+    const card = $('quest-card'), btn = $('quest-toggle');
+    const set = (c) => {
+      card.classList.toggle('collapsed', c);
+      btn.setAttribute('aria-expanded', String(!c));
+      btn.setAttribute('aria-label', c ? 'Opdracht uitklappen' : 'Opdracht inklappen');
+      try { localStorage.setItem('gulpe-quest-collapsed', c ? '1' : '0'); } catch (e) { /* geen opslag */ }
+    };
+    let start = false;
+    try { start = localStorage.getItem('gulpe-quest-collapsed') === '1'; } catch (e) { /* geen opslag */ }
+    set(start);
+    const toggle = (e) => { e.stopPropagation(); set(!card.classList.contains('collapsed')); };
+    btn.addEventListener('click', toggle);
+    $('quest-title').addEventListener('click', toggle);
   }
 
   setQuest(title, desc, progress = '') {
@@ -73,10 +91,16 @@ export class UI {
     if (label) b.textContent = label;
   }
 
+  // aftelklok: '98 s' wordt 1:38; de laatste 10 seconden rood
   timer(text) {
     const el = $('race-timer');
     el.hidden = text == null;
-    if (text != null) el.textContent = text;
+    if (text == null) return;
+    let shown = String(text), secs = parseFloat(text);
+    const m = /^(\d+) s$/.exec(shown);
+    if (m) { const n = +m[1]; shown = `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; }
+    $('race-timer-text').textContent = shown;
+    el.classList.toggle('urgent', !isNaN(secs) && secs <= 10);
   }
 
   // Toont een reeks regels; lines = [{name, text}] of strings. Met choices: geeft index terug.

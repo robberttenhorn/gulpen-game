@@ -76,6 +76,19 @@ html, body {
 #quest-title { font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 20px; line-height: 1.1; margin: 2px 0 4px; }
 #quest-desc { font-size: 13px; line-height: 1.35; }
 #quest-progress { font-size: 12px; margin-top: 6px; color: #5a6470; }
+/* opdracht in- en uitklappen */
+#quest-toggle {
+  position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 50%;
+  background: rgba(27, 36, 48, 0.08); color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+#quest-toggle svg { transition: transform .2s; }
+#quest-card .quest-label, #quest-title { padding-right: 30px; }
+#quest-title { cursor: pointer; }
+#quest-card.collapsed { padding-bottom: 8px; }
+#quest-card.collapsed #quest-desc, #quest-card.collapsed #quest-progress { display: none; }
+#quest-card.collapsed #quest-title { font-size: 16px; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#quest-card.collapsed #quest-toggle svg { transform: rotate(180deg); }
+#quest-card.collapsed #btn-stop { margin-top: 6px; }
 
 #minimap-wrap {
   position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 180px; height: 180px;
@@ -91,11 +104,16 @@ html, body {
 }
 #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
+/* aftelklok: compact en duidelijk, onder de minikaart (botst niet met de opdracht) */
 #race-timer {
-  position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
-  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; color: #fff;
-  text-shadow: 0 3px 0 rgba(0,0,0,.4);
+  position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 192px); right: 12px;
+  display: flex; align-items: center; gap: 6px; padding: 5px 12px 5px 10px; border-radius: 99px;
+  background: rgba(27, 36, 48, 0.88); color: #fff; box-shadow: var(--shadow);
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums;
 }
+#race-timer svg { flex: none; opacity: .85; }
+#race-timer.urgent { background: #c62828; animation: timer-pulse 1s ease-in-out infinite; }
+@keyframes timer-pulse { 50% { transform: scale(1.08); } }
 
 #prompt {
   position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%);
@@ -148,6 +166,7 @@ body.touch #credits { bottom: auto; top: 200px; }
   #quest-title { font-size: 17px; }
   #quest-desc { font-size: 12px; }
   #prompt { bottom: 220px; }
+  #race-timer { top: calc(max(12px, env(safe-area-inset-top)) + 122px); font-size: 17px; padding: 4px 10px 4px 8px; }
   body.touch #credits { top: 132px; }
 }
 

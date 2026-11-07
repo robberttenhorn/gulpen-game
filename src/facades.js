@@ -577,7 +577,8 @@ export class Facades {
     return [p.cx + Math.cos(p.ang) * lx + Math.sin(p.ang) * lz, p.cz - Math.sin(p.ang) * lx + Math.cos(p.ang) * lz];
   }
 
-  // Sint-Petruskerk: klokken en een kruis op de toren (de toren zelf komt uit de 3D BAG).
+  // Sint-Petruskerk: een kruis op de toren (de toren zelf komt uit de 3D BAG).
+  // (De wijzerplaten zijn weg: de toren werd niet altijd goed herkend en dan staken ze half door het dak.)
   buildChurch() {
     const w = this.world;
     // torenlocatie volgens TOP10NL (Kadaster), in lokale coördinaten
@@ -588,29 +589,6 @@ export class Facades {
     const cx = (tower.minX + tower.maxX) / 2, cz = (tower.minZ + tower.maxZ) / 2;
     const hw = (tower.maxX - tower.minX) / 2, hd = (tower.maxZ - tower.minZ) / 2;
     const top = tower.top;
-    // wijzerplaten op vier kanten
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#f5f0e1'; ctx.beginPath(); ctx.arc(128, 128, 120, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 10; ctx.strokeStyle = '#1b1b1b'; ctx.stroke();
-    ctx.fillStyle = '#1b1b1b';
-    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; ctx.fillRect(128 + Math.sin(a) * 96 - 4, 128 - Math.cos(a) * 96 - 10, 8, 20); }
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(128, 128); ctx.lineTo(128, 62); ctx.stroke();
-    ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(128, 128); ctx.lineTo(178, 128); ctx.stroke();
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const faceMat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, emissive: 0xfff1d0, emissiveMap: tex, emissiveIntensity: 0 });
-    this.signMats.push({ isWindow: true, mat: faceMat });
-    const size = Math.min(hw, hd) * 1.3;
-    const y = top - Math.max(4, size + 1.5);
-    for (const [dx, dz, ry] of [[0, hd + 0.05, 0], [0, -hd - 0.05, Math.PI], [hw + 0.05, 0, Math.PI / 2], [-hw - 0.05, 0, -Math.PI / 2]]) {
-      const m = new THREE.Mesh(new THREE.CircleGeometry(size / 2, 32), faceMat);
-      m.position.set(cx + dx, y, cz + dz);
-      m.rotation.y = ry;
-      this.scene.add(m);
-    }
     // kruis met haan bovenop
     const gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1, roughness: 0.3 });
     const cross = new THREE.Group();

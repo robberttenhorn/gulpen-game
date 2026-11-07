@@ -1047,6 +1047,35 @@ class Game {
       this.updateCamera(0, true);
     });
     this.player.lockedFor = false;
+    // laten zien waar je iets kunt doen
+    if (triggers.length) this.ui.toast(`${triggers[0].label}: loop naar de gele markering`, 3500);
+  }
+
+  // Gele, zwevende markeringen boven de actieplekken in een binnenruimte.
+  syncTriggerMarkers(room) {
+    const active = new Set(room?.activeTriggers || []);
+    for (const m of this.triggerMarkers || []) if (!active.has(m.t) || this.interior !== room) this.scene.remove(m.obj);
+    this.triggerMarkers = (this.triggerMarkers || []).filter((m) => active.has(m.t) && this.interior === room);
+    if (!room) return;
+    for (const t of active) {
+      if (this.triggerMarkers.some((m) => m.t === t)) continue;
+      const obj = new THREE.Group();
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshStandardMaterial({ color: 0xf2c14e, emissive: 0xe8a33d, emissiveIntensity: 0.8 }));
+      gem.scale.y = 1.5;
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 32), new THREE.MeshBasicMaterial({ color: 0xf2c14e, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.05;
+      obj.add(gem, ring);
+      const [x, z] = room.toWorld(t.x, t.z);
+      obj.position.set(x, 0, z);
+      obj.userData.gem = gem;
+      this.scene.add(obj);
+      this.triggerMarkers.push({ t, obj });
+    }
+    for (const m of this.triggerMarkers) {
+      m.obj.userData.gem.position.y = 2.1 + Math.sin(this.time * 2.5) * 0.12;
+      m.obj.userData.gem.rotation.y += 0.03;
+    }
   }
 
   async exitInterior() {
@@ -1337,6 +1366,7 @@ class Game {
       this.waypoint = null;
       this.ui.toast('Je bent er!', 1200);
     }
+    this.syncTriggerMarkers(this.interior);
     if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty || this.minigame) { if (!this.penalty && !this.minigame) this.ui.prompt(null); return; }
 
     if (this.interior) {

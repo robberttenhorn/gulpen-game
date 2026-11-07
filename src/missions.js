@@ -567,7 +567,7 @@ export class Missions {
         return;
       }
       const a = await ui.dialog(N, [
-        'Psst. Kom eens even mee naar binnen. Ik moet je iets laten zien.',
+        'Psst. Kom eens even mee naar binnen. Ik moet je iets laten zien. Het offerblok staat vooraan bij het middenpad.',
         'Je kent het verhaal toch wel van deken Haffmans? Van 1984 tot 2006 de baas in deze kerk.',
         'Volgens de krant en een heel boek ging er bijna twee miljoen euro uit de armenkas. Naar dure auto\'s, dure vakanties en rekeningen in het buitenland.',
         'Hij is in 2007 overleden voordat het ooit voor de rechter kwam, dus bewezen is het nooit. Maar in Gulpen wordt er nog steeds over gepraat, kan ik je vertellen.',
@@ -576,7 +576,7 @@ export class Missions {
       const kerk = g.interiors.room('kerk');
       await new Promise((resolve) => {
         g.enterInterior(kerk, {
-          triggers: [{ x: kerk.offerblok.x, z: kerk.offerblok.z, r: 1.6, label: 'Bekijk het offerblok', action: () => { kerk.activeTriggers = []; resolve(); } }],
+          triggers: [{ x: kerk.offerblok.x, z: kerk.offerblok.z, r: kerk.offerblok.r, label: 'Bekijk het offerblok', action: () => { kerk.activeTriggers = []; resolve(); } }],
         });
       });
       g.player.lockedFor = true;
@@ -1021,7 +1021,7 @@ export class Missions {
       g.sfx?.play('bells');
       await g.enterInterior(kerk, {
         triggers: [{
-          x: kerk.coffeeTable.x, z: kerk.coffeeTable.z, r: 1.6, label: 'Zet de vlaaien op de koffietafel',
+          x: kerk.coffeeTable.x, z: kerk.coffeeTable.z, r: kerk.coffeeTable.r, label: 'Zet de vlaaien op de koffietafel',
           action: async () => {
             kerk.activeTriggers = [];
             g.fragile = null;
