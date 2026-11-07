@@ -1,4 +1,4 @@
-# Gulpe! Ein daag in Gulpen
+# GTA Gullepe
 
 Een browsergame die zich afspeelt in het echte Gulpen (Zuid-Limburg). Het dorp is opgebouwd uit open overheidsdata:
 elk huis staat op de goede plek met de echte dakvorm, de straten hebben hun echte namen, en het reliëf van het Heuvelland klopt.
@@ -94,6 +94,7 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 
 - **Dialect**: de dorpsbewoners spreken af en toe Gulpens, met een Nederlandse vertaling eronder (aan en uit te zetten in de dialoog). Alle Gulpense woorden komen uit de [woordenlijst Gulpens op mijnwoordenboek.nl](https://www.mijnwoordenboek.nl/dialect/Gulpens), die door bezoekers is samengesteld en geen officiële bron is. De zinnetjes zijn met die woorden gemaakt en moeten door een echte Gulpenaar worden nagelopen.
 - **Echte personen**: bewust weggelaten. De mensen in de zaken zijn verzonnen rollen ("de monteur", "de waard"). De nachtburgemeester is verzonnen.
+- **Naam GTA**: "GTA" verwijst naar Grand Theft Auto, een merk van Rockstar Games. Voor een spel onder vrienden is dat een knipoog; bij breder delen of geld vragen is een andere naam verstandiger.
 - **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
 - **Mariabeeld**: de plek komt uit de BGT (een monument op 157 m, de top van de Gulperberg). Het beeld zelf is een gestileerde benadering, niet het echte ontwerp.
 - **Hubertusmarkt**: de weetjes (sinds 1544, Hubertusmis in de Sint-Petruskerk, paardenzegening bij het gemeentehuis, zo'n 150 kramen met onder andere gerookte paling) komen uit aankondigingen van de 482e editie in 2026. De Razende Reporter is een verzonnen figuur. De cafés zijn echte zaken rond de Markt; hun gevels en de stamgasten zijn verzonnen.

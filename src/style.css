@@ -30,7 +30,7 @@ html, body {
 }
 .loading-card { text-align: center; color: #fff; padding: 24px; max-width: 440px; width: 100%; }
 .logo {
-  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: clamp(64px, 18vw, 110px);
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: clamp(44px, 13vw, 84px); white-space: nowrap;
   line-height: 0.9; color: var(--accent); text-shadow: 0 6px 0 var(--accent-dark), 0 14px 30px rgba(0,0,0,.4);
   transform: rotate(-4deg);
 }
@@ -49,7 +49,7 @@ html, body {
 /* lage schermen (telefoon gekanteld): compacter, zodat de Speel-knop in beeld blijft */
 @media (max-height: 560px) {
   .loading-card { padding: 12px 24px; max-width: 620px; }
-  .logo { font-size: 56px; }
+  .logo { font-size: 46px; }
   .tagline { font-size: 18px; margin: 6px 0 10px; }
   .intro { font-size: 13px; margin: 0 0 10px; }
   #start-btn { margin-top: 10px; }
