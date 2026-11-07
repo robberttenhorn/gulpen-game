@@ -1,0 +1,142 @@
+:root {
+  --ink: #1b2430;
+  --paper: #fffaf0;
+  --accent: #e8a33d;
+  --accent-dark: #b9741c;
+  --blue: #1f4e8c;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1b2a3a;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--ink);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---------- laadscherm ---------- */
+#loading {
+  position: fixed; inset: 0; display: grid; place-items: center; z-index: 20;
+  background: radial-gradient(ellipse at 50% 30%, #3b6a8f 0%, #1b2a3a 70%);
+}
+.loading-card { text-align: center; color: #fff; padding: 24px; max-width: 440px; width: 100%; }
+.logo {
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: clamp(64px, 18vw, 110px);
+  line-height: 0.9; color: var(--accent); text-shadow: 0 6px 0 var(--accent-dark), 0 14px 30px rgba(0,0,0,.4);
+  transform: rotate(-4deg);
+}
+.tagline { font-family: 'Baloo 2', sans-serif; font-size: 22px; margin: 14px 0 26px; opacity: .9; }
+.bar { height: 10px; background: rgba(255,255,255,.15); border-radius: 99px; overflow: hidden; }
+#loading-bar { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+#loading-text { margin-top: 10px; font-size: 14px; opacity: .8; min-height: 20px; }
+#start-btn {
+  margin-top: 22px; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px;
+  padding: 10px 46px; border: 0; border-radius: 16px; background: var(--accent); color: var(--ink);
+  box-shadow: 0 6px 0 var(--accent-dark); cursor: pointer;
+}
+#start-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--accent-dark); }
+.hint { margin-top: 22px; font-size: 13px; opacity: .65; line-height: 1.5; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#hud[hidden], [hidden] { display: none !important; }
+
+#street-sign {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  background: var(--blue); color: #fff; border: 3px solid #fff; outline: 2px solid var(--blue);
+  border-radius: 6px; padding: 4px 18px; font-weight: 600; font-size: 17px; letter-spacing: .3px;
+  box-shadow: var(--shadow); white-space: nowrap; transition: opacity .3s;
+}
+
+#quest-card {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; width: min(300px, 46vw);
+  background: rgba(255, 250, 240, 0.94); border-radius: 14px; padding: 10px 14px 12px; box-shadow: var(--shadow);
+  border-left: 6px solid var(--accent);
+}
+.quest-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent-dark); font-weight: 600; }
+#quest-title { font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 20px; line-height: 1.1; margin: 2px 0 4px; }
+#quest-desc { font-size: 13px; line-height: 1.35; }
+#quest-progress { font-size: 12px; margin-top: 6px; color: #5a6470; }
+
+#minimap-wrap {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 180px; height: 180px;
+  border-radius: 50%; overflow: hidden; border: 4px solid var(--paper); box-shadow: var(--shadow); background: #6d8f4e;
+}
+#minimap { width: 100%; height: 100%; display: block; }
+
+#toast {
+  position: absolute; top: 34%; left: 50%; transform: translate(-50%, -50%) scale(.9); opacity: 0;
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: clamp(26px, 6vw, 46px); color: #fff;
+  text-shadow: 0 3px 0 rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.4); transition: all .35s; text-align: center;
+  width: 90%;
+}
+#toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+#race-timer {
+  position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; color: #fff;
+  text-shadow: 0 3px 0 rgba(0,0,0,.4);
+}
+
+#prompt {
+  position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%);
+  background: rgba(27, 36, 48, .85); color: #fff; padding: 8px 16px; border-radius: 99px; font-size: 15px;
+  white-space: nowrap;
+}
+
+#dialog {
+  position: absolute; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(640px, calc(100% - 24px)); background: var(--paper); border-radius: 18px; padding: 14px 18px 12px;
+  box-shadow: var(--shadow); pointer-events: auto; border-top: 6px solid var(--accent);
+}
+#dialog-name { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 18px; color: var(--accent-dark); }
+#dialog-text { font-size: 16px; line-height: 1.45; margin-top: 2px; min-height: 46px; }
+#dialog-choices { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+#dialog-choices button {
+  text-align: left; font: inherit; font-size: 15px; padding: 10px 14px; border-radius: 10px;
+  border: 2px solid #e2d6bd; background: #fff; cursor: pointer;
+}
+#dialog-choices button:hover { border-color: var(--accent); }
+#dialog-next { text-align: right; font-size: 12px; color: #8a8f96; margin-top: 4px; }
+
+#touch-ui { display: none; }
+body.touch #touch-ui { display: block; }
+#joystick {
+  position: absolute; left: 24px; bottom: max(28px, env(safe-area-inset-bottom)); width: 130px; height: 130px;
+  border-radius: 50%; background: rgba(255,255,255,.18); border: 2px solid rgba(255,255,255,.4); pointer-events: auto;
+}
+#joystick-knob {
+  position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+  background: rgba(255,255,255,.85);
+}
+.round-btn {
+  position: absolute; right: 24px; bottom: max(40px, env(safe-area-inset-bottom)); width: 84px; height: 84px;
+  border-radius: 50%; border: 0; background: var(--accent); color: var(--ink); font-family: 'Baloo 2', sans-serif;
+  font-weight: 800; font-size: 18px; box-shadow: 0 5px 0 var(--accent-dark); pointer-events: auto;
+}
+.round-btn.small { width: 64px; height: 64px; font-size: 15px; right: 120px; bottom: max(50px, env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 5px 0 #c9c1b0; }
+
+#credits {
+  position: absolute; right: 10px; bottom: 6px; font-size: 10px; color: rgba(255,255,255,.75);
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+body.touch #credits { bottom: auto; top: 200px; }
+
+@media (max-width: 640px) {
+  #minimap-wrap { width: 112px; height: 112px; }
+  #street-sign { top: auto; bottom: 178px; font-size: 15px; }
+  #quest-card { width: calc(100% - 148px); padding: 8px 12px 10px; }
+  #quest-title { font-size: 17px; }
+  #quest-desc { font-size: 12px; }
+  #prompt { bottom: 220px; }
+  body.touch #credits { top: 132px; }
+}

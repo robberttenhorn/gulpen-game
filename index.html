@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Gulpe! Ein daag in Gulpen</title>
+  <meta name="theme-color" content="#1b2a3a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div id="loading">
+    <div class="loading-card">
+      <div class="logo">Gulpe!</div>
+      <div class="tagline">Ein daag in Gulpen</div>
+      <div class="bar"><div id="loading-bar"></div></div>
+      <div id="loading-text">Gulpen wordt opgebouwd...</div>
+      <button id="start-btn" hidden>Speel</button>
+      <div class="hint">WASD of pijltjes om te lopen, slepen om te kijken, E om te praten.<br />Op mobiel: joystick links, slepen rechts.</div>
+    </div>
+  </div>
+
+  <div id="hud" hidden>
+    <div id="street-sign"><span id="street-name">Markt</span></div>
+
+    <div id="quest-card">
+      <div class="quest-label">Opdracht</div>
+      <div id="quest-title"></div>
+      <div id="quest-desc"></div>
+      <div id="quest-progress"></div>
+    </div>
+
+    <div id="minimap-wrap"><canvas id="minimap" width="180" height="180"></canvas></div>
+
+    <div id="toast"></div>
+
+    <div id="race-timer" hidden></div>
+
+    <div id="prompt" hidden></div>
+
+    <div id="dialog" hidden>
+      <div id="dialog-name"></div>
+      <div id="dialog-text"></div>
+      <div id="dialog-choices"></div>
+      <div id="dialog-next">Tik of druk op E</div>
+    </div>
+
+    <div id="touch-ui">
+      <div id="joystick"><div id="joystick-knob"></div></div>
+      <button id="btn-action" class="round-btn">Praat</button>
+      <button id="btn-vehicle" class="round-btn small" hidden>Fiets</button>
+    </div>
+
+    <div id="credits">Data: 3D BAG (TU Delft/3DGI, CC BY 4.0), AHN, BGT, NWB (PDOK)</div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

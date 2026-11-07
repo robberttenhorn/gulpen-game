@@ -1,0 +1,94 @@
+{
+  "origin": {
+    "x": 190531,
+    "y": 314058
+  },
+  "core": {
+    "minX": 189900,
+    "minY": 313300,
+    "maxX": 191600,
+    "maxY": 314700,
+    "res": 2,
+    "w": 850,
+    "h": 700
+  },
+  "wide": {
+    "minX": 186500,
+    "minY": 309800,
+    "maxX": 195000,
+    "maxY": 318300,
+    "res": 20,
+    "w": 425,
+    "h": 425
+  },
+  "pois": [
+    {
+      "id": "zwarteruiter",
+      "name": "Herberg De Zwarte Ruiter",
+      "address": "Markt 4",
+      "x": 190531,
+      "y": 314058,
+      "pos": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "anpiet",
+      "name": "Friture An + Piet",
+      "address": "Rijksweg 60B",
+      "x": 190755,
+      "y": 314093,
+      "pos": [
+        224,
+        -35
+      ]
+    },
+    {
+      "id": "jefabels",
+      "name": "Jef Abels Bikes",
+      "address": "Rijksweg 113",
+      "x": 190972,
+      "y": 314255,
+      "pos": [
+        441,
+        -197
+      ]
+    },
+    {
+      "id": "brouwerij",
+      "name": "Gulpener Bierbrouwerij",
+      "address": "Rijksweg 16",
+      "x": 190488,
+      "y": 313954,
+      "pos": [
+        -43,
+        104
+      ]
+    },
+    {
+      "id": "sophianum",
+      "name": "Sophianum",
+      "address": "Landsraderweg 7",
+      "x": 190417,
+      "y": 313580,
+      "pos": [
+        -114,
+        478
+      ]
+    },
+    {
+      "id": "ringweg",
+      "name": "Ringweg",
+      "address": "Ringweg 14",
+      "x": 191263,
+      "y": 314332,
+      "pos": [
+        732,
+        -274
+      ]
+    }
+  ],
+  "generated": "2026-11-07T01:49:10.583Z",
+  "attribution": "3D BAG (TU Delft / 3DGI, CC BY 4.0), AHN (Rijkswaterstaat, CC0), BGT en NWB (PDOK, CC0)"
+}
