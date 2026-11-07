@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { World } from './world.js';
 import { Input } from './input.js';
 import { UI, Minimap, BigMap } from './ui.js';
@@ -175,6 +176,34 @@ class Game {
     this.scene.add(this.hemi);
     this.scene.fog = new THREE.Fog(0xc9d8e6, 450, 4200);
 
+    // wolken: een koepel met langzaam drijvende stapelwolken
+    this.clouds = new THREE.Mesh(new THREE.SphereGeometry(8000, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uDay: { value: 1 }, uTint: { value: new THREE.Color(1, 1, 1) } },
+      vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform float uTime, uDay; uniform vec3 uSun, uTint; varying vec3 vDir;
+        float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+          return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
+        float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * n(p); p = p * 2.03 + 17.1; a *= 0.5; } return v; }
+        void main(){
+          if (vDir.y < 0.015) discard;
+          vec2 p = vDir.xz / (vDir.y + 0.08) * 1.6 + vec2(uTime * 0.004, uTime * 0.0015);
+          float d = fbm(p);
+          float c = smoothstep(0.5, 0.78, d);
+          if (c < 0.01) discard;
+          // onderkant donkerder, zonkant lichter
+          float lit = 0.7 + 0.3 * smoothstep(0.45, 0.9, fbm(p + uSun.xz * 0.15));
+          vec3 col = mix(vec3(0.62, 0.66, 0.72), vec3(1.0), lit) * uTint;
+          col *= mix(0.12, 1.0, uDay);
+          float a = c * smoothstep(0.015, 0.2, vDir.y) * 0.92;
+          gl_FragColor = vec4(col, a);
+        }`,
+      transparent: true, depthWrite: false, side: THREE.BackSide, fog: false,
+    }));
+    this.clouds.renderOrder = -1;
+    this.scene.add(this.clouds);
+
     const n = 1500, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.95);
@@ -197,6 +226,20 @@ class Game {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.25, 0.6, 0.92);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    // kleur: iets warmer, wat meer contrast en een zacht vignet
+    this.composer.addPass(new ShaderPass({
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+        void main(){
+          vec3 c = texture2D(tDiffuse, vUv).rgb;
+          c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, 1.08);
+          c = (c - 0.5) * 1.05 + 0.5;
+          c *= vec3(1.02, 1.0, 0.97);
+          float v = smoothstep(1.15, 0.35, length(vUv - 0.5) * 1.35);
+          gl_FragColor = vec4(c * mix(0.78, 1.0, v), 1.0);
+        }`,
+    }));
   }
 
   render() {
@@ -224,6 +267,12 @@ class Game {
     this.facades?.setNight(lightsOn);
     this.cars?.setNight(lightsOn);
     this.stars.material.opacity = THREE.MathUtils.smoothstep(night, 0.6, 1);
+    if (this.clouds) {
+      const u = this.clouds.material.uniforms;
+      u.uSun.value.copy(sunDir); u.uDay.value = day;
+      const low = (1 - THREE.MathUtils.smoothstep(sunDir.y, 0.0, 0.3)) * day;
+      u.uTint.value.setRGB(1, 1 - 0.2 * low, 1 - 0.38 * low);
+    }
 
     const dusk = THREE.MathUtils.smoothstep(elev, -4, 6) * (1 - THREE.MathUtils.smoothstep(elev, 6, 22));
     this.sun.intensity = 3.0 * day + 0.6 * night;
@@ -905,6 +954,16 @@ class Game {
     }
   }
 
+  // alle punten waar je voor de lopende missie heen moet (mensen ophalen, munten, kroegen...)
+  missionPoints() {
+    const pts = (this.tempMarkers || []).filter((m) => !m.done);
+    for (const c of this.collectibles || []) {
+      if (!c.pos || pts.some((m) => Math.hypot(m.x - c.pos.x, m.z - c.pos.z) < 4)) continue;
+      pts.push({ x: c.pos.x, z: c.pos.z, color: c.color || '#f2c14e', glyph: c.glyph || '€' });
+    }
+    return pts;
+  }
+
   followersJoined() { return (this.followers || []).filter((f) => f.joined).length; }
 
   stopPolonaise() {
@@ -1013,10 +1072,18 @@ class Game {
   }
 
   // Voorwerp in de rechterhand van een poppetje (speler of NPC).
+  // voorwerp in de rechterhand; offset is t.o.v. de schouder (oude maat), dus de armlengte eraf
   attachToHand(model, prop, { offset = [0, -0.72, 0.07] } = {}) {
     this.detachFromHand(model);
-    prop.position.set(...offset);
-    model.userData.parts.armR.add(prop);
+    const parts = model.userData.parts;
+    if (parts.handR) {
+      const [hx, hy, hz] = model.userData.handOffset;
+      prop.position.set(offset[0] + hx, hy + (offset[1] + 0.72) * 0.5, hz + (offset[2] - 0.07));
+      parts.handR.add(prop);
+    } else {
+      prop.position.set(...offset);
+      parts.armR.add(prop);
+    }
     model.userData.handProp = prop;
     model.userData.holdR = true;
   }
@@ -1090,11 +1157,13 @@ class Game {
     this.updateDestination(dt);
     this.updateInteractions(dt);
     this.world.hardscape.update(dt);
+    this.world.updateTrees(this.camera.position, this.time);
     this.fx.update(dt);
     this.interiors.update(dt);
     if (!this.interior) this.updateAmbience(dt);
     this.updateCamera(dt);
     this.updateHud(dt);
+    if (this.clouds) { this.clouds.material.uniforms.uTime.value = this.time; this.clouds.position.copy(this.camera.position); }
     this.render();
   }
 
@@ -1415,10 +1484,7 @@ class Game {
     document.getElementById('dialog-stop').hidden = !busy;
     if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin(this.time * 3) * 0.06;
     const tgt = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : this.waypoint;
-    const base = this.minimap.markers;
-    if (this.tempMarkers?.length) this.minimap.markers = base.concat(this.tempMarkers.filter((m) => !m.done));
-    this.minimap.draw(p.x, p.z, p.heading, this.camYaw, tgt);
-    this.minimap.markers = base;
+    this.minimap.draw(p.x, p.z, p.heading, this.camYaw, tgt, this.missionPoints());
   }
 }
 

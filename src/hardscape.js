@@ -46,6 +46,7 @@ export function buildHardscape(world, scene) {
       polygonOffset: true, polygonOffsetFactor: offset, polygonOffsetUnits: offset * 2,
     });
     if (t.normalMap) mat.normalScale.set(0.8, 0.8);
+    world.applyAO?.(mat);
     const m = new THREE.Mesh(geo, mat);
     m.receiveShadow = true;
     scene.add(m);

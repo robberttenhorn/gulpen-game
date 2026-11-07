@@ -204,7 +204,7 @@ export class Minimap {
     this.markers = [];
   }
 
-  draw(px, pz, heading, camYaw, target) {
+  draw(px, pz, heading, camYaw, target, temps = []) {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
     const b = this.world.coreBox;
     const zoom = 1.3; // schermpixels per bronpixel
@@ -223,6 +223,19 @@ export class Minimap {
       const sx = W / 2 + dx * c - dz * s, sy = H / 2 + dx * s + dz * c;
       if (Math.hypot(sx - W / 2, sy - H / 2) > W / 2 - 6) continue;
       drawPin(ctx, sx, sy, m, 7);
+    }
+    // missiepunten (op te halen mensen, munten, adressen): buiten beeld aan de rand van de kaart
+    const R = W / 2 - 9;
+    for (const m of temps) {
+      const dx = (m.x - px) * this.scale * zoom, dz = (m.z - pz) * this.scale * zoom;
+      const c = Math.cos(camYaw), s = Math.sin(camYaw);
+      let ex = dx * c - dz * s, ey = dx * s + dz * c;
+      const d = Math.hypot(ex, ey);
+      const out = d > R;
+      if (out) { ex *= R / d; ey *= R / d; }
+      ctx.globalAlpha = out ? 0.85 : 1;
+      drawPin(ctx, W / 2 + ex, H / 2 + ey, m, out ? 5.5 : 7);
+      ctx.globalAlpha = 1;
     }
 
     // pijl naar doel als dat buiten beeld is
@@ -419,6 +432,16 @@ export class BigMap {
     for (const it of this.items()) {
       const [sx, sy] = this.toScreen(it.x, it.z);
       drawPin(ctx, sx, sy, it, this.selected === it.key ? 14 : 11);
+    }
+    // missiepunten en het huidige doel
+    for (const m of this.g.missionPoints()) {
+      const [sx, sy] = this.toScreen(m.x, m.z);
+      drawPin(ctx, sx, sy, m, 9);
+    }
+    const t = this.g.target ? this.g.target.pos : this.g.waypoint;
+    if (t) {
+      const [sx, sy] = this.toScreen(t.x, t.z);
+      drawPin(ctx, sx, sy, { color: '#e8a33d', glyph: '★' }, 10);
     }
     // speler
     const p = this.g.player;

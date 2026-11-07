@@ -25,7 +25,7 @@ html, body {
 
 /* ---------- laadscherm ---------- */
 #loading {
-  position: fixed; inset: 0; display: grid; place-items: center; z-index: 20;
+  position: fixed; inset: 0; display: grid; place-items: center; z-index: 20; overflow-y: auto;
   background: radial-gradient(ellipse at 50% 30%, #3b6a8f 0%, #1b2a3a 70%);
 }
 .loading-card { text-align: center; color: #fff; padding: 24px; max-width: 440px; width: 100%; }
@@ -44,7 +44,17 @@ html, body {
   box-shadow: 0 6px 0 var(--accent-dark); cursor: pointer;
 }
 #start-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--accent-dark); }
+.intro { font-size: 15px; line-height: 1.5; margin: -12px 0 22px; opacity: .85; }
 .hint { margin-top: 22px; font-size: 13px; opacity: .65; line-height: 1.5; }
+/* lage schermen (telefoon gekanteld): compacter, zodat de Speel-knop in beeld blijft */
+@media (max-height: 560px) {
+  .loading-card { padding: 12px 24px; max-width: 620px; }
+  .logo { font-size: 56px; }
+  .tagline { font-size: 18px; margin: 6px 0 10px; }
+  .intro { font-size: 13px; margin: 0 0 10px; }
+  #start-btn { margin-top: 10px; }
+  .hint { display: none; }
+}
 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
