@@ -342,15 +342,17 @@ export class Vehicles {
   drive(car, dt, throttle, steerIn, handbrake) {
     const w = this.world;
     const surface = w.classAt(car.x, car.z);
-    const onRoad = ['rijbaan', 'klinkers', 'parkeer', 'erf', 'verhard_open', 'verhard_gesloten', 'brug', 'fietspad', 'voetpad'].includes(surface);
+    const onRoad = ['rijbaan', 'klinkers', 'parkeer', 'erf', 'verhard_open', 'verhard_gesloten', 'brug', 'fietspad', 'voetpad', 'berm', 'oever', 'onverhard'].includes(surface);
     const top = car.t.vmax ?? 33;
-    const vmax = onRoad || car.type === 'tractor' ? top : Math.min(top, 13);
+    // naast de weg (gras, akker) iets langzamer, maar nooit ineens: geleidelijk afremmen
+    const vmax = onRoad || car.type === 'tractor' ? top : Math.min(top, 20);
     const accel = throttle > 0 ? (car.speed < 0 ? 16 : 7.5) : throttle < 0 ? (car.speed > 0 ? 16 : 5) : 0;
     car.speed += throttle * accel * dt;
     if (!throttle) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), (onRoad ? 2.2 : 6) * dt);
     if (handbrake) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 10 * dt);
     car.speed -= car.speed * Math.abs(car.speed) * 0.0009 * dt * 60 * (onRoad ? 1 : 2.5) * 0.02;
-    car.speed = THREE.MathUtils.clamp(car.speed, -8, vmax);
+    if (car.speed > vmax) car.speed -= (car.speed - vmax) * Math.min(1, dt * 1.2);
+    car.speed = THREE.MathUtils.clamp(car.speed, -8, top);
 
     const maxSteer = THREE.MathUtils.lerp(0.62, 0.12, Math.min(1, Math.abs(car.speed) / 30));
     car.steer += (steerIn * maxSteer - car.steer) * Math.min(1, dt * 6);
@@ -362,7 +364,7 @@ export class Vehicles {
     const front = car.t.L * 0.38 * Math.sign(car.speed || 1);
     // water blokkeert
     if (w.blocked(nx + Math.sin(car.heading) * front, nz + Math.cos(car.heading) * front)) {
-      car.speed *= -0.2;
+      car.speed = 0; // stoppen voor het water, niet terugstuiteren
       return;
     }
     // botsingen met gebouwen: drie cirkels langs de auto
@@ -420,13 +422,17 @@ export class Vehicles {
       // vertragen bij obstakels voor de auto
       let target = c.cruise;
       const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
-      const obstacles = [player, ...this.cars.filter((o) => o !== c), ...this.traffic.filter((o) => o !== c)];
-      for (const o of obstacles) {
+      const check = (o) => {
+        if (o === c) return;
         const dx = o.x - c.x, dz = o.z - c.z;
+        if (dx * dx + dz * dz > 225) return;
         const ahead = dx * fx + dz * fz;
         const side = Math.abs(-dx * fz + dz * fx);
         if (ahead > 0 && ahead < 14 && side < 2.2) target = Math.min(target, Math.max(0, (ahead - 5) * 1.2));
-      }
+      };
+      check(player);
+      for (let i = 0; i < this.cars.length; i++) check(this.cars[i]);
+      for (let i = 0; i < this.traffic.length; i++) check(this.traffic[i]);
       // bochten langzamer
       c.speed += (target - c.speed) * Math.min(1, dt * (target < c.speed ? 4 : 1.2));
       c.dist += c.speed * dt;
