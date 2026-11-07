@@ -1,12 +1,39 @@
 // Gestileerde poppetjes voor de speler en de dorpsbewoners.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+const sharedMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72 });
+
+// Voegt alle losse meshes direct onder een groep samen tot één mesh met vertexkleuren
+// (veel minder tekenopdrachten voor de grafische kaart).
+function bake(group) {
+  const meshes = group.children.filter((c) => c.isMesh);
+  if (meshes.length < 2) return meshes[0] || null;
+  const geos = meshes.map((m) => {
+    m.updateMatrix();
+    let g = m.geometry.clone();
+    g.applyMatrix4(m.matrix);
+    if (g.index) g = g.toNonIndexed();
+    g.deleteAttribute('uv');
+    const c = m.material.color;
+    const col = new Float32Array(g.attributes.position.count * 3);
+    for (let i = 0; i < col.length; i += 3) { col[i] = c.r; col[i + 1] = c.g; col[i + 2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return g;
+  });
+  meshes.forEach((m) => group.remove(m));
+  const merged = new THREE.Mesh(mergeGeometries(geos), sharedMat);
+  merged.castShadow = true;
+  group.add(merged);
+  return merged;
+}
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...extra });
 
 export function makeCharacter(opts = {}) {
   const {
     shirt = 0xe8a33d, pants = 0x2e3f5c, skin = 0xf0c8a0, hair = 0x4a3020, shoes = 0x222222,
-    hat = null, apron = null, chain = false, sash = null, scale = 1,
+    hat = null, apron = null, chain = false, sash = null, scale = 1, coat = null,
   } = opts;
   const root = new THREE.Group();
   const body = new THREE.Group();
@@ -17,6 +44,15 @@ export function makeCharacter(opts = {}) {
   torso.scale.set(1, 1, 0.75);
   body.add(torso);
 
+  if (coat) {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 1.05, 12), std(coat));
+    c.position.y = 0.98;
+    c.scale.z = 0.8;
+    body.add(c);
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 0.18, 12), std(coat));
+    collar.position.y = 1.58;
+    body.add(collar);
+  }
   if (apron) {
     const ap = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.7, 0.05), std(apron));
     ap.position.set(0, 1.05, 0.21);
@@ -106,10 +142,13 @@ export function makeCharacter(opts = {}) {
   }
   body.add(armL, armR, legL, legR);
 
+  // samenvoegen per beweegbaar deel
+  const bodyMesh = bake(body);
+  for (const g of [head, armL, armR, legL, legR]) bake(g);
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
   root.scale.setScalar(scale);
 
-  const parts = { body, head, armL, armR, legL, legR, torso };
+  const parts = { body, head, armL, armR, legL, legR, torso: bodyMesh || torso };
   let phase = Math.random() * 10;
 
   // animatie: speed in m/s, mode 'walk' | 'bike' | 'skate' | 'idle' | 'wave' | 'drink'
@@ -155,9 +194,9 @@ export function makeCharacter(opts = {}) {
   return root;
 }
 
-export function makeBike() {
+export function makeBike(color = 0x1e88e5) {
   const g = new THREE.Group();
-  const frame = std(0x1e88e5, { metalness: 0.4, roughness: 0.4 });
+  const frame = std(color, { metalness: 0.4, roughness: 0.4 });
   const dark = std(0x111111);
   const wheelGeo = new THREE.TorusGeometry(0.33, 0.04, 8, 24);
   for (const z of [-0.55, 0.55]) {

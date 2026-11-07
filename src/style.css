@@ -140,3 +140,61 @@ body.touch #credits { bottom: auto; top: 200px; }
   #prompt { bottom: 220px; }
   body.touch #credits { top: 132px; }
 }
+
+/* ---------- minikaart-hint, snelheidsmeter ---------- */
+#minimap-wrap { pointer-events: auto; cursor: pointer; }
+.map-hint {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  background: rgba(27,36,48,.8); color: #fff; font-size: 10px; font-weight: 600; letter-spacing: .6px;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 99px; pointer-events: none;
+}
+#speedo {
+  position: absolute; right: 24px; bottom: max(24px, env(safe-area-inset-bottom)); color: #fff;
+  font-family: 'Baloo 2', sans-serif; text-shadow: 0 2px 6px rgba(0,0,0,.6); text-align: right; line-height: 1;
+}
+#speed-value { font-size: 54px; font-weight: 800; font-variant-numeric: tabular-nums; }
+#speedo small { display: block; font-size: 14px; opacity: .85; }
+body.touch #speedo { right: 128px; bottom: max(150px, env(safe-area-inset-bottom)); }
+
+/* ---------- dialoog op mobiel: knoppen weg ---------- */
+body.dialog-open #touch-ui, body.map-open #touch-ui { display: none !important; }
+body.dialog-open #prompt { display: none !important; }
+
+/* ---------- grote kaart ---------- */
+#bigmap {
+  position: absolute; inset: 0; z-index: 12; pointer-events: auto; display: flex; background: #1b2430;
+}
+#bigmap-canvas { flex: 1; min-width: 0; height: 100%; display: block; touch-action: none; cursor: grab; }
+#bigmap-panel {
+  width: 320px; max-width: 42vw; background: var(--paper); display: flex; flex-direction: column;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) 14px;
+  gap: 10px; overflow: hidden;
+}
+.bm-head { display: flex; align-items: center; justify-content: space-between; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; }
+#bigmap-close {
+  font: 600 14px Inter, sans-serif; border: 0; border-radius: 99px; padding: 8px 16px; background: var(--ink); color: #fff; cursor: pointer;
+}
+#bigmap-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1; }
+.bm-item {
+  display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; text-align: left;
+  border: 2px solid transparent; background: #fff; border-radius: 12px; padding: 8px 10px; cursor: pointer; font: inherit;
+}
+.bm-item.sel { border-color: var(--accent); }
+.bm-pin {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center;
+  font: 800 13px Inter, sans-serif; color: var(--ink);
+}
+.bm-text { min-width: 0; display: flex; flex-direction: column; }
+.bm-text b { font-size: 14px; }
+.bm-text small { font-size: 12px; color: #5a6470; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bm-state { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #eee; white-space: nowrap; }
+.bm-state[data-state="klaar"] { background: #c8e6c9; color: #1b5e20; }
+.bm-state[data-state="actief"] { background: var(--accent); color: var(--ink); }
+.bm-state[data-state="open"] { background: #fff3cd; color: #7a5300; }
+.bm-hint { font-size: 12px; color: #5a6470; }
+@media (max-width: 640px) {
+  #bigmap { flex-direction: column; }
+  #bigmap-canvas { height: 55%; flex: none; }
+  #bigmap-panel { width: 100%; max-width: none; flex: 1; padding-top: 12px; }
+  .bm-head { font-size: 20px; }
+}

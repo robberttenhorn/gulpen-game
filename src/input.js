@@ -11,7 +11,8 @@ export class Input {
 
     addEventListener('keydown', (e) => {
       this.keys.add(e.code);
-      if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') this.actionPressed = true;
+      if (e.code === 'KeyE' || e.code === 'Enter') this.actionPressed = true;
+      if (e.code === 'Space') this.spacePressed = true;
       if (e.code === 'KeyF') this.vehiclePressed = true;
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));

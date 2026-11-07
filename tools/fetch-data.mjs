@@ -28,7 +28,12 @@ const POIS = [
   { id: 'jefabels', name: 'Jef Abels Bikes', address: 'Rijksweg 113', x: 190972, y: 314255 },
   { id: 'brouwerij', name: 'Gulpener Bierbrouwerij', address: 'Rijksweg 16', x: 190488, y: 313954 },
   { id: 'sophianum', name: 'Sophianum', address: 'Landsraderweg 7', x: 190417, y: 313580 },
-  { id: 'ringweg', name: 'Ringweg', address: 'Ringweg 14', x: 191263, y: 314332 },
+  { id: 'ringweg', name: 'Ringweg', address: 'Ringweg', x: 191104, y: 314313 },
+  { id: 'fcgulpen', name: 'FC Gulpen', address: 'Ringweg 14', x: 191263, y: 314332 },
+  { id: 'zheng', name: 'Cafetaria Zheng', address: 'Looierstraat 103', x: 190585, y: 314084 },
+  { id: 'salma', name: 'Grillroom Pizzeria Salma', address: 'Rijksweg 60A', x: 190748.5, y: 314091.5 },
+  { id: 'mariabeeld', name: 'Mariabeeld', address: 'Top van de Gulperberg', x: 191111.4, y: 313932.2 },
+  { id: 'volvo', name: 'Ringweg 38', address: 'Ringweg 38', x: 190985.6, y: 314375.8 },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -295,6 +300,8 @@ function polysOf(geom) {
   return [];
 }
 
+const SPORT = [];
+
 async function fetchGround() {
   const cols = [
     'begroeidterreindeel', 'onbegroeidterreindeel', 'ondersteunendwegdeel',
@@ -304,6 +311,9 @@ async function fetchGround() {
   for (const col of cols) {
     for (const f of await fetchBgt(col)) {
       const cls = classify(col, f.properties);
+      if (col === 'begroeidterreindeel' && f.properties.plus_fysiek_voorkomen === 'gras- en kruidachtigen') {
+        for (const poly of polysOf(f.geometry)) SPORT.push(poly[0].flatMap(([x, y]) => local(x, y).map(r1)));
+      }
       for (const poly of polysOf(f.geometry)) {
         polys.push([cls, poly.map((ring) => ring.flatMap(([x, y]) => local(x, y).map(r1)))]);
       }
@@ -367,7 +377,7 @@ async function main() {
 
   console.log('Ondergrond, bomen en straatnamen (BGT) ophalen...');
   const ground = await fetchGround();
-  await fs.writeFile(path.join(OUT, 'ground.json'), JSON.stringify({ classes: CLASSES, polys: ground }));
+  await fs.writeFile(path.join(OUT, 'ground.json'), JSON.stringify({ classes: CLASSES, polys: ground, grassFields: SPORT }));
 
   const trees = (await fetchBgt('vegetatieobject_punt'))
     .filter((f) => f.geometry?.type === 'Point')
@@ -378,10 +388,14 @@ async function main() {
   const labels = (await fetchBgt('openbareruimtelabel'))
     .filter((f) => f.geometry?.type === 'Point' && f.properties.openbareruimtenaam)
     .map((f) => [f.properties.openbareruimtenaam, ...local(...f.geometry.coordinates).map(r1)]);
-  const lights = (await fetchBgt('paal'))
-    .filter((f) => f.geometry?.type === 'Point' && f.properties.plus_type === 'lichtmast')
+  const palen = (await fetchBgt('paal')).filter((f) => f.geometry?.type === 'Point');
+  const lights = palen
+    .filter((f) => f.properties.plus_type === 'lichtmast')
     .map((f) => local(...f.geometry.coordinates).map(r1));
-  await fs.writeFile(path.join(OUT, 'objects.json'), JSON.stringify({ trees, furniture, labels, lights }));
+  const poles = palen
+    .filter((f) => f.properties.plus_type !== 'lichtmast')
+    .map((f) => [f.properties.plus_type, ...local(...f.geometry.coordinates).map(r1)]);
+  await fs.writeFile(path.join(OUT, 'objects.json'), JSON.stringify({ trees, furniture, labels, lights, poles }));
 
   console.log('Wegennet met straatnamen (NWB) ophalen...');
   await fs.writeFile(path.join(OUT, 'roads.json'), JSON.stringify(await fetchRoads()));
