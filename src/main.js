@@ -9,7 +9,7 @@ import { Input } from './input.js';
 import { UI, Minimap, BigMap } from './ui.js';
 import { makeCharacter, makeBike, makeSkateboard } from './character.js';
 import { Missions } from './missions.js';
-import { Vehicles, VOLVO_GREY } from './vehicles.js';
+import { Vehicles } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 
@@ -66,8 +66,10 @@ class Game {
     this.facades = new Facades(this);
     this.facades.build();
     this.cars = new Vehicles(this);
-    this.cars.spawnParked();
-    this.spawnVolvo();
+    this.farm = this.findFarm();
+    this.cars.spawnParked(this.farm ? [{ type: 'tractor', x: this.farm.tx, z: this.farm.tz, heading: this.farm.heading, paint: 0xb71c1c, opts: { isTractor: true } }] : []);
+    this.tractor = this.cars.cars.find((c) => c.isTractor);
+    this.fishing = this.findFishingSpot();
     this.cars.spawnTraffic(isMobile ? 6 : 11);
     this.peds = new Pedestrians(this, isMobile ? 14 : 28);
     this.setupPoiLabels();
@@ -283,7 +285,7 @@ class Game {
     car.speed = 0;
     this.setMode('car');
     this.camYaw = car.heading + Math.PI;
-    if (car.isVolvo && !this.volvoSeen) { this.volvoSeen = true; this.ui.toast('Grijze Volvo XC40', 2000); }
+    if (car.isTractor) this.ui.toast('Tractor! Niet zo snel, wel overal doorheen.', 2200);
   }
 
   exitCar() {
@@ -303,18 +305,53 @@ class Game {
     this.setMode('walk');
   }
 
-  spawnVolvo() {
-    const p = this.world.meta.pois.find((q) => q.id === 'volvo');
-    if (!p) return;
-    const [x, z] = this.world.spotNear(...p.pos);
-    const s = this.world.nearestStreet(x, z);
-    // met de neus naar de straat, zoals op een oprit
-    const heading = s ? Math.atan2(s.x - x, s.z - z) : 0;
-    this.volvo = this.cars.addCar('suv', x, z, heading, VOLVO_GREY, { isVolvo: true });
-    // zwart dak, zoals vaak bij de XC40
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.04, 2.0), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3, clearcoat: 1 }));
-    roof.position.set(0, 1.665, -0.1);
-    this.volvo.mesh.add(roof);
+  // Een boerenerf aan de rand van het dorp: weg met aan één kant akker of weiland.
+  findFarm() {
+    const w = this.world;
+    const cands = [];
+    for (const [, ax, az, bx, bz] of w.segments) {
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      const d = Math.hypot(mx, mz);
+      if (d < 380 || d > 760) continue;
+      if (w.classAt(mx, mz) !== 'rijbaan') continue;
+      const len = Math.hypot(bx - ax, bz - az) || 1;
+      const px = -(bz - az) / len, pz = (bx - ax) / len;
+      for (const side of [1, -1]) {
+        const fx = mx + px * side * 12, fz = mz + pz * side * 12;
+        const c = w.classAt(fx, fz);
+        if ((c === 'gras' || c === 'akker') && !w.insideBuilding(fx, fz) && !w.blocked(fx, fz) && w.classAt(mx + px * side * 22, mz + pz * side * 22) === c) {
+          cands.push({ d, x: mx + px * side * 6, z: mz + pz * side * 6, tx: fx, tz: fz, heading: Math.atan2(-px * side, -pz * side) });
+        }
+      }
+    }
+    cands.sort((a, b) => Math.abs(a.d - 520) - Math.abs(b.d - 520));
+    return cands[0] || null;
+  }
+
+  // Plekje aan de oever van de Gulp om te vissen.
+  findFishingSpot() {
+    const w = this.world;
+    const cls = w.ground.classes;
+    const pts = [];
+    for (const [c, rings] of w.ground.polys) {
+      if (cls[c] !== 'water') continue;
+      const r = rings[0];
+      for (let i = 0; i < r.length; i += 2) {
+        const d = Math.hypot(r[i], r[i + 1]);
+        if (d > 70 && d < 380) pts.push([r[i], r[i + 1], d]);
+      }
+    }
+    pts.sort((a, b) => Math.abs(a[2] - 180) - Math.abs(b[2] - 180));
+    for (const [x, z] of pts) {
+      for (let a = 0; a < 16; a++) {
+        const dx = Math.cos((a / 16) * Math.PI * 2), dz = Math.sin((a / 16) * Math.PI * 2);
+        const sx = x + dx * 2.5, sz = z + dz * 2.5, wx = x - dx * 1.8, wz = z - dz * 1.8;
+        if (!w.blocked(sx, sz) && !w.insideBuilding(sx, sz) && w.blocked(wx, wz) && w.classAt(sx, sz) !== 'rijbaan') {
+          return { x: sx, z: sz, wx, wz };
+        }
+      }
+    }
+    return null;
   }
 
   carryKeg(keg) {
@@ -355,7 +392,7 @@ class Game {
 
   setupPoiLabels() {
     for (const p of this.world.meta.pois) {
-      if (p.id === 'volvo' || p.id === 'ringweg') continue;
+      if (p.id === 'ringweg') continue;
       const label = makeLabel(p.name);
       const [x, z] = p.pos;
       label.position.set(x, this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11), z);
@@ -376,13 +413,13 @@ class Game {
       }
       items.push({ key: m.id, x: m.npc.pos.x, z: m.npc.pos.z, title: m.title, place: m.place, color: colors[m.state], glyph: m.state === 'klaar' ? '✓' : '!', state: m.state, stateLabel: labels[m.state] });
     });
-    if (this.volvo) items.push({ key: 'volvo', x: this.volvo.x, z: this.volvo.z, title: 'Grijze Volvo XC40', place: 'Oprit Ringweg 38', color: '#64b5f6', glyph: 'A', state: '', stateLabel: 'Auto' });
+    if (this.tractor) items.push({ key: 'tractor', x: this.tractor.x, z: this.tractor.z, title: 'Tractor', place: 'Op het boerenland', color: '#64b5f6', glyph: 'T', state: '', stateLabel: 'Voertuig' });
     return items;
   }
 
   updateMarkers() {
     if (!this.minimap) return;
-    this.minimap.markers = this.mapItems().filter((i) => i.state !== '' || i.key === 'volvo');
+    this.minimap.markers = this.mapItems().filter((i) => i.state !== '' || i.key === 'tractor');
     for (const m of this.missions.list()) {
       const night = this.night > 0.5;
       m.npc.marker.visible = m.state === 'open' && (!m.nightOnly || night) && !this.missions.active;
@@ -431,13 +468,15 @@ class Game {
     return w.spotNear(100, 100);
   }
 
-  setDestination([x, z], limit, onArrive, onFail) {
+  // opts.require(): foutmelding als je nog niet mag aankomen (bijv. niet op de fiets)
+  // opts.violate(): foutmelding als je de regels breekt, dan mislukt de klus meteen
+  setDestination([x, z], limit, onArrive, onFail, opts = {}) {
     this.clearDestination();
     const ring = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.15, 8, 32), new THREE.MeshBasicMaterial({ color: 0xf2c14e }));
     ring.rotation.x = Math.PI / 2;
     ring.position.set(x, this.world.groundAt(x, z) + 0.3, z);
     this.scene.add(ring);
-    this.destination = { x, z, left: limit, onArrive, onFail, ring };
+    this.destination = { x, z, left: limit, onArrive, onFail, ring, opts };
     this.setTarget({ pos: new THREE.Vector3(x, 0, z) });
   }
 
@@ -455,7 +494,16 @@ class Game {
     d.left -= dt;
     this.ui.timer(Math.max(0, d.left).toFixed(0) + ' s');
     d.ring.rotation.z += dt;
+    const bad = d.opts.violate?.();
+    if (bad) {
+      const cb = d.onFail;
+      this.clearDestination();
+      cb(bad);
+      return;
+    }
     if (Math.hypot(this.player.x - d.x, this.player.z - d.z) < 5) {
+      const no = d.opts.require?.();
+      if (no) { if (!d.warned) { this.ui.toast(no, 1800); d.warned = true; } return; }
       const cb = d.onArrive;
       this.clearDestination();
       cb();
@@ -641,6 +689,137 @@ class Game {
     });
   }
 
+  // Vissen in de Gulp: tik op het juiste moment als de dobber onder gaat.
+  startFishing() {
+    return new Promise((resolve) => {
+      const f = this.fishing;
+      if (!f) { resolve(0); return; }
+      if (this.mode === 'car') this.exitCar();
+      this.setMode('walk');
+      const w = this.world;
+      this.player.x = f.x; this.player.z = f.z;
+      this.player.heading = Math.atan2(f.wx - f.x, f.wz - f.z);
+      this.camYaw = this.player.heading + Math.PI + 0.5;
+      this.camPitch = 0.3;
+      const wy = w.heightAt(f.wx, f.wz) + 0.1;
+      const bob = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xe53935, emissive: 0x5a0000 }));
+      const bottom = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      bob.add(top, bottom);
+      bob.position.set(f.wx, wy, f.wz);
+      this.scene.add(bob);
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+      const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xdddddd }));
+      this.scene.add(line);
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.025, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x3e2723 }));
+      rod.position.set(0.3, 1.5, 0.9);
+      rod.rotation.x = 1.0;
+      this.player.group.add(rod);
+      let phase = 'wait', t = 0, wait = 1.5 + Math.random() * 3, caught = 0, tries = 0;
+      const fishNames = ['Een mooie vis!', 'Wat een joekel!', 'Een kleintje, maar telt!', 'Beet!'];
+      this.ui.setActionLabel('Haal op');
+      const finish = () => {
+        this.scene.remove(bob, line);
+        this.player.group.remove(rod);
+        this.minigame = null;
+        this.player.lockedFor = false;
+        resolve(caught);
+      };
+      this.minigame = {
+        get phase() { return phase; },
+        stop: finish,
+        update: (dt) => {
+          t += dt;
+          this.player.lockedFor = true;
+          const tip = new THREE.Vector3(0.3, 2.5, 1.9).applyMatrix4(this.player.group.matrixWorld);
+          const pos = line.geometry.attributes.position;
+          pos.setXYZ(0, tip.x, tip.y, tip.z);
+          pos.setXYZ(1, bob.position.x, bob.position.y + 0.05, bob.position.z);
+          pos.needsUpdate = true;
+          const pressed = this.input.consumeAction() || this.input.spacePressed;
+          this.input.spacePressed = false;
+          if (phase === 'wait') {
+            bob.position.y = wy + Math.sin(t * 2.2) * 0.015;
+            if (pressed) { tries++; this.ui.toast('Te vroeg! De vis schrok weg.', 1400); t = 0; wait = 2 + Math.random() * 3; }
+            else if (t > wait) { phase = 'bite'; t = 0; }
+          } else if (phase === 'bite') {
+            bob.position.y = wy - 0.13 + Math.sin(t * 30) * 0.02;
+            if (pressed) {
+              caught++; tries++;
+              this.ui.toast(fishNames[Math.floor(Math.random() * fishNames.length)], 1500);
+              this.missions.progress(`${caught} / 3 vissen`);
+              phase = 'pause'; t = 0;
+            } else if (t > 0.9) { tries++; this.ui.toast('Te laat, hij is weg.', 1400); phase = 'pause'; t = 0; }
+          } else if (phase === 'pause' && t > 1.2) {
+            if (caught >= 3 || tries >= 8) finish();
+            else { phase = 'wait'; t = 0; wait = 1.5 + Math.random() * 3.5; }
+          }
+        },
+      };
+    });
+  }
+
+  // Polonaise: feestgangers verzamelen die achter je aan lopen.
+  startPolonaise(n) {
+    const w = this.world;
+    const colors = [0xe53935, 0xfdd835, 0x43a047, 0x1e88e5, 0x8e24aa, 0xff7043, 0x00acc1];
+    this.followers = [];
+    this.tempMarkers = [];
+    for (let i = 0; i < n; i++) {
+      const [x, z] = this.randomAddress(50, 260);
+      const model = makeCharacter({ shirt: colors[i % colors.length], pants: colors[(i + 3) % colors.length], hair: 0x3b2a1a, hat: i % 2 ? 'cap' : 'chef', hatColor: colors[(i + 1) % colors.length] });
+      model.position.set(x, w.groundAt(x, z), z);
+      this.scene.add(model);
+      const m = { x, z, color: '#ff4fa3', glyph: '+', done: false };
+      this.tempMarkers.push(m);
+      this.followers.push({ model, x, z, heading: 0, joined: false, marker: m });
+    }
+  }
+
+  followersJoined() { return (this.followers || []).filter((f) => f.joined).length; }
+
+  stopPolonaise() {
+    (this.followers || []).forEach((f) => this.scene.remove(f.model));
+    this.followers = [];
+    this.tempMarkers = [];
+  }
+
+  updateFollowers(dt) {
+    if (!this.followers?.length) return;
+    const p = this.player;
+    let leader = { x: p.x, z: p.z };
+    for (const f of this.followers) {
+      if (!f.joined) {
+        f.model.userData.animate(dt, 0, 'wave');
+        if (this.mode === 'walk' && Math.hypot(p.x - f.x, p.z - f.z) < 2.6) {
+          f.joined = true;
+          f.marker.done = true;
+          this.ui.toast(['Alaaf!', 'Ik doe mee!', 'Polonaise!', 'Hup, achter je aan!'][Math.floor(Math.random() * 4)], 1200);
+          this.missions.progress(`${this.followersJoined()} / ${this.followers.length} feestgangers`);
+        }
+        continue;
+      }
+    }
+    // de rij volgt de speler, elk achter de vorige
+    for (const f of this.followers.filter((q) => q.joined)) {
+      const dx = leader.x - f.x, dz = leader.z - f.z;
+      const d = Math.hypot(dx, dz);
+      let speed = 0;
+      if (d > 1.3 && this.mode === 'walk') {
+        const step = Math.min(d - 1.3, 7 * dt);
+        f.x += (dx / d) * step; f.z += (dz / d) * step;
+        speed = step / dt;
+        f.heading = Math.atan2(dx, dz);
+      }
+      f.model.position.set(f.x, this.world.groundAt(f.x, f.z), f.z);
+      f.model.rotation.y = f.heading;
+      f.model.userData.animate(dt, speed, 'walk');
+      // handen op de schouders van de voorganger
+      f.model.userData.parts.armL.rotation.x = -1.3; f.model.userData.parts.armR.rotation.x = -1.3;
+      leader = f;
+    }
+  }
+
   async drinkPils() {
     this.player.lockedFor = true;
     this.player.pose = 'drink';
@@ -659,6 +838,8 @@ class Game {
     if (this.mode === 'car') this.updateCar(dt);
     else this.updatePlayer(dt);
     this.penalty?.update(dt);
+    this.minigame?.update(dt);
+    this.updateFollowers(dt);
     this.updateNpcs(dt);
     this.cars.updateTraffic(dt, this.mode === 'car' ? this.car : this.player);
     this.peds.update(dt, this.player, this.mode === 'car' ? Math.abs(this.car.speed) : this.player.speed);
@@ -771,7 +952,7 @@ class Game {
       this.waypoint = null;
       this.ui.toast('Je bent er!', 1200);
     }
-    if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty) { if (!this.penalty) this.ui.prompt(null); return; }
+    if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty || this.minigame) { if (!this.penalty && !this.minigame) this.ui.prompt(null); return; }
 
     if (this.mode === 'car') {
       this.ui.prompt(Math.abs(this.car.speed) < 3 ? 'Uitstappen' : null);
@@ -790,7 +971,7 @@ class Game {
       this.ui.prompt(`Praat met ${near.name.toLowerCase().startsWith('de ') ? near.name.toLowerCase() : near.name}`);
       this.ui.setActionLabel('Praat');
     } else if (car) {
-      this.ui.prompt(car.isVolvo ? 'Instappen in de Volvo XC40' : 'Instappen');
+      this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : 'Instappen');
       this.ui.setActionLabel('Auto');
     } else {
       this.ui.prompt(null);
@@ -873,7 +1054,10 @@ class Game {
     }
     if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin(this.time * 3) * 0.06;
     const tgt = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : this.waypoint;
+    const base = this.minimap.markers;
+    if (this.tempMarkers?.length) this.minimap.markers = base.concat(this.tempMarkers.filter((m) => !m.done));
     this.minimap.draw(p.x, p.z, p.heading, this.camYaw, tgt);
+    this.minimap.markers = base;
   }
 }
 
