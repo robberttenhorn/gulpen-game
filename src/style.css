@@ -298,3 +298,43 @@ body.live #quest-card { visibility: visible; }
 #dialog-name { padding-right: 200px; }
 
 .sources { margin-top: 14px; font-size: 11px; opacity: .55; }
+
+/* ---------- TikTok-opname (POV bij Zheng) ---------- */
+body.pov #joystick, body.pov #minimap-wrap, body.pov #street-sign, body.pov #quest-card, body.pov #prompt, body.pov #race-timer, body.pov #btn-sound, body.pov #btn-vehicle { display: none !important; }
+.tt-overlay { position: absolute; inset: 0; pointer-events: auto; color: #fff; font-family: Inter, sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.6); user-select: none; -webkit-user-select: none; }
+.tt-top { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; }
+.tt-rec { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; background: rgba(0,0,0,.35); padding: 4px 10px; border-radius: 99px; }
+.tt-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff2d55; animation: tt-blink 1s steps(2) infinite; }
+@keyframes tt-blink { 50% { opacity: .2; } }
+.tt-views { font-weight: 600; font-size: 14px; background: rgba(0,0,0,.35); padding: 4px 10px; border-radius: 99px; }
+.tt-views b { font-family: 'Baloo 2', sans-serif; font-size: 20px; }
+.tt-pov { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 42px); left: 14px; right: 80px; font-weight: 700; font-size: 15px; }
+.tt-side { position: absolute; right: 12px; top: 38%; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+.tt-ico { display: flex; flex-direction: column; align-items: center; font-size: 28px; line-height: 1; }
+.tt-ico small { font-size: 12px; font-weight: 700; margin-top: 3px; }
+.tt-comments { position: absolute; left: 14px; bottom: 136px; width: min(330px, 70%); display: flex; flex-direction: column; gap: 6px; }
+.tt-c { background: rgba(0,0,0,.4); padding: 5px 10px; border-radius: 12px; font-size: 13px; animation: tt-in .3s ease-out; }
+.tt-c b { color: #c8e6ff; margin-right: 4px; }
+@keyframes tt-in { from { transform: translateY(10px); opacity: 0; } }
+.tt-heart { position: absolute; bottom: 140px; font-size: 26px; animation: tt-float 1.6s ease-out forwards; pointer-events: none; }
+@keyframes tt-float { to { transform: translateY(-260px) scale(1.4); opacity: 0; } }
+.tt-task { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(460px, 86%); text-align: center; background: rgba(0,0,0,.45); padding: 10px 14px 14px; border-radius: 16px; }
+.tt-step { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 20px; }
+.tt-hint { font-size: 13px; margin: 2px 0 10px; }
+.tt-bar { position: relative; height: 18px; border-radius: 9px; background: rgba(255,255,255,.25); overflow: hidden; }
+.tt-zone { position: absolute; top: 0; bottom: 0; background: rgba(120, 220, 120, .55); }
+.tt-perfect { position: absolute; top: 0; bottom: 0; background: #ffd54f; }
+.tt-needle { position: absolute; top: -3px; bottom: -3px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 6px rgba(0,0,0,.6); }
+.tt-mash { display: none; height: 18px; border-radius: 9px; background: rgba(255,255,255,.25); overflow: hidden; }
+.tt-mash-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff2d55, #ffd54f); transition: width .08s; }
+.tt-order { position: absolute; right: 12px; top: calc(max(14px, env(safe-area-inset-top)) + 80px); text-align: right; background: #fffdf5; color: #1b2430; text-shadow: none; padding: 6px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; transform: rotate(-2deg); box-shadow: var(--shadow); max-width: 46%; }
+.tt-order small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8a7f6a; }
+.tt-stop { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 40px); right: 12px; border: 0; border-radius: 99px; padding: 6px 12px; background: rgba(0,0,0,.45); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+body.touch .tt-task { bottom: 150px; }
+body.touch .tt-comments { bottom: 260px; }
+.tt-flash { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; white-space: nowrap; padding: 4px 16px; border-radius: 99px; background: rgba(0,0,0,.4); animation: tt-pop 1.4s ease-out forwards; pointer-events: none; }
+.tt-flash.perfect { color: #ffd54f; }
+.tt-flash.miss { color: #ff8a80; }
+.tt-flash.fail { color: #ff8a80; }
+@keyframes tt-pop { 0% { transform: translateX(-50%) scale(.6); opacity: 0; } 15% { transform: translateX(-50%) scale(1.1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translateX(-50%) translateY(-20px); opacity: 0; } }
+.tt-pov { right: 48%; }

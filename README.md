@@ -28,6 +28,7 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Klus | Waar |
 | --- | --- |
 | Fiets afstellen: daarna fiets je sneller | Jef Abels Bikes, Rijksweg 113 |
+| Viraal met een frietje: in de cafetaria een POV-filmpje opnemen voor TikTok (friet bakken, snack frituren, schudden, saus, trucje) | Cafetaria Zheng (de stagiair is verzonnen) |
 | Frikandel super: alleen contant, dus eerst muntjes zoeken | Friture An + Piet, Rijksweg 60B |
 | Bezorgen voor Salma: drie bestellingen op tijd (beloning: Broodje Gulpen) | Grillroom Pizzeria Salma, Rijksweg 60A |
 | Friet bij Zheng: kies je saus | Cafetaria Zheng, Looierstraat 103 |

@@ -1,4 +1,4 @@
-// Binnenruimtes voor missies: een café, de bakkerij, de kerk en de slagerij.
+// Binnenruimtes voor missies: een café, de bakkerij, de kerk, de slagerij en de cafetaria.
 // De ruimtes staan ver buiten het dorp; als je naar binnen gaat, word je erheen verplaatst.
 import * as THREE from 'three';
 import { makeCharacter } from './character.js';
@@ -392,6 +392,145 @@ export class Interiors {
     for (const x of [-2, 0, 2]) r.lamp(x, -0.4);
     r.person({ shirt: 0xffffff, pants: 0x37474f, apron: 0xb71c1c, hair: 0x424242 }, 0.5, -2.3, 0);
     r.counter = { x: 0, z: -0.6 };
+    return r;
+  }
+
+  // ------------------------------------------------------------ cafetaria (TikTok-missie)
+
+  build_cafetaria() {
+    const r = new Room(this.scene, this.count++, { w: 9, d: 7, h: 3.1, floor: { map: tiles('#e9e4da', '#bfb6a6') }, wall: 0xf4efe6, name: 'Cafetaria Zheng' });
+    // rood-witte tegelwand achter de toonbank
+    const tc = document.createElement('canvas');
+    tc.width = tc.height = 128;
+    const tg = tc.getContext('2d');
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { tg.fillStyle = (x + y) % 2 ? '#f6f2ea' : '#c62828'; tg.fillRect(x * 16, y * 16, 15, 15); }
+    const tt = new THREE.CanvasTexture(tc);
+    tt.wrapS = tt.wrapT = THREE.RepeatWrapping; tt.repeat.set(9, 2); tt.colorSpace = THREE.SRGBColorSpace;
+    const wallTiles = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.6), new THREE.MeshStandardMaterial({ map: tt, roughness: 0.3 }));
+    wallTiles.position.set(0, 1.0, -3.47);
+    r.group.add(wallTiles);
+    // werkbank langs de achterwand (rvs)
+    const steel = std(0xb8bec4, { metalness: 0.8, roughness: 0.35 });
+    r.add(new THREE.BoxGeometry(8.6, 0.9, 0.8), steel, 0, 0.45, -3.05);
+    // toonbank voor de klanten
+    r.add(new THREE.BoxGeometry(6.2, 1.0, 0.7), std(0xb71c1c, { roughness: 0.5 }), -0.6, 0.5, -1.1);
+    r.add(new THREE.BoxGeometry(6.3, 0.05, 0.8), std(0x2b2b2b, { roughness: 0.3 }), -0.6, 1.02, -1.1, false);
+
+    // friteuse met twee mandjes en heet vet
+    r.add(new THREE.BoxGeometry(1.5, 0.12, 0.7), std(0x9aa0a6, { metalness: 0.9, roughness: 0.3 }), -2.4, 0.96, -3.05, false);
+    const oilMat = new THREE.MeshStandardMaterial({ color: 0xc98a1e, roughness: 0.15, metalness: 0.1, emissive: 0x3a2000, emissiveIntensity: 0.4 });
+    const oils = [];
+    for (const x of [-2.75, -2.05]) {
+      const oil = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.55), oilMat);
+      oil.rotation.x = -Math.PI / 2;
+      oil.position.set(x, 1.03, -3.05);
+      r.group.add(oil);
+      oils.push(oil);
+    }
+    const basket = (x) => {
+      const g = new THREE.Group();
+      const wire = new THREE.MeshStandardMaterial({ color: 0x6b7075, metalness: 0.9, roughness: 0.4, wireframe: true });
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.45, 4, 2, 4), wire);
+      g.add(b);
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 6), std(0x1b1b1b));
+      handle.rotation.x = Math.PI / 2 - 0.5; handle.position.set(0, 0.15, 0.38);
+      g.add(handle);
+      g.position.set(x, 1.22, -3.02);
+      r.group.add(g);
+      return g;
+    };
+    const basketA = basket(-2.75), basketB = basket(-2.05);
+    // friet in mandje A (kleur verandert tijdens het bakken)
+    const fryMat = new THREE.MeshStandardMaterial({ color: 0xf3e2a0, roughness: 0.7 });
+    const fries = new THREE.Group();
+    for (let i = 0; i < 40; i++) {
+      const f = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.16), fryMat);
+      f.position.set((Math.random() - 0.5) * 0.4, -0.05 + Math.random() * 0.08, (Math.random() - 0.5) * 0.3);
+      f.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
+      fries.add(f);
+    }
+    basketA.add(fries);
+    // snack in mandje B (wordt per bestelling gekozen)
+    const snackMat = new THREE.MeshStandardMaterial({ color: 0xc89a5a, roughness: 0.8 });
+    const snacks = {
+      frikandel: new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.24, 4, 10), snackMat),
+      kroket: new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.1, 4, 10), snackMat),
+      bamischijf: new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.16), snackMat),
+    };
+    snacks.frikandel.rotation.z = Math.PI / 2; snacks.kroket.rotation.z = Math.PI / 2;
+    for (const m of Object.values(snacks)) { m.visible = false; m.position.y = -0.02; basketB.add(m); }
+    // borrelende belletjes
+    const bubbles = [];
+    const bubMat = new THREE.MeshStandardMaterial({ color: 0xffe0a0, roughness: 0.2, transparent: true, opacity: 0.8 });
+    for (let i = 0; i < 26; i++) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.012 + Math.random() * 0.012, 6, 4), bubMat);
+      b.userData = { pool: i % 2, t: Math.random() };
+      b.visible = false;
+      r.group.add(b);
+      bubbles.push(b);
+    }
+
+    // snackvitrine
+    r.add(new THREE.BoxGeometry(1.6, 0.5, 0.6), std(0xdedede, { metalness: 0.5, roughness: 0.3 }), -0.2, 1.15, -3.1, false);
+    const vglass = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.42, 0.62), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, roughness: 0.05, depthWrite: false }));
+    vglass.position.set(-0.2, 1.62, -3.1);
+    r.group.add(vglass);
+    for (let i = 0; i < 9; i++) {
+      const kind = ['frikandel', 'kroket', 'bamischijf'][i % 3];
+      const m = snacks[kind].clone();
+      m.visible = true;
+      m.material = std(kind === 'bamischijf' ? 0xd9a13b : 0xb5773a, { roughness: 0.8 });
+      m.position.set(-0.75 + (i % 5) * 0.27, 1.45, -3.2 + Math.floor(i / 5) * 0.18);
+      r.group.add(m);
+    }
+
+    // sausbar met bakje
+    const tray = new THREE.Group();
+    const trayMat = new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) { x.fillStyle = (a + b) % 2 ? '#ffffff' : '#d32f2f'; x.fillRect(a * 8, b * 8, 8, 8); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })(), roughness: 0.8 });
+    const trayBox = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.2), trayMat);
+    tray.add(trayBox);
+    const trayFries = fries.clone();
+    trayFries.scale.setScalar(0.7);
+    trayFries.position.y = 0.06;
+    trayFries.visible = false;
+    tray.add(trayFries);
+    const traySnack = new THREE.Group();
+    traySnack.position.set(0.06, 0.07, 0);
+    tray.add(traySnack);
+    const sauce = new THREE.Group();
+    sauce.position.set(-0.04, 0.11, 0);
+    tray.add(sauce);
+    tray.position.set(1.4, 0.94, -2.95);
+    r.group.add(tray);
+    const bottles = {};
+    for (const [k, col, x] of [['mayo', 0xfff4cf, 1.9], ['curry', 0xb3261e, 2.1], ['pinda', 0x7a4a1e, 2.3]]) {
+      const b = new THREE.Group();
+      b.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.22, 12), std(col, { roughness: 0.4 })));
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 10), std(0xffffff));
+      tip.position.y = 0.14;
+      b.add(tip);
+      b.position.set(x, 1.02, -3.1);
+      r.group.add(b);
+      bottles[k] = b;
+    }
+
+    // menubord en ringlamp
+    const menu = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.1), new THREE.MeshStandardMaterial({
+      map: signTexture('Cafetaria Zheng', { bg: '#1b1b1b', fg: '#f2c14e', font: '800 110px "Baloo 2", sans-serif', sub: 'friet · frikandel · kroket · bamischijf · loempia', subFont: '600 44px Inter, sans-serif', w: 1024, h: 352 }),
+      emissive: 0xffffff, emissiveIntensity: 0.15,
+    }));
+    menu.position.set(-0.6, 2.35, -3.46);
+    r.group.add(menu);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.03, 8, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.6 }));
+    ring.position.set(3.3, 1.75, -0.4);
+    ring.rotation.y = -0.7;
+    r.group.add(ring);
+    r.add(new THREE.CylinderGeometry(0.015, 0.02, 1.6, 6), std(0x1b1b1b), 3.3, 0.8, -0.4, false);
+    r.window(4.45, 0.6, -Math.PI / 2, 1.8, 1.5, 0xfff4d6);
+    for (const x of [-2.4, 0, 2.4]) r.lamp(x, -1.6);
+    r.person({ shirt: 0x263238, pants: 0x1b1b1b, hair: 0x3e2723, hat: 'cap', hatColor: 0xc62828 }, 3.7, -0.9, -1.0);
+    r.counter = { x: 0.2, z: 0.1, r: 2 };
+    r.tt = { basketA, basketB, fries, fryMat, snacks, snackMat, bubbles, oils, tray, trayFries, traySnack, sauce, bottles };
     return r;
   }
 
