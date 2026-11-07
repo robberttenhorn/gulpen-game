@@ -267,3 +267,5 @@ body.live #quest-card { visibility: visible; }
 #dialog-stop.confirm { background: #c62828; color: #fff; border-color: #c62828; }
 #dialog-tr[hidden] + #dialog-stop { right: 12px; }
 #dialog-name { padding-right: 200px; }
+
+.sources { margin-top: 14px; font-size: 11px; opacity: .55; }

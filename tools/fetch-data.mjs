@@ -217,6 +217,26 @@ function addSurface(rings, isRoof, ground, seed, age, out) {
   const tl = Math.hypot(tx, ty) || 1;
   tx /= tl; ty /= tl;
 
+  // Gevelmaten voor ramen: horizontale positie vanaf het begin van de gevel, en de 'veilige'
+  // onder- en bovenrand (zodat ramen en deuren nooit door de grond of het dak worden afgesneden).
+  let minU = Infinity, maxU = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const p of outer) {
+    const u = p[0] * tx + p[1] * ty, z = p[2] - ground;
+    minU = Math.min(minU, u); maxU = Math.max(maxU, u);
+    minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+  }
+  const midZ = (minZ + maxZ) / 2;
+  let safeTop = Infinity, safeBottom = -Infinity;
+  for (const p of outer) {
+    const z = p[2] - ground;
+    if (z > midZ) safeTop = Math.min(safeTop, z);
+    else safeBottom = Math.max(safeBottom, z);
+  }
+  if (!Number.isFinite(safeTop)) safeTop = maxZ;
+  if (!Number.isFinite(safeBottom)) safeBottom = minZ;
+  const q = (v, unit) => Math.max(0, Math.min(255, Math.round(v / unit)));
+  const packed = [(seed & 252) | age, q(safeBottom, 0.15), q(safeTop, 0.15), q(maxU - minU, 0.25)];
+
   // spelcoördinaten: x = oost, y = omhoog, z = zuid; normaal idem
   const gn = [nx, nz, -ny];
   const type = isRoof ? 1 : 0;
@@ -234,9 +254,10 @@ function addSurface(rings, isRoof, ground, seed, age, out) {
       const [lx, lz] = local(p[0], p[1]);
       out.pos.push(lx, p[2], lz);
       if (isRoof) out.uv.push(p[0] - ORIGIN.x, p[1] - ORIGIN.y);
-      else out.uv.push(p[0] * tx + p[1] * ty, p[2] - ground);
+      else out.uv.push(p[0] * tx + p[1] * ty - minU, p[2] - ground);
       out.nrm.push(Math.round(gn[0] * 127), Math.round(gn[1] * 127), Math.round(gn[2] * 127), type);
-      out.attr.push(seed, age, 0, 0);
+      // attr: [zaadje (6 bits) + bouwperiode (2 bits), veilige onderrand, veilige bovenrand, gevelbreedte]
+      out.attr.push(...packed);
     }
   }
 }

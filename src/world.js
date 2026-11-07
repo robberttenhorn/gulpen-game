@@ -83,8 +83,12 @@ export class World {
   }
 
   // water is niet begaanbaar (bruggen wel)
+  // Alleen echt water houdt je tegen: smalle sloten, greppels en randjes (minder dan ~2,5 m breed) niet.
   blocked(x, z) {
-    return this.classAt(x, z) === 'water';
+    if (this.classAt(x, z) !== 'water') return false;
+    const e = 1.2;
+    return this.classAt(x + e, z) === 'water' && this.classAt(x - e, z) === 'water'
+      && this.classAt(x, z + e) === 'water' && this.classAt(x, z - e) === 'water';
   }
 
   // Parkeervakken: rijen plekken in de BGT-parkeervlakken.
@@ -498,24 +502,23 @@ export class World {
           flat varying float vType;
           flat varying float vMat;
           flat varying float vSeed;
+          flat varying vec3 vWall;
           varying vec3 vWN;
           float pickN(float h, float n){ return floor(h * n); }`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
-          vB = uv;
-          // gevels: horizontale coördinaat lokaal uitrekenen (de RD-waarden zijn te groot voor float-precisie)
-          if (btype < 0.5) {
-            vec2 tg = normalize(vec2(-normal.z, normal.x) + vec2(1e-5));
-            vB.x = dot(position.xz, tg);
-          }
+          vB = uv; // gevels: uv.x = meters vanaf het begin van de gevel, uv.y = hoogte boven maaiveld
           vType = btype;
-          vSeed = battr.x / 255.0;
+          // battr: [zaadje + bouwperiode, veilige onderrand, veilige bovenrand, gevelbreedte]
+          vSeed = floor(battr.x / 4.0) * 4.0 / 255.0;
+          float age = mod(battr.x, 4.0);
+          vWall = vec3(battr.y * 0.15, battr.z * 0.15, battr.w * 0.25);
           vWN = normal;
           float h = fract(vSeed * 7.13);
           // muren: 0 wit pleister, 1 mergel, 2 rode baksteen, 3 bruine baksteen, 4 gele baksteen, 5 grijs
           if (btype < 0.5) {
             float k = pickN(h, 4.0);
-            if (battr.y < 0.5) vMat = k == 0.0 ? 0.0 : (k == 1.0 ? 1.0 : (k == 2.0 ? 0.0 : 1.0));
-            else if (battr.y < 1.5) vMat = k == 0.0 ? 0.0 : (k == 1.0 ? 2.0 : (k == 2.0 ? 1.0 : 3.0));
+            if (age < 0.5) vMat = k == 0.0 ? 0.0 : (k == 1.0 ? 1.0 : (k == 2.0 ? 0.0 : 1.0));
+            else if (age < 1.5) vMat = k == 0.0 ? 0.0 : (k == 1.0 ? 2.0 : (k == 2.0 ? 1.0 : 3.0));
             else vMat = k == 0.0 ? 3.0 : (k == 1.0 ? 4.0 : (k == 2.0 ? 0.0 : 5.0));
           } else {
             // daken: 10 leien, 11 rode pannen, 12 antraciet pannen, 13 plat
@@ -531,6 +534,7 @@ export class World {
           flat varying float vMat;
           flat varying float vSeed;
           varying vec3 vWN;
+          flat varying vec3 vWall;
           vec3 srgb(vec3 c){ return pow(c, vec3(2.2)); }
           float hash2(vec2 p){ p = mod(p, 997.0); return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
           float vnoise(vec2 p){
@@ -586,19 +590,29 @@ export class World {
               base = srgb(vec3(0.68, 0.67, 0.64)) * (0.94 + vnoise(wp * 3.0) * 0.08);
             }
             // plint van hardsteen
-            float plint = 1.0 - smoothstep(0.5, 0.52, hgt);
+            float plint = 1.0 - smoothstep(vWall.x + 0.5, vWall.x + 0.52, hgt);
             base = mix(base, srgb(vec3(0.24, 0.24, 0.25)) * (0.9 + vnoise(wp * 8.0) * 0.2), plint);
 
             // ramen en deuren in een raster van traveeën
-            vec2 cell = vec2(vB.x / 2.8, hgt / 2.9);
+            // traveeën gecentreerd over de gevelbreedte
+            float wl = vWall.z;
+            float bays = max(1.0, floor(wl / 2.8));
+            float uoff = (wl - bays * 2.8) * 0.5;
+            vec2 cell = vec2((vB.x - uoff) / 2.8, hgt / 2.9);
             vec2 id = floor(cell);
             vec2 f = fract(cell);
             vec2 aa = fwidth(cell) * 1.2;
             float r = hash2(id + vSeed * 91.0);
             float r2 = hash2(id.yx * 1.7 + vSeed * 13.0);
+            // een raam of deur alleen als hij er helemaal op past: nooit afgesneden door grond, dak of gevelrand
+            float x0 = (id.x + 0.29) * 2.8 + uoff, x1 = (id.x + 0.71) * 2.8 + uoff;
+            float fitsX = step(0.2, x0) * step(x1, wl - 0.2);
             bool groundFloor = id.y < 0.5;
-            bool isDoor = groundFloor && r2 < 0.22;
-            float allowed = step(0.1, r) * (isDoor ? 1.0 : step(0.55, hgt));
+            bool isDoor = groundFloor && r2 < 0.22 && vWall.x < 0.35;
+            float fitsY = isDoor
+              ? step(0.8 * 2.9, vWall.y - 0.15)
+              : step(vWall.x + 0.1, (id.y + 0.28) * 2.9) * step((id.y + 0.86) * 2.9, vWall.y - 0.15);
+            float allowed = step(0.1, r) * fitsX * fitsY;
             if (isDoor) {
               float door = boxMask(f, vec2(0.36, 0.0), vec2(0.64, 0.76), aa);
               float dframe = boxMask(f, vec2(0.34, 0.0), vec2(0.66, 0.78), aa) - door;
@@ -629,7 +643,7 @@ export class World {
               lit = glass * step(r, 0.58) * uNight;
             }
             // vuil en schaduw onderaan de gevel
-            base *= mix(0.72, 1.0, smoothstep(0.0, 1.2, hgt));
+            base *= mix(0.72, 1.0, smoothstep(vWall.x, vWall.x + 1.2, hgt));
             rough = mix(rough, 0.18, glass);
           } else {
             // daken
@@ -689,7 +703,7 @@ export class World {
     this.footprints.forEach((f, idx) => {
       for (let cx = Math.floor(f.minX / this.cell); cx <= Math.floor(f.maxX / this.cell); cx++) {
         for (let cz = Math.floor(f.minZ / this.cell); cz <= Math.floor(f.maxZ / this.cell); cz++) {
-          const k = cx + ',' + cz;
+          const k = cx * 100000 + cz;
           if (!this.cells.has(k)) this.cells.set(k, []);
           this.cells.get(k).push(idx);
         }
@@ -705,19 +719,28 @@ export class World {
     this.footprints.push({ ring, minX, minZ, maxX, maxZ, extra: true });
     for (let cx = Math.floor(minX / this.cell); cx <= Math.floor(maxX / this.cell); cx++) {
       for (let cz = Math.floor(minZ / this.cell); cz <= Math.floor(maxZ / this.cell); cz++) {
-        const k = cx + ',' + cz;
+        const k = cx * 100000 + cz;
         if (!this.cells.has(k)) this.cells.set(k, []);
         this.cells.get(k).push(idx);
       }
     }
   }
 
+  // Panden in de buurt. Hergebruikt één lijst en een 'stempel' per pand, zodat er per beeld
+  // geen duizenden tijdelijke objecten ontstaan (die gaven haperingen op telefoons).
   nearbyFootprints(x, z) {
-    const out = new Set();
+    if (!this._stamp) { this._stamp = new Uint32Array(this.footprints.length + 64); this._stampId = 0; this._near = []; }
+    if (this._stamp.length < this.footprints.length) { const n = new Uint32Array(this.footprints.length + 64); n.set(this._stamp); this._stamp = n; }
+    const id = ++this._stampId;
+    const out = [];
     const cx = Math.floor(x / this.cell), cz = Math.floor(z / this.cell);
     for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
-      const list = this.cells.get(cx + dx + ',' + (cz + dz));
-      if (list) list.forEach((i) => out.add(i));
+      const list = this.cells.get((cx + dx) * 100000 + (cz + dz));
+      if (!list) continue;
+      for (let k = 0; k < list.length; k++) {
+        const i = list[k];
+        if (this._stamp[i] !== id) { this._stamp[i] = id; out.push(i); }
+      }
     }
     return out;
   }
