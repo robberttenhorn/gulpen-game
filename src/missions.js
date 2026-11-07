@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { makeCharacter, makeKeg } from './character.js';
+import { makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
 
@@ -73,7 +74,18 @@ export class Missions {
 
     // Nachtburgemeester: alleen 's avonds bij de Markt
     add('nacht', 'De Nachtburgemeester', g.world.spotNear(14, 18),
-      { shirt: 0x1a1a40, pants: 0x101020, hair: 0xdddddd, hat: 'tophat', chain: true, sash: 0xc62828 });
+      { shirt: 0x1a1a40, pants: 0x101020, hair: 0xdddddd, hat: 'tophat', sash: 0xc62828 });
+    // ambtsketen los, zodat hij pas weer zichtbaar is als je hem hebt teruggebracht
+    const gold = new THREE.MeshStandardMaterial({ color: 0xf2c14e, metalness: 0.95, roughness: 0.2, emissive: 0x3a2a00, emissiveIntensity: 0.3 });
+    const keten = new THREE.Group();
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 6, 24, Math.PI), gold);
+    arc.position.set(0, 1.45, 0.17); arc.rotation.set(0.2, 0, Math.PI);
+    const medal = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 16), gold);
+    medal.rotation.x = Math.PI / 2; medal.position.set(0, 1.24, 0.24);
+    keten.add(arc, medal);
+    this.npcs.nacht.model.userData.parts.body.add(keten);
+    keten.visible = this.done.has('nacht');
+    this.keten = keten;
 
     // wielrenner onderaan de Gulperberg
     const climb = g.world.streetPath('Gulperbergweg');
@@ -110,6 +122,45 @@ export class Missions {
     mic.position.set(0, -0.68, 0.06);
     rep.model.userData.parts.armR.add(mic);
 
+    // nieuwe winkels en Donny's
+    const sp = (id, out = 2.4) => (g.facades.frames[id] ? spotFor(id, out) : null);
+    if (sp('donnys')) add('donnys', "Gastheer van Donny's", sp('donnys', 3.2), { shirt: 0x2f3a2b, pants: 0x212121, apron: 0x6d4c41, hair: 0x3e2723 });
+    if (sp('plus')) add('plus', 'Bedrijfsleider PLUS', sp('plus', 3), { shirt: 0x1b6e3a, pants: 0x263238, hair: 0x5d4037, apron: 0x1b6e3a });
+    if (sp('paulissen')) add('bakker', 'De bakker', sp('paulissen'), { shirt: 0xffffff, pants: 0x9e9e9e, apron: 0xf3e6c8, hair: 0x8d6e63, hat: 'chef' });
+    if (sp('meertens')) add('slager', 'De slager', sp('meertens'), { shirt: 0xffffff, pants: 0x37474f, apron: 0xb71c1c, hair: 0x424242 });
+
+    // voorwerpen en houdingen die bij de mensen horen
+    g.attachToHand(this.npcs.waard.model, makeFluitje());
+    g.attachToHand(this.npcs.brouwer.model, makeFluitje());
+    g.attachToHand(this.npcs.monteur.model, makeWrench(), { offset: [0, -0.7, 0.05] });
+    if (this.npcs.boer) g.attachToHand(this.npcs.boer.model, makePitchfork(), { offset: [0, -0.7, 0.08] });
+    if (this.npcs.visser) {
+      g.attachToHand(this.npcs.visser.model, makeRod(), { offset: [0, -0.7, 0.05] });
+      this.npcs.visser.model.userData.handProp.rotation.set(0.9, 0, 0);
+      this.npcs.visser.model.userData.handProp = null; // hengel schuin houden, niet rechtop zetten
+      if (g.fishing) this.npcs.visser.heading = Math.atan2(g.fishing.wx - g.fishing.x, g.fishing.wz - g.fishing.z);
+    }
+    if (this.npcs.organisator) g.attachToHand(this.npcs.organisator.model, makeLantern(true), { offset: [0, -0.75, 0.05] });
+    // opa zit op het bankje
+    if (this.npcs.opa) {
+      const o = this.npcs.opa;
+      o.pos.set(bench[0], g.world.groundAt(bench[0], bench[1]), bench[1]);
+      const st = g.world.nearestStreet(bench[0], bench[1]);
+      o.heading = st ? Math.atan2(st.x - bench[0], st.z - bench[1]) : 0;
+      o.pose = 'sit';
+    }
+    // cameraman naast De Razende Reporter
+    const r = this.npcs.reporter;
+    const cam = g.addNpc('Cameraman', g.world.resolve(r.pos.x + 3.4, r.pos.z + 1.6, 0.4), makeCharacter({ shirt: 0x424242, pants: 0x212121, hair: 0x111111, hat: 'cap', hatColor: 0x424242 }));
+    cam.group.children.forEach((c) => { if (c.isSprite) c.visible = false; }); // geen naambordje
+    const tv = makeTvCamera();
+    tv.position.set(0.32, 1.72, 0.12);
+    cam.model.userData.parts.body.add(tv);
+    cam.pose = 'camera';
+    cam.heading = Math.atan2(r.pos.x - cam.pos.x, r.pos.z - cam.pos.z);
+    cam.marker.visible = false;
+    this.cameraman = cam;
+
     Object.values(this.npcs).forEach((n) => { n.active = true; });
     this.refresh();
   }
@@ -119,7 +170,7 @@ export class Missions {
     const g = this.g;
     const n = this.npcs;
     const items = [
-      { id: 'fiets', npc: n.monteur, title: 'Lekke band', place: 'Jef Abels Bikes', desc: 'Laat je fiets maken. Daarna kun je overal fietsen.' },
+      { id: 'fiets', npc: n.monteur, title: 'Fiets afstellen', place: 'Jef Abels Bikes', desc: 'Laat Jef Abels je fiets afstellen. Daarna fiets je een stuk sneller.' },
       { id: 'frikandel', npc: n.frituur, title: 'Frikandel speciaal', place: 'Friture An + Piet', desc: 'Alleen contant! Zoek eerst wat muntgeld bij elkaar.' },
       { id: 'salma', npc: n.salma, title: 'Bezorgen voor Salma', place: 'Grillroom Pizzeria Salma', desc: 'Bezorg drie bestellingen op tijd. Beloning: een Broodje Gulpen.' },
       { id: 'zheng', npc: n.zheng, title: 'Friet bij Zheng', place: 'Cafetaria Zheng', desc: 'Een patatje halen. Maar met welke saus?' },
@@ -130,6 +181,10 @@ export class Missions {
       { id: 'penalty', npc: n.trainer, title: 'Penalty\'s bij FC Gulpen', place: 'Sportpark FC Gulpen', desc: 'Scoor er minstens 3 van de 5.' },
       { id: 'deal', npc: n.jas, title: 'Een schimmig zaakje', place: 'Mariabeeld, Gulperberg', desc: 'Iemand op de Gulperberg heeft een pakketje. Niet te veel vragen stellen.' },
       { id: 'nacht', npc: n.nacht, title: 'De Nachtburgemeester', place: 'Markt (alleen \'s avonds)', desc: 'De Nachtburgemeester is iets kwijt.', nightOnly: true },
+      { id: 'borrelplank', npc: n.donnys, title: 'De Gezellerie-borrelplank', place: "Donny's Gezellerie", desc: 'Haal kaas en worst bij Meertens en brood bij Paulissen voor een borrelplank.' },
+      { id: 'karretjes', npc: n.plus, title: 'Karretjes-trein', place: 'PLUS supermarkt', desc: 'Winkelwagentjes zijn door het dorp gezworven. Breng ze in één lange trein terug.' },
+      { id: 'vlaaien', npc: n.bakker, title: 'Vlaaien voor na de mis', place: 'Bakkerij Paulissen', desc: 'Breng drie vlaaien naar de Sint-Petruskerk zonder ergens tegenaan te lopen.' },
+      { id: 'slager', npc: n.slager, title: 'Bestelling in het plat', place: 'De Eetwinkel van het Heuvelland', desc: 'Een klant bestelde in het Gulpens. Pak de juiste spullen en bezorg ze.' },
       { id: 'hubertus', npc: n.reporter, title: 'Kroegentocht op de Hubertusmarkt', place: 'Markt (De Razende Reporter)', desc: 'Haal verhalen op in vier cafés rond de Markt en geef daarna een live interview.' },
       { id: 'plat', npc: n.opa, title: 'Plat kalle', place: 'Benkske bij de Markt', desc: 'Opa overhoort je in het Gulpens. Weet jij wat de woorden betekenen?' },
       { id: 'gulperberg', npc: n.wielrenner, title: 'Gulperberg op!', place: 'Voet van de Gulperberg', desc: 'Fiets zo snel mogelijk naar het Mariabeeld op de top.' },
@@ -176,16 +231,20 @@ export class Missions {
     this.active = null;
     this.g.setTarget(null);
     this.g.ui.toast(toast || 'Klus geklaard!', 3000);
+    this.g.sfx?.play('success');
+    this.g.celebrate();
     this.refresh();
   }
 
   fail(text) {
     this.active?.cleanup?.();
     this.active = null;
+    if (this.g.interior) this.g.exitInterior();
     this.g.setTarget(null);
     this.g.collectibles = [];
     this.g.clearDestination();
     this.g.ui.toast(text, 3200);
+    this.g.sfx?.play('fail');
     this.refresh();
   }
 
@@ -197,7 +256,7 @@ export class Missions {
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
-      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus' };
+      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager' };
       const key = Object.keys(n).find((k) => n[k] === npc);
       const mid = missionOf[key];
       const deliverKeg = key === 'waard' && this.active?.id === 'vat';
@@ -217,6 +276,7 @@ export class Missions {
   abort() {
     const g = this.g;
     this.active?.cleanup?.();
+    if (g.interior) g.exitInterior();
     g.collectibles.forEach((c) => c.cleanup?.());
     if (this.active?.id === 'vat') g.dropKeg();
     if (g.race) g.endRace(false, true);
@@ -234,25 +294,26 @@ export class Missions {
 
   handlers = {
     async monteur(npc, N, ui, g) {
-      if (g.vehicles.bike) {
-        await ui.dialog(N, ['Rijdt hij lekker? Kom gerust terug als er iets is. Die Gulperberg vraagt wat van je banden!']);
+      if (this.done.has('fiets')) {
+        await ui.dialog(N, ['Rijdt hij lekker? Die Gulperberg vraagt wat van je banden, kom gerust terug als er iets is!']);
         return;
       }
       await ui.dialog(N, [
         G('Joa? Ee blutsj in de fiets?', 'Ja? Een deuk in de fiets?'),
-        'Laat eens kijken... Nee, geen deuk. Wel een flinke lekke band.',
-        'Die Gulperberg op en af met zachte banden, dat houdt geen band lang vol.',
-        'Momentje... plakken, oppompen...',
+        'Laat eens kijken... Nee, geen deuk. Maar die fiets loopt wel heel stroef.',
+        'Banden te zacht, ketting droog, remmen slepen. Daar kom je de Gulperberg niet mee op.',
+        'Momentje... oppompen, smeren, afstellen...',
         G('Veâdig! Hea is aaf.', 'Klaar! Hij is klaar.'),
+        'Probeer maar. Je zult merken dat hij een stuk harder gaat!',
       ]);
-      g.unlockVehicle('bike');
-      await ui.dialog('Tip', [g.input.isTouch ? 'Tik op de knop "Fiets" om op te stappen.' : 'Druk op F om op je fiets te stappen.']);
-      this.complete('fiets', 'Fiets gerepareerd!');
+      g.tuneBike();
+      this.complete('fiets', 'Fiets afgesteld: je fietst nu sneller!');
     },
 
     async frituur(npc, N, ui, g) {
       if (this.active?.id === 'frikandel' && this.active.coinsDone) {
         await ui.dialog(N, ['Ah, met gepast geld zelfs. Mooi zo!', 'Eén frikandel speciaal: curry, mayo en uitjes. Smakelijk!']);
+        await g.eat(makeFrikandel(), 4);
         g.player.boost = 60;
         this.complete('frikandel', 'Frikandel speciaal! Je kunt een minuut lang sprinten.');
         return;
@@ -282,8 +343,15 @@ export class Missions {
       ], ['Ik ga ervoor', 'Nu even niet']);
       if (a !== 0) return;
       this.setActive('salma', 'Bezorgen voor Salma', 'Breng de bestelling naar het adres. Volg de lichtbundel.', 'Bestelling 1 / 3');
+      // bezorgtas op de rug
+      const bag = makeDeliveryBag();
+      bag.position.set(0, 1.3, -0.32);
+      g.player.group.add(bag);
+      this.active.cleanup = () => g.player.group.remove(bag);
       this.deliveries('salma', 3, async () => {
-        await ui.dialog(N, ['Top gedaan! Hier, een Broodje Gulpen van het huis: döner, kaas en pittige saus.']);
+        g.player.group.remove(bag);
+        await ui.dialog(N, ['Top gedaan! Hier, een Broodje Gulpen van het huis: döner, kaas en pittige saus.', G('Smakelijk eëte!', 'Smakelijk eten!')]);
+        await g.eat(makeBroodje(), 4);
         this.complete('salma', 'Broodje Gulpen verdiend!');
       });
     },
@@ -297,6 +365,7 @@ export class Missions {
         'Zonder saus? Echt? Nou, jij je zin.',
       ][a];
       await ui.dialog(N, [reply, 'Alsjeblieft, vers uit het vet. Smakelijk eten!']);
+      await g.eat(makePuntzak(), 4);
       g.player.boost = 30;
       this.complete('zheng', 'Friet bij Zheng!');
     },
@@ -413,17 +482,21 @@ export class Missions {
       ], ['Oké, geef maar', 'Nee, dat zit me niet lekker']);
       if (a !== 0) { await ui.dialog(N, ['Dan heb je mij nooit gezien.']); return; }
       this.setActive('deal', 'Een schimmig zaakje', 'Breng het pakketje snel naar het adres. Niet treuzelen!', 'Pakketje 1 / 1');
+      g.holdProp(makePackage());
+      this.active.cleanup = () => g.dropProp();
       this.deliveries('deal', 1, async () => {
-        await ui.dialog('Bij de deur', [
-          'Ah, eindelijk! Laat eens kijken...',
-          'Perfect. Een verse kersenvlaai, precies op tijd voor de verjaardag van oma. Bedankt!',
-        ]);
+        await ui.dialog('Bij de deur', ['Ah, eindelijk! Laat eens kijken...']);
+        // het pakketje gaat open...
+        g.holdProp(makeVlaai());
+        await ui.dialog('Bij de deur', ['Perfect. Een verse kersenvlaai, precies op tijd voor de verjaardag van oma. Bedankt!']);
+        g.dropProp();
         this.complete('deal', 'Het was... vlaai.');
       }, 0.85);
     },
 
     async nacht(npc, N, ui, g) {
       if (this.active?.id === 'nacht' && this.active.found) {
+        this.keten.visible = true;
         await ui.dialog(N, ['Mijn keten! Je bent een held.', 'Hierbij benoem ik jou tot Ere-Nachtburgemeester van Gulpen!']);
         this.complete('nacht', 'Ere-Nachtburgemeester van Gulpen!');
         return;
@@ -446,6 +519,122 @@ export class Missions {
   // ------------------------------------------------------------ nieuwe Gulpen-klussen
 
   extra = {
+    // Donny's Gezellerie: borrelplank samenstellen met spullen uit het dorp
+    async donnys(npc, N, ui, g) {
+      const act = this.active?.id === 'borrelplank' ? this.active : null;
+      if (act && act.left > 0) { await ui.dialog(N, [`Nog ${act.left} ding${act.left === 1 ? '' : 'en'} ophalen! De gasten zitten al te wachten.`]); return; }
+      if (act) {
+        g.dropProp();
+        await ui.dialog(N, ['Kijk eens aan! Kaas en worst van Meertens, vers brood van Paulissen. Een echte Gezellerie-plank.']);
+        g.holdProp(makeBorrelplank());
+        await ui.dialog(N, ['En een speciaalbiertje erbij, van de zaak. Proost!']);
+        g.dropProp();
+        await g.drinkPils();
+        this.complete('borrelplank', 'Borrelplank geserveerd!');
+        return;
+      }
+      const a = await ui.dialog(N, [
+        "Welkom bij Donny's! Hier draait alles om gezelligheid: lekker eten, delen en een goed speciaalbiertje.",
+        'Maar ik heb een probleem. Straks komen de fietsers van de Gulpense Graveltocht binnen en mijn borrelplanken zijn op!',
+        'Haal jij kaas en worst bij Meertens, en vers brood bij Paulissen? Snel, voordat ze er zijn!',
+      ], ['Ik ga al!', 'Ik heb geen tijd']);
+      if (a !== 0) return;
+      this.startShopping('borrelplank', 'De Gezellerie-borrelplank', [
+        { id: 'meertens', what: 'Kaas en worst', line: 'Kaas en worst voor Donny? Komt goed, de lekkerste van het Heuvelland!' },
+        { id: 'paulissen', what: 'Vers brood', line: 'Een vers brood, net uit de oven. Groetjes aan Donny!' },
+      ], 240, npc);
+    },
+
+    // PLUS: winkelwagentjes terugbrengen als lange trein
+    async plus(npc, N, ui, g) {
+      if (this.active?.id === 'karretjes') {
+        await ui.dialog(N, [`Nog ${g.followers.length - g.followersJoined()} karretjes zoek! Kijk op de kaart.`]);
+        return;
+      }
+      const a = await ui.dialog(N, [
+        'Help! De wind van de Gulperberg heeft al mijn winkelwagentjes het dorp in geblazen. Ze staan overal!',
+        'Ik heb er minstens zes nodig voor de zaterdagdrukte. Kun jij ze ophalen? Duw ze gewoon achter elkaar aan, als een trein.',
+      ], ['Choo choo, ik ga!', 'Ik doe mijn boodschappen wel ergens anders']);
+      if (a !== 0) return;
+      if (g.mode === 'car') g.exitCar();
+      g.setMode('walk');
+      const n = g.world.isMobile ? 5 : 6;
+      g.startPolonaise(n, { factory: () => makeCart(), minD: 40, maxD: 220, color: '#1b6e3a', glyph: 'W', joinLines: ['Klik!', 'Karretje erbij!', 'Nog eentje!', 'Tjoek tjoek!'] });
+      this.setActive('karretjes', 'Karretjes-trein', 'Loop naar de groene markeringen. De karretjes rijden dan achter je aan. Breng ze naar het karretjeshok bij de PLUS.', `0 / ${n} karretjes`);
+      this.active.followerWord = 'karretjes';
+      this.active.noVehicles = true;
+      const shed = g.facades.cartShed ? [g.facades.cartShed.x, g.facades.cartShed.z] : [npc.pos.x, npc.pos.z];
+      g.setDestination(g.world.resolve(shed[0], shed[1], 0.6), 300, async () => {
+        g.stopPolonaise();
+        await ui.dialog(N, ['Wat een trein! Allemaal netjes terug. Hier, een karretjesmuntje voor je sleutelbos. Dank je wel!']);
+        this.complete('karretjes', 'Karretjeskoning van Gulpen!');
+      }, (msg) => { g.stopPolonaise(); this.fail(msg || 'Te laat, de zaterdagdrukte is al begonnen.'); }, {
+        require: () => (g.followersJoined() >= n ? null : `Je hebt pas ${g.followersJoined()} van de ${n} karretjes.`),
+      });
+    },
+
+    // Paulissen: vlaaien ophalen in de bakkerij en naar de koffietafel in de kerk brengen
+    async bakker(npc, N, ui, g) {
+      const a = await ui.dialog(N, [
+        'Goedemorgen! Na de mis is er koffie in de Sint-Petruskerk, en daar horen natuurlijk vlaaien bij.',
+        G('Riestevla, kersen en proeme!', 'Rijstevlaai, kersen en pruimen!'),
+        'Ze staan binnen op de toonbank. Breng jij ze naar de koffietafel in de kerk? Met drie vlaaien kun je niet rennen, en loop nergens tegenaan!',
+      ], ['Ik loop heel voorzichtig', 'Ik ben een beetje onhandig']);
+      if (a !== 0) return;
+      this.setActive('vlaaien', 'Vlaaien voor na de mis', 'Pak de vlaaien van de toonbank in de bakkerij.', 'Vlaaien: 3 / 3');
+      this.active.noVehicles = true;
+      const act = this.active;
+      const bakery = g.interiors.room('bakkerij');
+      await g.enterInterior(bakery, {
+        triggers: [{
+          x: bakery.pickup.x, z: bakery.pickup.z, r: 1.6, label: 'Pak de vlaaien',
+          action: () => {
+            bakery.activeTriggers = [];
+            this.carryVlaaien(act);
+          },
+        }],
+      });
+    },
+
+    // Meertens: een bestelling die in het Gulpens is doorgebeld
+    async slager(npc, N, ui, g) {
+      // woorden uit de woordenlijst Gulpens (mijnwoordenboek.nl)
+      const items = [['zoervleisj', 'zuurvlees'], ['sjink', 'ham'], ['poetes', 'bloedworst'], ['hujtvleisj', 'hoofdkaas'], ['kieës', 'kaas'], ['knien', 'konijn']];
+      const order = items.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+      const a = await ui.dialog(N, [
+        'Goeiemorgen! Ik heb een bestelling binnen van een vaste klant, maar ze belde helemaal in het plat.',
+        `Ze zei: "${order.map((o) => o[0]).join(', ')}". Ik ben de enige die het verstaat, en ik sta hier alleen achter de toonbank.`,
+        'Pak jij het even in en breng je het naar haar toe? Maar wel de goede spullen hè!',
+      ], ['Ik spreek plat, geef maar', 'Plat? Ik versta er niks van']);
+      if (a !== 0) return;
+      // naar binnen, achter de vitrine
+      const shop = g.interiors.room('slagerij');
+      await new Promise((resolve) => {
+        g.enterInterior(shop, {
+          triggers: [{ x: shop.counter.x, z: shop.counter.z, r: 1.8, label: 'Bestelling inpakken', action: () => { shop.activeTriggers = []; resolve(); } }],
+        });
+      });
+      let good = 0;
+      for (const [word, meaning] of order) {
+        const wrong = items.filter((x) => x[1] !== meaning).sort(() => Math.random() - 0.5).slice(0, 2).map((x) => x[1]);
+        const opts = [meaning, ...wrong].sort(() => Math.random() - 0.5);
+        const pick = await ui.dialog(N, [`"${word}". Wat pak je uit de vitrine?`], opts);
+        if (opts[pick] === meaning) good++;
+        else await ui.dialog(N, [`Nee, nee! "${word}" is ${meaning}. Ik pak het wel even voor je.`]);
+      }
+      g.holdProp(makeMeatPackage());
+      await ui.dialog(N, [good === 3 ? 'Allemaal goed, jij bent een echte Gulpenaar! Hier is het pakketje.' : 'Bijna goed. Hier is het pakketje, ik heb het voor je rechtgezet.']);
+      this.setActive('slager', 'Bestelling in het plat', 'Ga naar buiten en breng het pakketje naar de klant. Volg de lichtbundel.');
+      this.active.cleanup = () => g.dropProp();
+      const dest = g.randomAddress(150, 450);
+      const dist = Math.hypot(dest[0] - g.player.x, dest[1] - g.player.z);
+      g.setDestination(dest, Math.round(dist / 5 + 40), async () => {
+        g.dropProp();
+        await ui.dialog('Bij de klant', [G('Ah, de bestelling va de slechter!', 'Ah, de bestelling van de slager!'), 'Hier, voor de moeite:', G('Ee pletzke!', 'Een koekje!')]);
+        this.complete('slager', 'Bestelling bezorgd!');
+      }, (msg) => this.fail(msg || 'Te laat. De klant heeft al iets anders gegeten.'));
+    },
+
     async reporter(npc, N, ui, g) {
       const act = this.active?.id === 'hubertus' ? this.active : null;
       if (act && !act.ready) {
@@ -594,6 +783,7 @@ export class Missions {
       this.setActive('polonaise', 'Polonaise door Gulpe', 'Loop naar de roze markeringen op de kaart. De feestgangers lopen dan achter je aan. Breng ze naar de Markt.', `0 / ${n} feestgangers`);
       const markt = g.world.spotNear(20, 0);
       g.setDestination(markt, 300, async () => {
+        g.fx.confetti(markt[0], g.world.groundAt(...markt) + 3, markt[1], 220);
         g.stopPolonaise();
         await ui.dialog(N, ['Daar zijn ze allemaal! Dat wordt een fantastische finale. Alaaf!']);
         this.complete('polonaise', 'Polonaise-koning van Gulpe!');
@@ -622,19 +812,130 @@ export class Missions {
         }
         const dest = g.randomAddress(110, 260);
         const dist = Math.hypot(dest[0] - g.player.x, dest[1] - g.player.z);
-        g.setDestination(dest, Math.round(dist / 4.5 + 25), () => { i++; this.progress(`Stempel ${i} / 5`); g.ui.toast('Stempel!', 1200); next(); },
-          (msg) => this.fail(msg || 'Te laat bij de stempelpost.'),
+        // stempelpost met lantaarn en vlag
+        const post = makeStampPost();
+        const [sx, sz] = g.world.resolve(dest[0] + 1.5, dest[1] + 1.5, 0.6);
+        post.position.set(sx, g.world.groundAt(sx, sz), sz);
+        post.rotation.y = Math.atan2(dest[0] - sx, dest[1] - sz);
+        g.scene.add(post);
+        this.active.cleanup = () => g.scene.remove(post);
+        g.setDestination(dest, Math.round(dist / 4.5 + 25), () => { g.scene.remove(post); i++; this.progress(`Stempel ${i} / 5`); g.ui.toast('Stempel!', 1200); next(); },
+          (msg) => { g.scene.remove(post); this.fail(msg || 'Te laat bij de stempelpost.'); },
           { violate: () => (g.mode !== 'walk' ? 'Dit is een wandeltocht. Lopen dus!' : null) });
       };
       next();
     },
   };
 
+  // vlaaien dragen: elke botsing kost een vlaai; aankomen bij de koffietafel in de kerk
+  carryVlaaien(act) {
+    const g = this.g, ui = g.ui;
+    const stack = makeVlaaiStack();
+    g.holdProp(stack);
+    let left = 3;
+    act.desc = 'Loop rustig naar de Sint-Petruskerk en zet de vlaaien op de koffietafel. Nergens tegenaan!';
+    this.refresh();
+    act.cleanup = () => { g.fragile = null; g.dropProp(); };
+    g.fragile = () => {
+      const layer = stack.userData.layers.pop();
+      if (!layer) return;
+      left--;
+      const wp = new THREE.Vector3();
+      layer.getWorldPosition(wp);
+      stack.remove(layer);
+      const floorY = g.interior ? 0 : g.world.groundAt(wp.x, wp.z);
+      const splat = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), new THREE.MeshStandardMaterial({ color: 0x7a0f1e, roughness: 0.4 }));
+      splat.rotation.x = -Math.PI / 2;
+      splat.position.set(wp.x, floorY + 0.03, wp.z);
+      g.scene.add(splat);
+      setTimeout(() => g.scene.remove(splat), 20000);
+      g.sfx?.play('splat');
+      g.ui.toast('Boem! Daar gaat een vlaai...', 1800);
+      this.progress(`Vlaaien: ${left} / 3`);
+      if (left <= 0) { g.fragile = null; this.fail('Alle vlaaien liggen op de grond. Ga terug naar de bakker voor een nieuwe poging.'); }
+    };
+    const f = g.facades.frames.kerk;
+    const poi = g.world.meta.pois.find((p) => p.id === 'kerk');
+    const dest = f ? g.world.resolve(f.x + f.nx * 4, f.z + f.nz * 4, 0.6) : g.world.spotNear(...poi.pos);
+    g.setDestination(dest, 300, async () => {
+      // de kerk in, naar de koffietafel bij het altaar
+      const kerk = g.interiors.room('kerk');
+      g.sfx?.play('bells');
+      await g.enterInterior(kerk, {
+        triggers: [{
+          x: kerk.coffeeTable.x, z: kerk.coffeeTable.z, r: 1.6, label: 'Zet de vlaaien op de koffietafel',
+          action: async () => {
+            kerk.activeTriggers = [];
+            g.fragile = null;
+            g.dropProp();
+            if (left >= 2) {
+              await ui.dialog('Na de mis', [`${left} vlaaien heel aangekomen! De koffie staat klaar, iedereen is blij.`, 'Een stukje kersenvlaai voor de bezorger, uiteraard.']);
+              this.complete('vlaaien', 'Vlaaien bezorgd!');
+            } else {
+              await ui.dialog('Na de mis', ['Eén vlaai voor de hele parochie? Dat worden wel héél kleine stukjes...']);
+              this.fail('Te weinig vlaaien. Probeer het opnieuw bij de bakker.');
+            }
+          },
+        }],
+      });
+    }, (msg) => this.fail(msg || 'Te laat, de koffie is al op.'));
+  }
+
+  // ------------------------------------------------------------ boodschappen langs winkels
+
+  startShopping(id, title, stops, limit, returnNpc) {
+    const g = this.g;
+    g.tempMarkers = [];
+    const act = { id, title, left: stops.length, desc: `Haal de spullen op (gele markeringen) en ga terug naar ${returnNpc.name.toLowerCase()}.`, progress: `0 / ${stops.length} opgehaald` };
+    act.cleanup = () => { g.tempMarkers = []; g.collectibles.forEach((c) => c.cleanup?.()); g.collectibles = []; g.dropProp(); g.ui.timer(null); clearInterval(timer); };
+    this.active = act;
+    this.refresh();
+    let leftTime = limit;
+    const timer = setInterval(() => {
+      if (this.active !== act) { clearInterval(timer); return; }
+      leftTime--;
+      g.ui.timer(`${leftTime} s`);
+      if (leftTime <= 0) { clearInterval(timer); this.fail('Te laat! De gasten zijn al vertrokken.'); }
+    }, 1000);
+    g.collectibles = stops.map((st) => {
+      const f = g.facades.frames[st.id];
+      const [x, z] = g.world.resolve(f.x + f.nx * 2.2, f.z + f.nz * 2.2, 0.4);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.3), new THREE.MeshStandardMaterial({ color: 0xf3efe3, emissive: 0x6b4d00, emissiveIntensity: 0.3 }));
+      m.position.set(x, g.world.groundAt(x, z) + 1.1, z);
+      g.scene.add(m);
+      const beam = g.makeBeam(x, z, 0xf2c14e);
+      const marker = { x, z, color: '#f2c14e', glyph: '!', done: false };
+      g.tempMarkers.push(marker);
+      const item = {
+        pos: m.position, mesh: m,
+        cleanup: () => g.scene.remove(m, beam),
+        onCollect: async () => {
+          item.cleanup();
+          marker.done = true;
+          g.collectibles = g.collectibles.filter((k) => k !== item);
+          g.player.lockedFor = true;
+          await g.ui.dialog(st.what, [st.line]);
+          g.player.lockedFor = false;
+          act.left--;
+          this.progress(`${stops.length - act.left} / ${stops.length} opgehaald`);
+          g.holdProp(makeMeatPackage());
+          if (act.left <= 0) {
+            act.desc = `Alles binnen! Terug naar ${returnNpc.name.toLowerCase()}.`;
+            this.refresh();
+            g.setTarget(returnNpc);
+          }
+        },
+      };
+      return item;
+    });
+  }
+
   // ------------------------------------------------------------ kroegentocht Hubertusmarkt
 
   startCrawl() {
     const g = this.g;
     // weetjes over de Hubertusmarkt (bronnen: Regio Online, evenementen.nl, gemeente Gulpen-Wittem)
+    const looks = { kroon: [0x8a5a3a, '#3e2a1e', '#e8c77a'], zwarteruiter: [0x3b2f2a, '#151515', '#d9b25a'], neubourg: [0x4f6b55, '#1f3b2c', '#f1e6c8'], poort: [0x8a3b30, '#5a1f1f', '#f5e3c0'] };
     const cafes = [
       { id: 'kroon', name: 'Brasserie De Kroon', fact: 'Wist je dat de eerste Hubertusmarkt al in 1544 werd gehouden? Dit is dus de 482e keer!' },
       { id: 'zwarteruiter', name: 'Herberg De Zwarte Ruiter', fact: 'Vanochtend om tien uur begon het met de Hubertusmis in de Sint-Petruskerk. Pas daarna de markt.' },
@@ -671,24 +972,38 @@ export class Missions {
           item.cleanup();
           marker.done = true;
           g.collectibles = g.collectibles.filter((k) => k !== item);
-          g.player.lockedFor = true;
-          await g.ui.dialog(`Stamgast in ${c.name}`, [
-            'Ah, nog een kroegentocht voor de Hubertusmarkt? Dan moet je dit weten:',
-            c.fact,
-            G('Ee glaas beer!', 'Een glas bier!'),
-          ]);
-          await g.drinkPils();
-          g.drunk = (g.drunk || 0) + 1;
-          g.player.lockedFor = false;
-          act.left--;
-          this.progress(`Bierviltjes ${cafes.length - act.left} / ${cafes.length}`);
-          g.ui.toast(`Bierviltje ${cafes.length - act.left} van ${cafes.length}!`, 1600);
-          if (act.left <= 0) {
-            act.ready = true;
-            act.desc = 'Alle verhalen verzameld. Terug naar De Razende Reporter op de Markt voor het live interview!';
-            this.refresh();
-            g.setTarget(this.npcs.reporter);
-          }
+          // naar binnen in het café, waar de stamgast aan de bar zit
+          const [wall, bg, fg] = looks[c.id];
+          const room = g.interiors.dressCafe(c.name, wall, bg, fg);
+          let talked = false;
+          await g.enterInterior(room, {
+            triggers: [{
+              x: room.stamgastPos.x, z: room.stamgastPos.z, r: 1.8, label: 'Praat met de stamgast',
+              action: async () => {
+                if (talked) return;
+                talked = true;
+                room.activeTriggers = [];
+                g.player.lockedFor = true;
+                await g.ui.dialog(`Stamgast in ${c.name}`, [
+                  'Ah, nog een kroegentocht voor de Hubertusmarkt? Dan moet je dit weten:',
+                  c.fact,
+                  G('Ee glaas beer!', 'Een glas bier!'),
+                ]);
+                await g.drinkPils();
+                g.drunk = (g.drunk || 0) + 1;
+                g.player.lockedFor = false;
+                act.left--;
+                this.progress(`Bierviltjes ${cafes.length - act.left} / ${cafes.length}`);
+                g.ui.toast(`Bierviltje ${cafes.length - act.left} van ${cafes.length}! Op naar buiten.`, 1800);
+                if (act.left <= 0) {
+                  act.ready = true;
+                  act.desc = 'Alle verhalen verzameld. Terug naar De Razende Reporter op de Markt voor het live interview!';
+                  this.refresh();
+                  g.setTarget(this.npcs.reporter);
+                }
+              },
+            }],
+          });
         },
       };
       return item;
@@ -703,6 +1018,7 @@ export class Missions {
     g.camPitch = 0.08;
     g.lastManualLook = g.time;
     document.body.classList.add('live');
+    g.sfx?.play('tally');
     document.getElementById('live-badge').hidden = false;
     try {
       await ui.dialog(N, [

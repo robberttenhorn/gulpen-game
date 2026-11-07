@@ -224,3 +224,28 @@ body.live::after {
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 9;
   box-shadow: inset 0 70px 0 #000, inset 0 -70px 0 #000;
 }
+
+/* ---------- geluidsknop ---------- */
+#btn-sound {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); right: 204px; width: 42px; height: 42px; border-radius: 50%;
+  border: 0; background: rgba(255, 250, 240, 0.94); color: var(--ink); box-shadow: var(--shadow); pointer-events: auto;
+  display: grid; place-items: center; cursor: pointer;
+}
+#btn-sound .cross { display: none; }
+#btn-sound.off .cross { display: inline; }
+#btn-sound.off .wave { display: none; }
+@media (max-width: 640px) { #btn-sound { right: 132px; width: 38px; height: 38px; } }
+body.live #btn-sound { visibility: hidden; }
+@media (max-width: 640px) { #quest-card { width: calc(100% - 192px); } }
+
+/* fietsknop ook op de computer tonen */
+body:not(.touch) #touch-ui { display: block; }
+body:not(.touch) #joystick, body:not(.touch) #btn-action { display: none; }
+body:not(.touch) #btn-vehicle {
+  right: 24px; bottom: max(24px, env(safe-area-inset-bottom)); width: auto; height: auto; border-radius: 99px;
+  padding: 10px 18px; font-size: 16px; cursor: pointer;
+}
+body:not(.touch) #speedo { bottom: 84px; }
+
+/* binnen: geen minikaart */
+body.inside #minimap-wrap { visibility: hidden; }

@@ -37,6 +37,12 @@ const POIS = [
   { id: 'kroon', name: 'Brasserie De Kroon', address: 'Markt 1', x: 190581, y: 314070, cafe: true },
   { id: 'neubourg', name: 'Grand Café Neubourg', address: 'Marktstraat 1', x: 190590, y: 314056, cafe: true },
   { id: 'poort', name: 'Gasterij De Poort', address: 'Rosstraat 23', x: 190486.236, y: 314062.656, cafe: true },
+  { id: 'donnys', name: "Donny's Gezellerie", address: 'Kapelaan Pendersplein 8', x: 190335.838, y: 313970.068 },
+  { id: 'plus', name: 'PLUS supermarkt', address: 'Passage 1', x: 190644.562, y: 314147.266 },
+  { id: 'paulissen', name: 'Bakkerij Paulissen', address: 'Rijksweg 54', x: 190693.472, y: 314060.781 },
+  { id: 'meertens', name: 'De Eetwinkel van het Heuvelland (Meertens)', address: 'Rijksweg 55', x: 190729.929, y: 314107.174 },
+  // Sint-Petruskerk: midden van het kerkgebouw volgens TOP10NL (Kadaster)
+  { id: 'kerk', name: 'Sint-Petruskerk', address: 'Kapelaan Pendersplein', x: 190389.7, y: 313993.0 },
   // grijze Volvo XC40 op de oprit (staat niet op de kaart)
   { id: 'volvo', name: 'Ringweg 38', address: 'Ringweg 38', x: 190985.6, y: 314375.8 },
 ];

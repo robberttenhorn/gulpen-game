@@ -178,6 +178,61 @@
         -4.6560000000172295
       ],
       "cafe": true
+    },
+    {
+      "id": "donnys",
+      "name": "Donny's Gezellerie",
+      "address": "Kapelaan Pendersplein 8",
+      "x": 190335.838,
+      "y": 313970.068,
+      "pos": [
+        -195.16,
+        87.93
+      ]
+    },
+    {
+      "id": "plus",
+      "name": "PLUS supermarkt",
+      "address": "Passage 1",
+      "x": 190644.562,
+      "y": 314147.266,
+      "pos": [
+        113.56,
+        -89.27
+      ]
+    },
+    {
+      "id": "paulissen",
+      "name": "Bakkerij Paulissen",
+      "address": "Rijksweg 54",
+      "x": 190693.472,
+      "y": 314060.781,
+      "pos": [
+        162.47,
+        -2.78
+      ]
+    },
+    {
+      "id": "meertens",
+      "name": "De Eetwinkel van het Heuvelland (Meertens)",
+      "address": "Rijksweg 55",
+      "x": 190729.929,
+      "y": 314107.174,
+      "pos": [
+        198.93,
+        -49.17
+      ]
+    },
+    {
+      "id": "kerk",
+      "name": "Sint-Petruskerk",
+      "address": "Kapelaan Pendersplein",
+      "x": 190389.7,
+      "y": 313993.0,
+      "pos": [
+        -141.3,
+        65.0
+      ]
     }
   ],
   "generated": "2026-11-07T06:44:02.946Z",

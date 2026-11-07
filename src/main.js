@@ -12,6 +12,9 @@ import { Missions } from './missions.js';
 import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
+import { Effects, makeFluitje, makeFinishBanner } from './props.js';
+import { Sound } from './audio.js';
+import { Interiors } from './interiors.js';
 
 const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
 const HIGH = !isMobile;
@@ -36,9 +39,13 @@ class Game {
 
     this.input = new Input(this.canvas);
     this.ui = new UI(this.input);
+    this.sfx = new Sound();
+    this.ui.sfx = this.sfx;
     this.npcs = [];
     this.collectibles = [];
-    this.vehicles = { bike: false, skate: false };
+    // de fiets heb je altijd bij je; het skateboard haal je bij het Sophianum
+    this.vehicles = { bike: true, skate: false };
+    this.bikeSpeed = SPEED.bike;
     this.mode = 'walk';
     this.timeOfDay = 11;
     this.wobble = 0;
@@ -73,11 +80,15 @@ class Game {
     this.fishing = this.findFishingSpot();
     this.cars.spawnTraffic(isMobile ? 6 : 11);
     this.peds = new Pedestrians(this, isMobile ? 14 : 28);
+    this.fx = new Effects(this.scene);
+    this.interiors = new Interiors(this);
     this.setupPoiLabels();
     this.minimap = new Minimap(this.world);
     this.bigmap = new BigMap(this);
     this.missions = new Missions(this);
     this.missions.setup();
+    if (this.missions.done.has('fiets')) this.tuneBike();
+    this.updateVehicleButton();
     this.setupPost();
 
     bar.style.width = '100%';
@@ -92,6 +103,11 @@ class Game {
     await new Promise((r) => btn.addEventListener('click', r, { once: true }));
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
+    this.sfx.start();
+    const sb = document.getElementById('btn-sound');
+    const syncSound = () => { sb.classList.toggle('off', this.sfx.muted); sb.setAttribute('aria-label', this.sfx.muted ? 'Geluid aanzetten' : 'Geluid uitzetten'); };
+    sb.addEventListener('click', () => { this.sfx.setMuted(!this.sfx.muted); syncSound(); });
+    syncSound();
     this.clock.getDelta();
     this.renderer.setAnimationLoop(() => this.tick());
 
@@ -252,8 +268,11 @@ class Game {
 
   unlockVehicle(v) { this.vehicles[v] = true; this.updateVehicleButton(); }
 
+  // afgestelde fiets van Jef Abels: een stuk sneller
+  tuneBike() { this.bikeSpeed = SPEED.bike * 1.3; }
+
   availableModes() {
-    if (this.keg || this.missions?.active?.noVehicles) return ['walk'];
+    if (this.keg || this.interior || this.missions?.active?.noVehicles) return ['walk'];
     if (this.race) return ['skate'];
     const m = ['walk'];
     if (this.vehicles.bike) m.push('bike');
@@ -266,10 +285,12 @@ class Game {
     const options = this.availableModes();
     if (options.length <= 1) { this.ui.setVehicleButton(null); return; }
     const next = options[(options.indexOf(this.mode) + 1) % options.length];
-    this.ui.setVehicleButton({ walk: 'Lopen', bike: 'Fiets', skate: 'Skate' }[next]);
+    const label = { walk: 'Lopen', bike: 'Fiets', skate: 'Skate' }[next];
+    this.ui.setVehicleButton(this.input.isTouch ? label : `${label} (F)`);
   }
 
   setMode(mode) {
+    if (mode === 'bike' && this.mode !== 'bike') this.sfx?.play('bell');
     this.mode = mode;
     this.bike.visible = mode === 'bike';
     this.board.visible = mode === 'skate';
@@ -286,6 +307,8 @@ class Game {
     this.cars.activate(car);
     this.car = car;
     car.speed = 0;
+    this.sfx.play('door');
+    this.sfx.engineOn(car.type === 'tractor');
     this.setMode('car');
     this.camYaw = car.heading + Math.PI;
     if (car.isVolvo && !this.volvoSeen) { this.volvoSeen = true; this.ui.toast('Grijze Volvo XC40', 2000); }
@@ -306,6 +329,8 @@ class Game {
     }
     this.player.heading = car.heading;
     this.car = null;
+    this.sfx.play('door');
+    this.sfx.engineOff();
     this.setMode('walk');
   }
 
@@ -409,13 +434,36 @@ class Game {
     return npc;
   }
 
+  // Naambordjes boven de plekken: vóór de gevel, zodat ze niet half in het pand verdwijnen.
   setupPoiLabels() {
+    this.poiLabels = [];
     for (const p of this.world.meta.pois) {
       if (p.id === 'ringweg' || p.id === 'volvo' || p.cafe) continue;
       const label = makeLabel(p.name);
-      const [x, z] = p.pos;
-      label.position.set(x, this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11), z);
+      const f = this.facades.frames[p.id];
+      let x, z, y;
+      if (f) {
+        x = f.x + f.nx * 1.6; z = f.z + f.nz * 1.6;
+        y = f.y + 6.2;
+      } else {
+        [x, z] = p.pos;
+        y = this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11);
+      }
+      label.position.set(x, y, z);
+      label.material.depthTest = false; // altijd volledig leesbaar
       this.scene.add(label);
+      this.poiLabels.push(label);
+    }
+  }
+
+  // bordjes van ver weg vervagen, zodat het scherm niet vol staat
+  updateLabels() {
+    const c = this.camera.position;
+    for (const l of this.poiLabels || []) {
+      const d = c.distanceTo(l.position);
+      const o = 1 - THREE.MathUtils.smoothstep(d, 90, 170);
+      l.material.opacity = o;
+      l.visible = o > 0.02;
     }
   }
 
@@ -556,6 +604,13 @@ class Game {
     this.setTarget(null);
     const ringGeo = new THREE.TorusGeometry(3.2, 0.25, 8, 32);
     const ringMat = new THREE.MeshStandardMaterial({ color: 0xe8a33d, emissive: 0xe8a33d, emissiveIntensity: 0.8 });
+    // finishboog over de weg bij het laatste checkpoint
+    const [fx, fz] = pts.at(-1), [px, pz] = pts.at(-2);
+    const banner = makeFinishBanner(9);
+    banner.position.set(fx, this.world.groundAt(fx, fz), fz);
+    banner.rotation.y = Math.atan2(fx - px, fz - pz);
+    this.scene.add(banner);
+    this.race.banner = banner;
     this.race.markers = pts.slice(1).map(([x, z], i) => {
       const m = new THREE.Mesh(ringGeo, ringMat);
       const next = pts[Math.min(i + 2, pts.length - 1)];
@@ -601,6 +656,8 @@ class Game {
     if (!r) return;
     r.done = true;
     r.markers.forEach((m) => this.scene.remove(m));
+    if (r.banner) this.scene.remove(r.banner);
+    if (won) this.celebrate();
     r.rival.mode = null;
     if (r.rival.home) r.rival.pos.copy(r.rival.home);
     this.ui.timer(null);
@@ -672,6 +729,7 @@ class Game {
               this.input.spacePressed = false;
               const dive = [-2.6, -1.2, 0, 1.2, 2.6][Math.floor(Math.random() * 5)];
               shot = { ax, ay, dive, t: 0 };
+              this.sfx.play('kick');
               phase = 'fly';
               aim.visible = false;
               this.player.speed = 3;
@@ -692,7 +750,7 @@ class Game {
               const post = Math.abs(shot.ax) > 3.45;
               if (post) this.ui.toast('Paal!', 1200);
               else if (reach) this.ui.toast('Gestopt!', 1200);
-              else { goals++; this.ui.toast('GOAL!', 1200); }
+              else { goals++; this.ui.toast('GOAL!', 1200); this.sfx.play('cheer'); this.fx.confetti(ball.position.x, ball.position.y + 0.5, ball.position.z, 90); }
               this.missions.progress(`${goals} goals uit ${shots} van de 5`);
               phase = 'wait'; t = 0;
             }
@@ -760,11 +818,26 @@ class Game {
           if (phase === 'wait') {
             bob.position.y = wy + Math.sin(t * 2.2) * 0.015;
             if (pressed) { tries++; this.ui.toast('Te vroeg! De vis schrok weg.', 1400); t = 0; wait = 2 + Math.random() * 3; }
-            else if (t > wait) { phase = 'bite'; t = 0; }
+            else if (t > wait) { phase = 'bite'; t = 0; this.fx.splash(bob.position.x, wy, bob.position.z, 0.6); this.sfx.play('splash'); }
           } else if (phase === 'bite') {
             bob.position.y = wy - 0.13 + Math.sin(t * 30) * 0.02;
             if (pressed) {
               caught++; tries++;
+              // de vis springt uit het water
+              const fish = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.22, 4, 10), new THREE.MeshStandardMaterial({ color: 0x9fb3bf, metalness: 0.6, roughness: 0.3 }));
+              fish.rotation.z = Math.PI / 2;
+              this.scene.add(fish);
+              this.fx.splash(bob.position.x, wy, bob.position.z, 1.2);
+              const fx0 = bob.position.x, fz0 = bob.position.z, tip0 = tip.clone();
+              let ft = 0;
+              const leap = () => {
+                ft += 0.016 / 0.9;
+                const k = Math.min(1, ft);
+                fish.position.set(fx0 + (tip0.x - fx0) * k, wy + Math.sin(k * Math.PI) * 1.6 + (tip0.y - 0.6 - wy) * k, fz0 + (tip0.z - fz0) * k);
+                fish.rotation.y += 0.3;
+                if (k < 1) requestAnimationFrame(leap); else setTimeout(() => this.scene.remove(fish), 600);
+              };
+              leap();
               this.ui.toast(fishNames[Math.floor(Math.random() * fishNames.length)], 1500);
               this.missions.progress(`${caught} / 3 vissen`);
               phase = 'pause'; t = 0;
@@ -779,19 +852,22 @@ class Game {
   }
 
   // Polonaise: feestgangers verzamelen die achter je aan lopen.
-  startPolonaise(n) {
+  // Verzamelen van dingen of mensen die daarna achter je aan komen (polonaise, winkelwagentjes).
+  startPolonaise(n, { factory = null, minD = 50, maxD = 260, color = '#ff4fa3', glyph = '+', joinLines = null } = {}) {
     const w = this.world;
     const colors = [0xe53935, 0xfdd835, 0x43a047, 0x1e88e5, 0x8e24aa, 0xff7043, 0x00acc1];
     this.followers = [];
     this.tempMarkers = [];
+    this.joinLines = joinLines;
     for (let i = 0; i < n; i++) {
-      const [x, z] = this.randomAddress(50, 260);
-      const model = makeCharacter({ shirt: colors[i % colors.length], pants: colors[(i + 3) % colors.length], hair: 0x3b2a1a, hat: i % 2 ? 'cap' : 'chef', hatColor: colors[(i + 1) % colors.length] });
+      const [x, z] = this.randomAddress(minD, maxD);
+      const model = factory ? factory(i) : makeCharacter({ shirt: colors[i % colors.length], pants: colors[(i + 3) % colors.length], hair: 0x3b2a1a, hat: i % 2 ? 'cap' : 'chef', hatColor: colors[(i + 1) % colors.length] });
       model.position.set(x, w.groundAt(x, z), z);
+      model.rotation.y = Math.random() * Math.PI * 2;
       this.scene.add(model);
-      const m = { x, z, color: '#ff4fa3', glyph: '+', done: false };
+      const m = { x, z, color, glyph, done: false };
       this.tempMarkers.push(m);
-      this.followers.push({ model, x, z, heading: 0, joined: false, marker: m });
+      this.followers.push({ model, x, z, heading: model.rotation.y, joined: false, marker: m });
     }
   }
 
@@ -809,12 +885,14 @@ class Game {
     let leader = { x: p.x, z: p.z };
     for (const f of this.followers) {
       if (!f.joined) {
-        f.model.userData.animate(dt, 0, 'wave');
+        f.model.userData.animate?.(dt, 0, 'wave');
         if (this.mode === 'walk' && Math.hypot(p.x - f.x, p.z - f.z) < 2.6) {
           f.joined = true;
           f.marker.done = true;
-          this.ui.toast(['Alaaf!', 'Ik doe mee!', 'Cramignon!', 'Hup, achter je aan!'][Math.floor(Math.random() * 4)], 1200);
-          this.missions.progress(`${this.followersJoined()} / ${this.followers.length} feestgangers`);
+          const lines = this.joinLines || ['Alaaf!', 'Ik doe mee!', 'Cramignon!', 'Hup, achter je aan!'];
+          this.ui.toast(lines[Math.floor(Math.random() * lines.length)], 1200);
+          this.sfx?.play('pop');
+          this.missions.progress(`${this.followersJoined()} / ${this.followers.length} ${this.missions.active?.followerWord || 'feestgangers'}`);
         }
         continue;
       }
@@ -832,19 +910,131 @@ class Game {
       }
       f.model.position.set(f.x, this.world.groundAt(f.x, f.z), f.z);
       f.model.rotation.y = f.heading;
-      f.model.userData.animate(dt, speed, 'walk');
-      // handen op de schouders van de voorganger
-      f.model.userData.parts.armL.rotation.x = -1.3; f.model.userData.parts.armR.rotation.x = -1.3;
+      if (f.model.userData.animate) {
+        f.model.userData.animate(dt, speed, 'walk');
+        // handen op de schouders van de voorganger
+        f.model.userData.parts.armL.rotation.x = -1.3; f.model.userData.parts.armR.rotation.x = -1.3;
+      }
       leader = f;
     }
   }
 
-  async drinkPils() {
+  // ------------------------------------------------------------ binnenruimtes
+
+  // Naar binnen: verplaatst de speler naar de ruimte, met eigen licht en camera.
+  async enterInterior(room, { triggers = [], onExit = null } = {}) {
+    if (this.mode === 'car') this.exitCar();
+    this.setMode('walk');
     this.player.lockedFor = true;
-    this.player.pose = 'drink';
-    await wait(1800);
+    this.sfx.play('door');
+    await this.fade(async () => {
+      this.outsidePos = { x: this.player.x, z: this.player.z, heading: this.player.heading, camDist: this.camDist };
+      this.interior = room;
+      room.group.visible = true;
+      room.activeTriggers = triggers;
+      room.onExit = onExit;
+      const [dx, dz] = room.toWorld(room.door.x, room.door.z - Math.min(2.6, room.d * 0.2));
+      this.player.x = dx; this.player.z = dz; this.player.y = 0;
+      this.player.heading = Math.PI;
+      this.camYaw = 0; this.camPitch = 0.14; this.camDist = 3.0;
+      document.body.classList.add('inside');
+      this.updateVehicleButton();
+      this.lastManualLook = this.time;
+      // binnenlicht: geen zon, warme lamp in het midden
+      this.sun.intensity = 0;
+      this.hemi.intensity = 0.9;
+      this.hemi.color.set(0xfff0dc);
+      this.hemi.groundColor.set(0x5a4030);
+      this.interiors.light.position.set(room.ox, room.h - 0.5, room.oz);
+      this.interiors.light.intensity = 30;
+      this.interiors.light.distance = Math.max(room.w, room.d) * 1.6;
+      this.scene.environmentIntensity = 0.15;
+      this.renderer.toneMappingExposure = 0.75;
+      this.player.group.position.set(this.player.x, 0, this.player.z);
+      this.updateCamera(0, true);
+    });
+    this.player.lockedFor = false;
+  }
+
+  async exitInterior() {
+    const room = this.interior;
+    if (!room) return;
+    this.player.lockedFor = true;
+    this.sfx.play('door');
+    await this.fade(async () => {
+      room.group.visible = false;
+      this.interior = null;
+      document.body.classList.remove('inside');
+      this.updateVehicleButton();
+      this.interiors.light.intensity = 0;
+      this.hemi.groundColor.set(0x5c5a3a);
+      const o = this.outsidePos;
+      if (o) { this.player.x = o.x; this.player.z = o.z; this.player.heading = o.heading + Math.PI; this.camDist = o.camDist; }
+      this.camYaw = this.player.heading + Math.PI;
+      this.applyTime();
+      this.updateCamera(0, true);
+    });
+    this.player.lockedFor = false;
+    room.onExit?.();
+  }
+
+  // Voorwerp in de rechterhand van een poppetje (speler of NPC).
+  attachToHand(model, prop, { offset = [0, -0.72, 0.07] } = {}) {
+    this.detachFromHand(model);
+    prop.position.set(...offset);
+    model.userData.parts.armR.add(prop);
+    model.userData.handProp = prop;
+    model.userData.holdR = true;
+  }
+
+  detachFromHand(model) {
+    const prop = model.userData.handProp;
+    if (prop) prop.parent?.remove(prop);
+    model.userData.handProp = null;
+    model.userData.holdR = false;
+  }
+
+  holdProp(prop) { this.attachToHand(this.player.model, prop); }
+  dropProp() { this.detachFromHand(this.player.model); }
+
+  // Even iets eten: het voorwerp gaat een paar keer naar de mond.
+  async eat(prop, seconds = 4) {
+    if (this.mode === 'car') this.exitCar();
+    this.holdProp(prop);
+    this.player.lockedFor = true;
+    this.player.pose = 'eat';
+    await wait(seconds * 1000);
     this.player.pose = null;
+    this.dropProp();
+    this.player.lockedFor = false;
+  }
+
+  // Proost! Met een fluitje bier in de hand.
+  async drinkPils() {
+    if (this.mode === 'car') this.exitCar();
+    const glass = makeFluitje();
+    this.holdProp(glass);
+    this.player.lockedFor = true;
+    this.ui.toast('Proost!', 1200);
+    this.sfx.play('clink');
+    await wait(1300);
+    this.player.pose = 'drink';
+    this.sfx.play('gulp');
+    await wait(1600);
+    // glas leeg
+    glass.userData.beer.scale.y = 0.2;
+    glass.userData.beer.position.y = 0.035;
+    glass.userData.foam.position.y = 0.06;
+    glass.userData.foam.scale.y = 0.3;
+    this.player.pose = null;
+    await wait(900);
+    this.dropProp();
     this.wobble = 25;
+  }
+
+  celebrate() {
+    const p = this.player;
+    this.fx.confetti(p.x, p.y + 2.2, p.z);
   }
 
   // ------------------------------------------------------------ hoofdlus
@@ -866,9 +1056,27 @@ class Game {
     this.updateDestination(dt);
     this.updateInteractions(dt);
     this.world.hardscape.update(dt);
+    this.fx.update(dt);
+    this.interiors.update(dt);
+    if (!this.interior) this.updateAmbience(dt);
     this.updateCamera(dt);
     this.updateHud(dt);
     this.render();
+  }
+
+  // vogeltjes overdag, krekels 's avonds, kerkklokken als je bij de kerk komt
+  updateAmbience(dt) {
+    this.ambT = (this.ambT ?? 4) - dt;
+    if (this.ambT <= 0) {
+      this.ambT = 3 + Math.random() * 6;
+      if (this.mode !== 'car') this.sfx.play(this.night > 0.5 ? 'cricket' : 'chirp');
+    }
+    const ch = this.facades?.church;
+    if (ch) {
+      const d = Math.hypot(this.player.x - ch.x, this.player.z - ch.z);
+      this.bellT = Math.max(0, (this.bellT || 0) - dt);
+      if (d < 45 && this.bellT <= 0) { this.sfx.play('bells'); this.bellT = 120; }
+    }
   }
 
   updateCar(dt) {
@@ -877,6 +1085,7 @@ class Game {
     const throttle = busy ? 0 : -inp.move.y;
     const steer = busy ? 0 : inp.move.x;
     this.cars.drive(car, dt, throttle, steer, inp.keys.has('Space'));
+    this.sfx.engineUpdate(car.speed, throttle);
     const p = this.player;
     p.x = car.x; p.z = car.z; p.y = car.y; p.heading = car.heading; p.speed = Math.abs(car.speed);
     document.getElementById('speed-value').textContent = Math.round(Math.abs(car.speed) * 3.6);
@@ -896,9 +1105,10 @@ class Game {
     const mag = Math.hypot(dx, dz);
 
     if (p.boost > 0) p.boost -= dt;
-    let maxSpeed = SPEED[this.mode];
+    let maxSpeed = this.mode === 'bike' ? this.bikeSpeed : SPEED[this.mode];
     if (this.mode === 'walk' && (inp.sprint || p.boost > 0)) maxSpeed = SPEED.run;
     if (this.keg) maxSpeed = SPEED.keg;
+    if (this.fragile) maxSpeed = Math.min(maxSpeed, SPEED.walk); // met vlaaien ren je niet
     // op de fiets en het skateboard gaat de joystick niet half: altijd volle snelheid
     const want = mag > 0.05 ? maxSpeed * (this.mode === 'walk' ? Math.min(1, mag * 1.2) : 1) : 0;
     const accel = this.mode === 'walk' ? 12 : this.mode === 'bike' ? 4 : 3.5;
@@ -910,6 +1120,21 @@ class Game {
       let diff = Math.atan2(dx, dz) - p.heading;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       p.heading += diff * Math.min(1, (this.mode === 'walk' ? 12 : 5) * dt);
+    }
+    if (this.interior) {
+      // binnen: muren en meubels, vlakke vloer
+      const st = p.speed * dt;
+      const [ix, iz, bumped] = this.interior.collide(p.x + Math.sin(p.heading) * st, p.z + Math.cos(p.heading) * st, 0.35);
+      if (this.fragile && !busy && bumped && st > 0.01) {
+        this.fragileCooldown = Math.max(0, (this.fragileCooldown || 0) - dt);
+        if (this.fragileCooldown <= 0) { this.fragileCooldown = 1.6; this.fragile('bots'); }
+      } else if (this.fragileCooldown) this.fragileCooldown = Math.max(0, this.fragileCooldown - dt);
+      p.x = ix; p.z = iz; p.y = 0;
+      if (p.speed > 0.5) { this.stepAcc = (this.stepAcc || 0) + p.speed * dt; if (this.stepAcc > 0.75) { this.stepAcc = 0; this.sfx.play('step'); } }
+      p.group.position.set(p.x, 0, p.z);
+      p.group.rotation.y = p.heading;
+      p.model.userData.animate(dt, p.speed, p.pose || 'walk');
+      return;
     }
     const here = this.world.heightAt(p.x, p.z);
     const ahead = this.world.heightAt(p.x + Math.sin(p.heading) * 1.5, p.z + Math.cos(p.heading) * 1.5);
@@ -928,12 +1153,41 @@ class Game {
     if (wanted > 0.001 && got < wanted * 0.5 && this.mode !== 'walk') p.speed *= 0.85;
     // niet door geparkeerde auto's
     let fx = rx, fz = rz;
+    // botsing met de echte vorm van de auto (een rechthoek), niet met een cirkel eromheen
+    const pr = this.mode === 'bike' ? 0.5 : 0.35;
     for (const c of this.cars.cars) {
-      const d = Math.hypot(c.x - fx, c.z - fz);
-      if (d < 1.6 && d > 0.01) { fx = c.x + ((fx - c.x) / d) * 1.6; fz = c.z + ((fz - c.z) / d) * 1.6; }
+      if (c === this.car) continue;
+      const dx0 = fx - c.x, dz0 = fz - c.z;
+      if (dx0 * dx0 + dz0 * dz0 > 16) continue;
+      const sn = Math.sin(c.heading), cs = Math.cos(c.heading);
+      // naar de assen van de auto
+      const lz = dx0 * sn + dz0 * cs, lx = dx0 * cs - dz0 * sn;
+      const hl = c.t.L / 2 + pr, hw = c.t.W / 2 + pr;
+      if (Math.abs(lz) < hl && Math.abs(lx) < hw) {
+        // naar de dichtstbijzijnde zijkant duwen
+        const pushZ = hl - Math.abs(lz), pushX = hw - Math.abs(lx);
+        let nlx = lx, nlz = lz;
+        if (pushX < pushZ) nlx = Math.sign(lx || 1) * hw; else nlz = Math.sign(lz || 1) * hl;
+        fx = c.x + nlx * cs + nlz * sn;
+        fz = c.z - nlx * sn + nlz * cs;
+      }
+    }
+    // breekbare lading (vlaaien): rennen of ergens tegenaan lopen kost een vlaai
+    if (this.fragile && !busy) {
+      this.fragileCooldown = Math.max(0, (this.fragileCooldown || 0) - dt);
+      const bumped = wanted > 0.02 && Math.hypot(fx - p.x, fz - p.z) < wanted * 0.4;
+      if (this.fragileCooldown <= 0 && bumped) {
+        this.fragileCooldown = 1.6;
+        this.fragile('bots');
+      }
     }
     p.x = fx; p.z = fz;
     p.y = this.world.groundAt(p.x, p.z);
+    // voetstappen
+    if (this.mode === 'walk' && p.speed > 0.5) {
+      this.stepAcc = (this.stepAcc || 0) + p.speed * dt;
+      if (this.stepAcc > (p.speed > 5 ? 1.0 : 0.75)) { this.stepAcc = 0; this.sfx.play('step'); }
+    }
     p.group.position.set(p.x, p.y, p.z);
     p.group.rotation.y = p.heading;
     p.model.userData.animate(dt, p.speed, p.pose || (this.mode === 'walk' ? 'walk' : this.mode));
@@ -952,6 +1206,12 @@ class Game {
         n.model.userData.animate(dt, 6, 'skate');
         continue;
       }
+      // vaste houding (zitten, filmen): niet naar de speler draaien
+      if (n.pose) {
+        n.group.rotation.y = n.heading;
+        n.model.userData.animate(dt, 0, n.pose);
+        continue;
+      }
       if (d < 9 || n.lookAtPlayer) {
         let diff = Math.atan2(p.x - n.pos.x, p.z - n.pos.z) - n.heading;
         diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -966,7 +1226,7 @@ class Game {
     const p = this.player;
     for (const c of this.collectibles) {
       c.mesh.rotation.y += dt * 2.5;
-      if (Math.hypot(p.x - c.pos.x, p.z - c.pos.z) < (this.mode === 'car' ? 3.5 : 2.2)) { c.onCollect(); break; }
+      if (Math.hypot(p.x - c.pos.x, p.z - c.pos.z) < (this.mode === 'car' ? 3.5 : 2.2)) { this.sfx.play('coin'); c.onCollect(); break; }
     }
     if (this.waypoint && Math.hypot(p.x - this.waypoint.x, p.z - this.waypoint.z) < 10) {
       this.scene.remove(this.waypointBeam);
@@ -975,6 +1235,20 @@ class Game {
     }
     if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty || this.minigame) { if (!this.penalty && !this.minigame) this.ui.prompt(null); return; }
 
+    if (this.interior) {
+      const room = this.interior;
+      const exit = { ...room.door, r: 1.3, label: 'Naar buiten', action: () => this.exitInterior() };
+      let best = null, bd = Infinity;
+      for (const t of [...(room.activeTriggers || []), exit]) {
+        const [tx, tz] = room.toWorld(t.x, t.z);
+        const d = Math.hypot(p.x - tx, p.z - tz);
+        if (d < (t.r || 1.6) && d < bd) { bd = d; best = t; }
+      }
+      this.ui.prompt(best ? best.label : null);
+      this.ui.setActionLabel(best ? (best === exit ? 'Buiten' : 'Doe') : null);
+      if (this.input.consumeAction() && best) best.action();
+      return;
+    }
     if (this.mode === 'car') {
       this.ui.prompt(Math.abs(this.car.speed) < 3 ? 'Uitstappen' : null);
       this.ui.setActionLabel('Uit');
@@ -989,14 +1263,17 @@ class Game {
     }
     const car = !near ? this.cars.nearestCar(p.x, p.z, 1.8) : null;
     if (near) {
-      this.ui.prompt(`Praat met ${near.name.toLowerCase().startsWith('de ') ? near.name.toLowerCase() : near.name}`);
+      // "De monteur" wordt "de monteur", maar een eigennaam als "De Razende Reporter" blijft staan
+      const nm = near.name;
+      const role = nm.startsWith('De ') && nm[3] === nm[3].toLowerCase();
+      this.ui.prompt(`Praat met ${role ? 'de' + nm.slice(2) : nm}`);
       this.ui.setActionLabel('Praat');
     } else if (car) {
       this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : car.isVolvo ? 'Instappen in de Volvo XC40' : 'Instappen');
       this.ui.setActionLabel('Auto');
     } else {
       this.ui.prompt(null);
-      this.ui.setActionLabel('...');
+      this.ui.setActionLabel(null);
     }
     if (this.input.consumeAction()) {
       if (near) { p.speed = 0; this.missions.talk(near); }
@@ -1024,6 +1301,7 @@ class Game {
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       this.camYaw += diff * Math.min(1, dt * followRate);
     }
+    if (this.interior) return this.updateInteriorCamera(dt, instant);
     const dist = inCar ? this.camDist + 3.5 + Math.min(4, p.speed * 0.12) : this.camDist + (this.mode !== 'walk' ? 1.5 : 0);
     const pitch = inCar ? Math.max(0.12, this.camPitch * 0.7) : this.camPitch;
     const cx = p.x + Math.sin(this.camYaw) * Math.cos(pitch) * dist;
@@ -1065,14 +1343,38 @@ class Game {
     this.stars.position.copy(this.camera.position);
   }
 
+  // camera binnen: dichtbij en altijd binnen de muren
+  updateInteriorCamera(dt, instant) {
+    const p = this.player, r = this.interior;
+    const dist = Math.min(this.camDist, 4);
+    let cx = p.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * dist;
+    let cz = p.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * dist;
+    let cy = 1.6 + Math.sin(this.camPitch) * dist;
+    cx = Math.max(r.ox - r.w / 2 + 0.3, Math.min(r.ox + r.w / 2 - 0.3, cx));
+    cz = Math.max(r.oz - r.d / 2 + 0.3, Math.min(r.oz + r.d / 2 - 0.3, cz));
+    cy = Math.min(r.h - 0.3, Math.max(0.6, cy));
+    const t = new THREE.Vector3(cx, cy, cz);
+    if (instant) this.camera.position.copy(t); else this.camera.position.lerp(t, Math.min(1, dt * 10));
+    if (Math.abs(this.camera.fov - 60) > 0.05) { this.camera.fov = 60; this.camera.updateProjectionMatrix(); }
+    // kijk een stukje voor de speler uit, de ruimte in
+    this.camera.lookAt(p.x - Math.sin(this.camYaw) * 2, 1.3, p.z - Math.cos(this.camYaw) * 2);
+    if (this.wobble > 0) { this.wobble -= dt; this.camera.rotateZ(Math.sin(this.time * 1.3) * Math.min(1, this.wobble / 5) * 0.06 * (1 + (this.drunk || 0) * 0.6)); }
+    this.sun.position.set(p.x + 50, 200, p.z + 50);
+    this.sun.target.position.set(p.x, 0, p.z);
+  }
+
   updateHud(dt) {
     const p = this.player;
     this.hudTimer = (this.hudTimer || 0) - dt;
     if (this.hudTimer <= 0) {
       this.hudTimer = 0.4;
-      const s = this.world.nearestStreet(p.x, p.z);
-      this.ui.setStreet(s && s.dist < 40 ? s.name : '');
+      if (this.interior) this.ui.setStreet(this.interior.name);
+      else {
+        const s = this.world.nearestStreet(p.x, p.z);
+        this.ui.setStreet(s && s.dist < 40 ? s.name : '');
+      }
     }
+    this.updateLabels();
     if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin(this.time * 3) * 0.06;
     const tgt = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : this.waypoint;
     const base = this.minimap.markers;

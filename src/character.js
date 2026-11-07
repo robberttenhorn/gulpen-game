@@ -152,7 +152,7 @@ export function makeCharacter(opts = {}) {
   let phase = Math.random() * 10;
 
   // animatie: speed in m/s, mode 'walk' | 'bike' | 'skate' | 'idle' | 'wave' | 'drink'
-  root.userData.animate = (dt, speed, mode = 'walk') => {
+  const animate = (dt, speed, mode = 'walk') => {
     phase += dt * (2 + speed * 1.6);
     const sw = Math.min(1, speed / 4);
     parts.armL.rotation.set(0, 0, 0.08); parts.armR.rotation.set(0, 0, -0.08);
@@ -172,6 +172,21 @@ export function makeCharacter(opts = {}) {
       parts.armL.rotation.z = 0.9 + Math.sin(phase * 0.5) * 0.1; parts.armR.rotation.z = -0.9;
       parts.body.position.y = -0.08 + Math.sin(phase * 0.6) * 0.02;
       return;
+    } else if (mode === 'sit') {
+      // zittend op een bankje
+      parts.body.position.y = -0.4;
+      parts.legL.rotation.x = -1.45; parts.legR.rotation.x = -1.45;
+      parts.armL.rotation.x = -0.5; parts.armR.rotation.x = -0.5;
+      parts.head.rotation.set(Math.sin(phase * 0.3) * 0.05, Math.sin(phase * 0.2) * 0.3, 0);
+      return;
+    } else if (mode === 'camera') {
+      parts.armR.rotation.set(-2.7, 0, -0.35);
+      parts.armL.rotation.set(-1.2, 0, 0.3);
+      return;
+    } else if (mode === 'eat') {
+      parts.armR.rotation.x = -1.6 - Math.max(0, Math.sin(phase * 1.5)) * 0.9;
+      parts.head.rotation.x = -0.1;
+      return;
     } else if (mode === 'wave') {
       parts.armR.rotation.z = -2.6 + Math.sin(phase * 3) * 0.3;
     } else if (mode === 'drink') {
@@ -189,6 +204,16 @@ export function makeCharacter(opts = {}) {
       }
     }
     parts.head.rotation.set(0, 0, 0);
+  };
+  // iets vasthouden in de rechterhand (een fluitje, friet, een pakketje...)
+  root.userData.animate = (dt, speed, mode = 'walk') => {
+    animate(dt, speed, mode);
+    if (root.userData.holdR && mode !== 'drink' && mode !== 'eat' && mode !== 'bike') {
+      parts.armR.rotation.set(-1.1, 0, -0.12);
+    }
+    // voorwerp in de hand rechtop houden, behalve tijdens het drinken
+    const prop = root.userData.handProp;
+    if (prop) prop.rotation.x = mode === 'drink' ? 0.4 : -parts.armR.rotation.x;
   };
   root.userData.parts = parts;
   return root;
