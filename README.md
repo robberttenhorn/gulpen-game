@@ -27,27 +27,29 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 
 | Klus | Waar |
 | --- | --- |
-| Fiets afstellen: daarna fiets je sneller | Jef Abels Bikes, Rijksweg 113 |
+| Proefrit bij Jef Abels: fiets afstellen en een slalom tussen de pionnen rijden (binnen 30 s) | Jef Abels Bikes, Rijksweg 113 |
 | Viraal met een frietje: in de cafetaria een POV-filmpje opnemen voor TikTok (friet bakken, snack frituren, schudden, saus, trucje) | Cafetaria Zheng (de stagiair is verzonnen) |
 | Frikandel super: alleen contant, dus eerst muntjes zoeken | Friture An + Piet, Rijksweg 60B |
-| Bezorgen voor Salma: drie bestellingen op tijd (beloning: Broodje Gulpen) | Grillroom Pizzeria Salma, Rijksweg 60A |
+| Bezorgen voor Salma: twee bestellingen in de buurt op tijd (beloning: Broodje Gulpen) | Grillroom Pizzeria Salma, Rijksweg 60A |
 | Friet bij Zheng: kies je saus | Cafetaria Zheng, Looierstraat 103 |
 | In beslag genomen: skateboard ophalen met een overhoring | Sophianum, Landsraderweg 7 |
 | Ringweg Race: skatewedstrijd | Ringweg |
 | Vers van 't vat: een vat naar de Zwarte Ruiter brengen | Gulpener Bierbrouwerij, Rijksweg 16 |
-| Pilsje: daarna wordt het avond (of weer ochtend) | Herberg De Zwarte Ruiter, Markt 4 |
+| Pilsje: eerst vallende fluitjes vangen met het dienblad, daarna wordt het avond (of weer ochtend) | Herberg De Zwarte Ruiter, Markt 4 |
 | Penalty's: scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
 | Een schimmig zaakje: een pakketje snel bezorgen | Mariabeeld, top van de Gulperberg |
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
 | Gulperberg op!: fietstijdrit naar het Mariabeeld | Voet van de Gulperberg |
-| Gerst voor de brouwerij: met de tractor naar Gulpener | Boerenland aan de rand van het dorp |
+| De ontsnapte geit: ren de zigzaggende geit achterna en tik hem drie keer aan | Boerenland aan de rand van het dorp |
+| Inparkeren bij de PLUS: twee keer netjes in het vak tussen andere auto's, zonder te botsen | Parkeerplaats PLUS |
+| Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
 | Polonaise door Gulpe: verzamel feestgangers voor de Vastelaovesfinale | Markt |
-| Nacht van Gulpen (alleen 's avonds): wandelen langs vijf stempelposten | Bij de Markt |
+| Nacht van Gulpen (alleen 's avonds): wandelen langs drie stempelposten | Bij de Markt |
 | Plat kalle: opa overhoort je in het Gulpens | Benkske bij de Markt |
 | Kroegentocht op de Hubertusmarkt: vier cafés, vier verhalen en een live interview met De Razende Reporter | Markt, De Kroon, De Zwarte Ruiter, Neubourg en De Poort |
-| De Gezellerie-borrelplank: kaas en worst bij Meertens, brood bij Paulissen | Donny's Gezellerie, Kapelaan Pendersplein 8 |
-| Karretjes-trein: losgeslagen winkelwagentjes terugbrengen | PLUS supermarkt, Passage 1 |
+| De Gezellerie-borrelplank: snel worst en vleeswaren halen bij Slagerij Bormans | Donny's Gezellerie, Kapelaan Pendersplein 8 |
+| Karretjes-trein: vier losgeslagen winkelwagentjes terugbrengen | PLUS supermarkt, Passage 1 |
 | Vlaaien voor na de mis: van de bakkerij naar de koffietafel in de kerk, zonder te botsen | Bakkerij Paulissen, Rijksweg 54, en de Sint-Petruskerk |
 | Bestelling in het plat: een bestelling in het Gulpens inpakken en bezorgen | De Eetwinkel van het Heuvelland (Meertens), Rijksweg 55 |
 | Het verdwenen armenfonds: speurtocht naar de sporen van deken Haffmans, met een gouden sportwagen | Sint-Petruskerk |

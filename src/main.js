@@ -380,6 +380,7 @@ class Game {
   enterCar(car) {
     if (this.keg) { this.ui.toast('Met een vat in je handen? Eerst afleveren!', 2000); return; }
     if (this.missions?.active?.noVehicles) { this.ui.toast('Je hebt gedronken. Laat die auto staan!', 2200); return; }
+    if (car.locked) { this.ui.toast('Dat is niet jouw auto!', 1600); return; }
     this.cars.activate(car);
     this.car = car;
     car.speed = 0;
@@ -1455,7 +1456,7 @@ class Game {
     // POV-opname (TikTok bij Zheng): camera op een vaste plek in de keuken
     if (this.pov) {
       this.input.consumeLook();
-      const k = instant ? 1 : Math.min(1, dt * 4);
+      const k = instant || this.pov.snap ? 1 : Math.min(1, dt * 4);
       this.camera.position.lerp(this.pov.pos, k);
       this.povLook ||= this.pov.look.clone();
       this.povLook.lerp(this.pov.look, k);
