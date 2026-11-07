@@ -249,3 +249,21 @@ body:not(.touch) #speedo { bottom: 84px; }
 
 /* binnen: geen minikaart */
 body.inside #minimap-wrap { visibility: hidden; }
+
+/* ---------- klus stoppen ---------- */
+#quest-card { pointer-events: auto; }
+#btn-stop {
+  margin-top: 8px; font: 600 12px Inter, sans-serif; border: 1.5px solid #d6c7a8; background: #fff; color: #7a2a1a;
+  border-radius: 99px; padding: 5px 12px; cursor: pointer;
+}
+#btn-stop.confirm { background: #c62828; color: #fff; border-color: #c62828; }
+body.live #btn-stop { visibility: visible; }
+body.live #quest-card { visibility: visible; }
+
+#dialog-stop {
+  position: absolute; top: 10px; right: 128px; font: 600 11px Inter, sans-serif; border: 1.5px solid #d6c7a8;
+  background: #fff; color: #7a2a1a; border-radius: 99px; padding: 4px 10px; cursor: pointer;
+}
+#dialog-stop.confirm { background: #c62828; color: #fff; border-color: #c62828; }
+#dialog-tr[hidden] + #dialog-stop { right: 12px; }
+#dialog-name { padding-right: 200px; }

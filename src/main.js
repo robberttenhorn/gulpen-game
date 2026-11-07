@@ -104,6 +104,32 @@ class Game {
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
     this.sfx.start();
+    // stopknop: eerst bevestigen, dan stoppen
+    // stopknoppen (op de opdrachtkaart en in het gesprekvenster): eerst bevestigen, dan stoppen
+    const stopBtns = [document.getElementById('btn-stop'), document.getElementById('dialog-stop')];
+    let confirming = false, confirmTimer = null;
+    const setStopLabel = () => stopBtns.forEach((b) => {
+      b.classList.toggle('confirm', confirming);
+      b.textContent = confirming ? (this.input.isTouch ? 'Zeker? Tik nogmaals' : 'Zeker? Nogmaals (of Esc)') : 'Stoppen';
+    });
+    const askStop = () => {
+      if (!this.missions.busy()) return;
+      if (confirming) {
+        clearTimeout(confirmTimer);
+        confirming = false;
+        setStopLabel();
+        this.missions.stop();
+        return;
+      }
+      confirming = true;
+      setStopLabel();
+      confirmTimer = setTimeout(() => { confirming = false; setStopLabel(); }, 3000);
+    };
+    stopBtns.forEach((b) => {
+      b.addEventListener('pointerdown', (e) => e.stopPropagation());
+      b.addEventListener('click', (e) => { e.stopPropagation(); askStop(); });
+    });
+    addEventListener('keydown', (e) => { if (e.code === 'Escape' && !this.bigmap.open) askStop(); });
     const sb = document.getElementById('btn-sound');
     const syncSound = () => { sb.classList.toggle('off', this.sfx.muted); sb.setAttribute('aria-label', this.sfx.muted ? 'Geluid aanzetten' : 'Geluid uitzetten'); };
     sb.addEventListener('click', () => { this.sfx.setMuted(!this.sfx.muted); syncSound(); });
@@ -518,13 +544,21 @@ class Game {
   }
 
   // willekeurig adres (deur van een huis) op afstand van de speler
+  // afstand vanaf je positie buiten (binnen telt de deur)
+  distOutside([x, z]) {
+    const from = this.interior && this.outsidePos ? this.outsidePos : this.player;
+    return Math.hypot(x - from.x, z - from.z);
+  }
+
   randomAddress(minD, maxD) {
     const w = this.world;
+    // binnen een gebouw tellen we vanaf de deur buiten
+    const from = this.interior && this.outsidePos ? this.outsidePos : this.player;
     for (let i = 0; i < 300; i++) {
       const f = w.footprints[Math.floor(Math.random() * w.footprints.length)];
       if (f.extra) continue;
       const cx = (f.minX + f.maxX) / 2, cz = (f.minZ + f.maxZ) / 2;
-      const d = Math.hypot(cx - this.player.x, cz - this.player.z);
+      const d = Math.hypot(cx - from.x, cz - from.z);
       if (d < minD || d > maxD) continue;
       const s = w.nearestStreet(cx, cz);
       if (!s || s.dist > 30) continue;
@@ -1226,6 +1260,7 @@ class Game {
     const p = this.player;
     for (const c of this.collectibles) {
       c.mesh.rotation.y += dt * 2.5;
+      if (this.ui.dialogOpen || p.lockedFor) continue; // niet twee dingen tegelijk oppakken
       if (Math.hypot(p.x - c.pos.x, p.z - c.pos.z) < (this.mode === 'car' ? 3.5 : 2.2)) { this.sfx.play('coin'); c.onCollect(); break; }
     }
     if (this.waypoint && Math.hypot(p.x - this.waypoint.x, p.z - this.waypoint.z) < 10) {
@@ -1269,7 +1304,7 @@ class Game {
       this.ui.prompt(`Praat met ${role ? 'de' + nm.slice(2) : nm}`);
       this.ui.setActionLabel('Praat');
     } else if (car) {
-      this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : car.isVolvo ? 'Instappen in de Volvo XC40' : 'Instappen');
+      this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : car.isVolvo ? 'Instappen in de Volvo XC40' : car.isGolden ? 'Instappen in de gouden bolide' : 'Instappen');
       this.ui.setActionLabel('Auto');
     } else {
       this.ui.prompt(null);
@@ -1375,6 +1410,9 @@ class Game {
       }
     }
     this.updateLabels();
+    const busy = this.missions.busy();
+    document.getElementById('btn-stop').hidden = !busy;
+    document.getElementById('dialog-stop').hidden = !busy;
     if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin(this.time * 3) * 0.06;
     const tgt = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : this.waypoint;
     const base = this.minimap.markers;
