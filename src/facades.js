@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { signTexture } from './textures.js';
 import { makeCart, makeStringLights, makeVlaai } from './props.js';
 import { pointInRing } from './world.js';
+import { buildShops } from './shops.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
 const at = (m, x, y, z) => { m.position.set(x, y, z); return m; };
@@ -59,6 +60,58 @@ export class Facades {
     ux = -nz; uz = nx;
     const y = w.heightAt(best.mx + nx * 1.5, best.mz + nz * 1.5);
     return { x: best.mx, z: best.mz, y, ux, uz, nx, nz, len: best.len, yaw: Math.atan2(nx, nz) };
+  }
+
+  // Gevelplek voor één adres: de gevel van het pand die bij het adrespunt en de straat hoort,
+  // met het midden op de plek van het adres (handig als meerdere winkels in één pand zitten).
+  frameAtAddress(x, z) {
+    const w = this.world;
+    let fp = null;
+    for (const i of w.nearbyFootprints(x, z)) if (pointInRing(x, z, w.footprints[i].ring)) fp = w.footprints[i];
+    if (!fp) {
+      let bd = 15;
+      for (const i of w.nearbyFootprints(x, z)) {
+        const f = w.footprints[i];
+        if (f.extra) continue;
+        const cx = (f.minX + f.maxX) / 2, cz = (f.minZ + f.maxZ) / 2;
+        const d = Math.hypot(cx - x, cz - z);
+        if (d < bd) { bd = d; fp = f; }
+      }
+    }
+    const street = w.nearestStreet(x, z);
+    if (!fp || !street) return null;
+    const r = fp.ring;
+    let best = null, bs = Infinity;
+    for (let i = 0; i < r.length; i++) {
+      const [ax, az] = r[i], [bx, bz] = r[(i + 1) % r.length];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 2.5) continue;
+      let nx0 = (bz - az) / len, nz0 = -(bx - ax) / len;
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      if (pointInRing(mx + nx0 * 0.5, mz + nz0 * 0.5, r)) { nx0 = -nx0; nz0 = -nz0; }
+      let open = 0;
+      for (const t of [0.2, 0.5, 0.8]) for (const o of [3, 6]) {
+        if (!w.insideBuilding(ax + (bx - ax) * t + nx0 * o, az + (bz - az) * t + nz0 * o)) open++;
+      }
+      if (open < 3) continue; // gevel tegen een ander pand
+      const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / (len * len)));
+      const px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
+      const dAddr = Math.hypot(px - x, pz - z);
+      const dStreet = Math.hypot(px - street.x, pz - street.z);
+      const score = dAddr + dStreet * 0.25 - open * 0.8;
+      if (score < bs) { bs = score; best = { ax, az, bx, bz, len, t, nx0, nz0 }; }
+    }
+    if (!best) return this.frameFor(x, z);
+    const { ax, az, bx, bz, len } = best;
+    // midden op het adres, maar niet over de hoek van het pand heen
+    const margin = Math.min(2.6, len / 2);
+    const t = Math.max(margin / len, Math.min(1 - margin / len, best.t));
+    const cx = ax + (bx - ax) * t, cz = az + (bz - az) * t;
+    const nx = best.nx0, nz = best.nz0;
+    const ux = -nz, uz = nx;
+    const avail = 2 * Math.min(t * len, (1 - t) * len);
+    const y = w.heightAt(cx + nx * 1.5, cz + nz * 1.5);
+    return { x: cx, z: cz, y, ux, uz, nx, nz, len: Math.max(2.6, avail), yaw: Math.atan2(nx, nz) };
   }
 
   group(frame, out = 0.06) {
@@ -381,6 +434,8 @@ export class Facades {
     }
 
     if (pois.kerk) F('kerk');
+    // winkels en bedrijven op hun eigen adres, tankstation en busstation
+    buildShops(this, pois);
     this.buildChurch();
     this.buildPitch(pois.fcgulpen.pos);
     this.buildMaria(pois.mariabeeld.pos);

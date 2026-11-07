@@ -35,7 +35,19 @@ export class Input {
     const end = (e) => { if (e.pointerId === dragId) dragId = null; };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
-    canvas.addEventListener('wheel', (e) => { this.zoom = (this.zoom || 0) + Math.sign(e.deltaY); }, { passive: true });
+    // niet zoomen: geen scrollwiel-zoom van de camera, en de pagina zelf ook niet laten zoomen
+    // (iPhone negeert user-scalable=no, dus knijpen en dubbeltikken hier tegenhouden)
+    canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('gesturechange', (e) => e.preventDefault());
+    document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 && !e.target.closest?.('#bigmap')) e.preventDefault(); }, { passive: false });
+    let lastTap = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTap < 320 && !e.target.closest?.('button, #bigmap, #dialog')) e.preventDefault();
+      lastTap = now;
+    }, { passive: false });
+    document.addEventListener('dblclick', (e) => e.preventDefault());
 
     // virtuele joystick
     const joy = document.getElementById('joystick');

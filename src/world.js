@@ -4,14 +4,16 @@ import { buildHardscape, surfaceLift } from './hardscape.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const DATA = import.meta.env.BASE_URL + 'data/';
+// versienummer van deze build achter elk databestand: nieuwe code krijgt nooit een oud (bewaard) bestand
+const V = typeof __BUILD__ !== 'undefined' ? `?v=${__BUILD__}` : '';
 
 async function fetchJson(name) {
-  const r = await fetch(DATA + name);
+  const r = await fetch(DATA + name + V);
   if (!r.ok) throw new Error(`Kan ${name} niet laden`);
   return r.json();
 }
 function loadTexture(name) {
-  return new Promise((res) => new THREE.TextureLoader().load(DATA + name, (t) => {
+  return new Promise((res) => new THREE.TextureLoader().load(DATA + name + V, (t) => {
     t.colorSpace = THREE.SRGBColorSpace;
     t.flipY = false;
     t.anisotropy = 8;
@@ -36,7 +38,7 @@ async function loadPhotoTextures(isMobile) {
     const ctx = cv.getContext('2d', { willReadFrequently: true });
     const data = new Uint8Array(size * size * 4 * WALL_LAYERS.length);
     const avg = [];
-    const imgs = await Promise.all(WALL_LAYERS.map((n) => loadImage(`${DATA}tex/${meta[n].id}_${kind}${sfx}.jpg`)));
+    const imgs = await Promise.all(WALL_LAYERS.map((n) => loadImage(`${DATA}tex/${meta[n].id}_${kind}${sfx}.jpg${V}`)));
     imgs.forEach((img, i) => {
       ctx.drawImage(img, 0, 0, size, size);
       const px = ctx.getImageData(0, 0, size, size).data;
@@ -67,10 +69,10 @@ async function loadPhotoTextures(isMobile) {
   return { meta, wallD: d.t, wallN: n.t, avg: d.avg, sizes: WALL_LAYERS.map((k) => meta[k].size), ground };
 }
 async function fetchBin(name) {
-  const r = await fetch(DATA + name).catch(() => null);
+  const r = await fetch(DATA + name + V).catch(() => null);
   if (r && r.ok) return r.arrayBuffer();
   // sommige hostings serveren geen .bin; dan staat er een base64-versie naast
-  const t = await fetch(DATA + name + '.b64.txt');
+  const t = await fetch(DATA + name + '.b64.txt' + V);
   if (!t.ok) throw new Error(`Kan ${name} niet laden`);
   const bin = atob((await t.text()).trim());
   const out = new Uint8Array(bin.length);
@@ -124,6 +126,7 @@ export class World {
     this.photo = photo;
     this.buildBuildings(bBuf);
     this.setupCollision(footprints);
+    this.paintBuilding([190985.6, 314375.8]); // Ringweg 38 (RD-coördinaten): roodbruine baksteen
     this.buildAO();
 
     step(0.7, 'Bomen planten...');
@@ -302,6 +305,39 @@ export class World {
     };
     this.orthoWide = wide;
     this.wideOrthoBox = [w.minX - o.x, -(w.maxY - o.y), w.maxX - w.minX, w.maxY - w.minY];
+  }
+
+  // Eén pand een vast gevelmateriaal geven (btype 2 = muur met vaste baksteen).
+  paintBuilding(rd) {
+    const o = this.meta.origin;
+    const x = rd[0] - o.x, z = -(rd[1] - o.y);
+    let fp = null;
+    for (const i of this.nearbyFootprints(x, z)) if (pointInRing(x, z, this.footprints[i].ring)) fp = this.footprints[i];
+    if (!fp) return;
+    const { f32, i8, n, stride, ib } = this.bld;
+    const ring = fp.ring;
+    // afstand van een punt tot de rand van het pand
+    const edgeDist = (px, pz) => {
+      let best = Infinity;
+      for (let i = 0; i < ring.length; i++) {
+        const [ax, az] = ring[i], [bx, bz] = ring[(i + 1) % ring.length];
+        const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+        const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2));
+        best = Math.min(best, Math.hypot(px - ax - dx * t, pz - az - dz * t));
+      }
+      return best;
+    };
+    let painted = 0;
+    for (let v = 0; v < n; v += 3) {
+      if (i8[v * stride + 23] !== 0) continue; // alleen muren
+      const cx = (f32[v * 7] + f32[(v + 1) * 7] + f32[(v + 2) * 7]) / 3, cz = (f32[v * 7 + 2] + f32[(v + 1) * 7 + 2] + f32[(v + 2) * 7 + 2]) / 3;
+      if (cx < fp.minX - 0.5 || cx > fp.maxX + 0.5 || cz < fp.minZ - 0.5 || cz > fp.maxZ + 0.5) continue;
+      if (!pointInRing(cx, cz, ring) && edgeDist(cx, cz) > 0.25) continue;
+      for (let k = 0; k < 3; k++) i8[(v + k) * stride + 23] = 2;
+      painted++;
+    }
+    ib.needsUpdate = true;
+    return painted;
   }
 
   // Zachte schaduw op de grond langs muren (ambient occlusion), vooraf berekend uit de gebouwvlakken.
@@ -646,6 +682,7 @@ export class World {
     const fb = new THREE.InterleavedBuffer(f32, 7);
     const ib = new THREE.InterleavedBuffer(i8, stride);
     const ub = new THREE.InterleavedBuffer(u8, stride);
+    this.bld = { f32, i8, n, stride, ib };
     // hoogtes relatief maken
     for (let i = 0; i < n; i++) f32[i * 7 + 1] -= this.baseHeight;
 
@@ -685,7 +722,7 @@ export class World {
           float pickN(float h, float n){ return floor(h * n); }`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vB = uv; // gevels: uv.x = meters vanaf het begin van de gevel, uv.y = hoogte boven maaiveld
-          vType = btype;
+          vType = btype > 1.5 ? 0.0 : btype;
           // battr: [zaadje + bouwperiode, veilige onderrand, veilige bovenrand, gevelbreedte]
           vSeed = floor(battr.x / 4.0) * 4.0 / 255.0;
           float age = mod(battr.x, 4.0);
@@ -694,7 +731,9 @@ export class World {
           vWXZ = position.xz;
           float h = fract(vSeed * 7.13);
           // muren: 0 wit pleister, 1 mergel, 2 rode baksteen, 3 bruine baksteen, 4 gele baksteen, 5 grijs
-          if (btype < 0.5) {
+          if (btype > 1.5) {
+            vMat = 3.0; // vaste roodbruine baksteen (bijv. Ringweg 38)
+          } else if (btype < 0.5) {
             float k = pickN(h, 4.0);
             if (age < 0.5) vMat = k == 0.0 ? 0.0 : (k == 1.0 ? 1.0 : (k == 2.0 ? 0.0 : 1.0));
             else if (age < 1.5) vMat = k == 0.0 ? 0.0 : (k == 1.0 ? 2.0 : (k == 2.0 ? 1.0 : 3.0));
@@ -1335,9 +1374,18 @@ export class World {
     const flags = poleList.filter((x) => x[0] === 'vlaggenmast').map(([, x, z]) => [x, z]);
     const signPole = mergeGeometries([cyl(0.04, 0.04, 2.6, 0, 1.3, 0)]);
     place(new THREE.InstancedMesh(signPole, new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.7, roughness: 0.35 }), signs.length), signs, faceStreet);
-    const signFace = new THREE.CylinderGeometry(0.32, 0.32, 0.03, 24);
-    signFace.rotateX(Math.PI / 2);
-    signFace.translate(0, 2.35, 0.05);
+    // bordschijf: voorkant als cirkel (dan staat '30' rechtop), rode rand en een witte achterkant
+    const front = new THREE.CircleGeometry(0.32, 24);
+    front.translate(0, 2.35, 0.065);
+    const rim = new THREE.CylinderGeometry(0.32, 0.32, 0.03, 24, 1, true);
+    rim.rotateX(Math.PI / 2);
+    rim.translate(0, 2.35, 0.05);
+    for (let i = 0; i < rim.attributes.uv.count; i++) rim.attributes.uv.setXY(i, 0.5, 0.92);
+    const back = new THREE.CircleGeometry(0.32, 24);
+    back.rotateY(Math.PI);
+    back.translate(0, 2.35, 0.035);
+    for (let i = 0; i < back.attributes.uv.count; i++) back.attributes.uv.setXY(i, 0.02, 0.02);
+    const signFace = mergeGeometries([front, rim, back]);
     place(new THREE.InstancedMesh(signFace, new THREE.MeshStandardMaterial({ map: signFaceTexture(), roughness: 0.4 }), signs.length), signs, faceStreet);
     const bollardGeo = mergeGeometries([cyl(0.07, 0.08, 0.9, 0, 0.45, 0), cyl(0.075, 0.075, 0.08, 0, 0.75, 0)]);
     place(new THREE.InstancedMesh(bollardGeo, new THREE.MeshStandardMaterial({ color: 0x5a1e1e, roughness: 0.5, metalness: 0.3 }), bollards.length), bollards);

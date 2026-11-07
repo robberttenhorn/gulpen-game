@@ -16,6 +16,7 @@ import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
+import { startUpdateCheck } from './update.js';
 
 const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
 const HIGH = !isMobile;
@@ -514,12 +515,14 @@ class Game {
     this.poiLabels = [];
     for (const p of this.world.meta.pois) {
       if (p.id === 'ringweg' || p.id === 'volvo' || p.cafe) continue;
-      const label = makeLabel(p.name);
+      // winkels: klein bordje dat pas dichtbij verschijnt, zodat de Rijksweg niet vol bordjes staat
+      const label = makeLabel(p.name, { small: !!p.shop });
+      label.userData.near = !!p.shop;
       const f = this.facades.frames[p.id];
       let x, z, y;
       if (f) {
         x = f.x + f.nx * 1.6; z = f.z + f.nz * 1.6;
-        y = f.y + 6.2;
+        y = f.y + (p.shop ? 4.6 : 6.2);
       } else {
         [x, z] = p.pos;
         y = this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11);
@@ -536,7 +539,7 @@ class Game {
     const c = this.camera.position;
     for (const l of this.poiLabels || []) {
       const d = c.distanceTo(l.position);
-      const o = 1 - THREE.MathUtils.smoothstep(d, 90, 170);
+      const o = l.userData.near ? 1 - THREE.MathUtils.smoothstep(d, 25, 55) : 1 - THREE.MathUtils.smoothstep(d, 90, 170);
       l.material.opacity = o;
       l.visible = o > 0.02;
     }
@@ -569,14 +572,45 @@ class Game {
     if (this.bigmap?.open) { this.bigmap.renderList(); this.bigmap.draw(); }
   }
 
+  // Lichtbundel naar een doel: felle kern, brede gloed, pulserende ring op de grond en een zwevende pijl.
+  // Goed zichtbaar van ver, ook overdag en vanuit de auto.
   makeBeam(x, z, color = 0xe8a33d) {
-    const geo = new THREE.CylinderGeometry(0.9, 0.9, 140, 16, 1, true);
-    geo.translate(0, 70, 0);
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, this.world.heightAt(x, z), z);
-    this.scene.add(m);
-    return m;
+    const g = new THREE.Group();
+    const y = this.world.heightAt(x, z);
+    g.position.set(x, y, z);
+    const add = (geo, opacity, extra = {}) => {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false, ...extra }));
+      g.add(m);
+      return m;
+    };
+    const coreGeo = new THREE.CylinderGeometry(0.8, 0.8, 220, 16, 1, true); coreGeo.translate(0, 110, 0);
+    const glowGeo = new THREE.CylinderGeometry(3.4, 2.0, 220, 24, 1, true); glowGeo.translate(0, 110, 0);
+    const core = add(coreGeo, 0.9);
+    const glow = add(glowGeo, 0.35);
+    const ringGeo = new THREE.RingGeometry(2.2, 3.0, 40); ringGeo.rotateX(-Math.PI / 2);
+    const ring = add(ringGeo, 0.8);
+    ring.position.y = 0.25;
+    // pijl die boven het doel op en neer zweeft en naar beneden wijst
+    const arrowGeo = new THREE.ConeGeometry(1.1, 2.2, 4); arrowGeo.rotateX(Math.PI);
+    const arrow = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color, fog: false }));
+    g.add(arrow);
+    g.userData.pulse = (t) => {
+      // van ver breder, zodat de bundel altijd goed opvalt
+      const d = this.camera ? Math.hypot(this.camera.position.x - g.position.x, this.camera.position.z - g.position.z) : 0;
+      const sc = THREE.MathUtils.clamp(d / 45, 1, 7);
+      core.scale.set(sc, 1, sc); glow.scale.set(sc, 1, sc);
+      core.material.opacity = 0.75 + Math.sin(t * 4) * 0.15;
+      glow.material.opacity = 0.28 + Math.sin(t * 2) * 0.08;
+      const k = (t * 0.8) % 1;
+      ring.scale.setScalar(0.6 + k * 1.4);
+      ring.material.opacity = 0.9 * (1 - k);
+      arrow.position.y = 7 + Math.sin(t * 3) * 0.6;
+      arrow.rotation.y = t * 1.5;
+    };
+    g.userData.pulse(this.time || 0);
+    this.scene.add(g);
+    (this.beams ||= new Set()).add(g);
+    return g;
   }
 
   setTarget(t) {
@@ -1439,8 +1473,7 @@ class Game {
       this.camPitch = THREE.MathUtils.clamp(this.camPitch + look.y * 0.004, -0.1, 1.2);
       this.lastManualLook = this.time;
     }
-    if (this.input.zoom) {
-      this.camDist = THREE.MathUtils.clamp(this.camDist + this.input.zoom * 0.8, 3.5, 30);
+    if (this.input.zoom) { // zoomen staat uit
       this.input.zoom = 0;
     }
     const inCar = this.mode === 'car';
@@ -1528,7 +1561,7 @@ class Game {
     const busy = this.missions.busy();
     document.getElementById('btn-stop').hidden = !busy;
     document.getElementById('dialog-stop').hidden = !busy;
-    if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin(this.time * 3) * 0.06;
+    for (const b of this.beams || []) { if (b.parent) b.userData.pulse(this.time); else this.beams.delete(b); }
     const tgt = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : this.waypoint;
     this.minimap.draw(p.x, p.z, p.heading, this.camYaw, tgt, this.missionPoints());
   }
@@ -1591,3 +1624,4 @@ document.fonts.ready.then(() => game.init()).catch((e) => {
   document.getElementById('loading-text').textContent = 'Er ging iets mis bij het laden: ' + e.message;
 });
 window.game = game;
+startUpdateCheck();
