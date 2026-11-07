@@ -33,6 +33,8 @@ const POIS = [
   { id: 'zheng', name: 'Cafetaria Zheng', address: 'Looierstraat 103', x: 190585, y: 314084 },
   { id: 'salma', name: 'Grillroom Pizzeria Salma', address: 'Rijksweg 60A', x: 190748.5, y: 314091.5 },
   { id: 'mariabeeld', name: 'Mariabeeld', address: 'Top van de Gulperberg', x: 191111.4, y: 313932.2 },
+  // grijze Volvo XC40 op de oprit (staat niet op de kaart)
+  { id: 'volvo', name: 'Ringweg 38', address: 'Ringweg 38', x: 190985.6, y: 314375.8 },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

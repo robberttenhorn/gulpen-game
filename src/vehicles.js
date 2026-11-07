@@ -470,3 +470,4 @@ function along(pts, dist) {
   return { x: pts[0][0], z: pts[0][1], heading: 0 };
 }
 
+export const VOLVO_GREY = 0x7b7f84;

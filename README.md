@@ -18,7 +18,7 @@ Open daarna de link die Vite toont (meestal http://localhost:5173).
 - Mobiel: joystick links, slepen op de rechterhelft om te kijken, knoppen rechtsonder. Tik op de minikaart voor de grote kaart.
 
 **Vervoer**: lopen (ongeveer 15 km/u, rennen 23 km/u), skateboard (34 km/u), fiets (45 km/u) en auto's (tot 120 km/u).
-Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor.
+Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart).
 Water kun je niet in. Er rijdt verkeer over het echte wegennet en er lopen dorpsbewoners rond.
 
 ## Klussen
@@ -76,7 +76,7 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 
 - **Dialect**: de teksten zijn nu vooral Nederlands met een paar Limburgse woorden. Een echte Gulpenaar moet dit nalopen en aanvullen.
 - **Echte personen**: bewust weggelaten. De mensen in de zaken zijn verzonnen rollen ("de monteur", "de waard"). De nachtburgemeester is verzonnen.
-- **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum en FC Gulpen worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
+- **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
 - **Mariabeeld**: de plek komt uit de BGT (een monument op 157 m, de top van de Gulperberg). Het beeld zelf is een gestileerde benadering, niet het echte ontwerp.
 - **Gevels**: de borden, luifels en etalages van de zaken zijn verzonnen in een passende stijl, niet nagemaakt van de echte gevels. Met foto's kan dit realistischer.
 

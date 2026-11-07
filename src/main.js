@@ -9,7 +9,7 @@ import { Input } from './input.js';
 import { UI, Minimap, BigMap } from './ui.js';
 import { makeCharacter, makeBike, makeSkateboard } from './character.js';
 import { Missions } from './missions.js';
-import { Vehicles } from './vehicles.js';
+import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 
@@ -66,6 +66,7 @@ class Game {
     this.facades = new Facades(this);
     this.facades.build();
     this.cars = new Vehicles(this);
+    this.spawnVolvo();
     this.farm = this.findFarm();
     this.cars.spawnParked(this.farm ? [{ type: 'tractor', x: this.farm.tx, z: this.farm.tz, heading: this.farm.heading, paint: 0xb71c1c, opts: { isTractor: true } }] : []);
     this.tractor = this.cars.cars.find((c) => c.isTractor);
@@ -285,6 +286,7 @@ class Game {
     car.speed = 0;
     this.setMode('car');
     this.camYaw = car.heading + Math.PI;
+    if (car.isVolvo && !this.volvoSeen) { this.volvoSeen = true; this.ui.toast('Grijze Volvo XC40', 2000); }
     if (car.isTractor) this.ui.toast('Tractor! Niet zo snel, wel overal doorheen.', 2200);
   }
 
@@ -303,6 +305,21 @@ class Game {
     this.player.heading = car.heading;
     this.car = null;
     this.setMode('walk');
+  }
+
+  // Grijze Volvo XC40 op de oprit van Ringweg 38. Staat bewust niet op de kaart.
+  spawnVolvo() {
+    const p = this.world.meta.pois.find((q) => q.id === 'volvo');
+    if (!p) return;
+    const [x, z] = this.world.spotNear(...p.pos);
+    const s = this.world.nearestStreet(x, z);
+    // met de neus naar de straat, zoals op een oprit
+    const heading = s ? Math.atan2(s.x - x, s.z - z) : 0;
+    this.volvo = this.cars.addCar('suv', x, z, heading, VOLVO_GREY, { isVolvo: true });
+    // zwart dak, zoals vaak bij de XC40
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.04, 2.0), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3, clearcoat: 1 }));
+    roof.position.set(0, 1.665, -0.1);
+    this.volvo.mesh.add(roof);
   }
 
   // Een boerenerf aan de rand van het dorp: weg met aan één kant akker of weiland.
@@ -392,7 +409,7 @@ class Game {
 
   setupPoiLabels() {
     for (const p of this.world.meta.pois) {
-      if (p.id === 'ringweg') continue;
+      if (p.id === 'ringweg' || p.id === 'volvo') continue;
       const label = makeLabel(p.name);
       const [x, z] = p.pos;
       label.position.set(x, this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11), z);
@@ -971,7 +988,7 @@ class Game {
       this.ui.prompt(`Praat met ${near.name.toLowerCase().startsWith('de ') ? near.name.toLowerCase() : near.name}`);
       this.ui.setActionLabel('Praat');
     } else if (car) {
-      this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : 'Instappen');
+      this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : car.isVolvo ? 'Instappen in de Volvo XC40' : 'Instappen');
       this.ui.setActionLabel('Auto');
     } else {
       this.ui.prompt(null);
