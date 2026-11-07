@@ -233,6 +233,222 @@
         454.6000000000058,
         -317.79999999998836
       ]
+    },
+    {
+      "id": "knubben",
+      "name": "IJzerwaren Knubben",
+      "address": "Rijksweg 6",
+      "x": 190437.069,
+      "y": 313929.797,
+      "shop": true,
+      "pos": [
+        -93.93100000001141,
+        128.2029999999795
+      ]
+    },
+    {
+      "id": "bierhuys",
+      "name": "Gulpener Bierhuys",
+      "address": "Rijksweg 20",
+      "x": 190541.986,
+      "y": 313978.653,
+      "shop": true,
+      "pos": [
+        10.986000000004424,
+        79.34700000000885
+      ]
+    },
+    {
+      "id": "apotheek",
+      "name": "Apotheek Gulpen",
+      "address": "Rijksweg 29",
+      "x": 190619.969,
+      "y": 314057.615,
+      "shop": true,
+      "pos": [
+        88.96900000001187,
+        0.3850000000093132
+      ]
+    },
+    {
+      "id": "rousseau",
+      "name": "Rousseau Chocolade",
+      "address": "Rijksweg 33",
+      "x": 190649.805,
+      "y": 314061.995,
+      "shop": true,
+      "pos": [
+        118.80499999999302,
+        -3.9949999999953434
+      ]
+    },
+    {
+      "id": "pearle",
+      "name": "Pearle Opticiens",
+      "address": "Rijksweg 37",
+      "x": 190665.535,
+      "y": 314076.835,
+      "shop": true,
+      "pos": [
+        134.5350000000035,
+        -18.835000000020955
+      ]
+    },
+    {
+      "id": "ortmans",
+      "name": "Bakkerij Ortmans",
+      "address": "Rijksweg 40",
+      "x": 190636.294,
+      "y": 314029.037,
+      "shop": true,
+      "pos": [
+        105.29399999999441,
+        28.962999999988824
+      ]
+    },
+    {
+      "id": "hema",
+      "name": "HEMA",
+      "address": "Rijksweg 41",
+      "x": 190679.9,
+      "y": 314079.337,
+      "shop": true,
+      "pos": [
+        148.89999999999418,
+        -21.336999999999534
+      ]
+    },
+    {
+      "id": "top1toys",
+      "name": "Top1Toys",
+      "address": "Rijksweg 43",
+      "x": 190683.918,
+      "y": 314084.47,
+      "shop": true,
+      "pos": [
+        152.91800000000512,
+        -26.46999999997206
+      ]
+    },
+    {
+      "id": "euronics",
+      "name": "Euronics",
+      "address": "Rijksweg 44",
+      "x": 190677.126,
+      "y": 314021.385,
+      "shop": true,
+      "pos": [
+        146.1259999999893,
+        36.61499999999069
+      ]
+    },
+    {
+      "id": "da",
+      "name": "DA Drogisterij & Parfumerie",
+      "address": "Rijksweg 53",
+      "x": 190719.218,
+      "y": 314102.458,
+      "shop": true,
+      "pos": [
+        188.21799999999348,
+        -44.45799999998417
+      ]
+    },
+    {
+      "id": "voncken",
+      "name": "Bakkerij Voncken",
+      "address": "Rijksweg 57",
+      "x": 190738.597,
+      "y": 314113.53,
+      "shop": true,
+      "pos": [
+        207.59700000000885,
+        -55.53000000002794
+      ]
+    },
+    {
+      "id": "decorette",
+      "name": "Decorette",
+      "address": "Rijksweg 64",
+      "x": 190818.874,
+      "y": 314129.474,
+      "shop": true,
+      "pos": [
+        287.8740000000107,
+        -71.47399999998743
+      ]
+    },
+    {
+      "id": "tankstation",
+      "name": "Tankstation",
+      "address": "Rijksweg 70",
+      "x": 190852.616,
+      "y": 314149.385,
+      "shop": true,
+      "pos": [
+        321.6160000000091,
+        -91.38500000000931
+      ]
+    },
+    {
+      "id": "busstation",
+      "name": "Busstation Gulpen",
+      "address": "Rijksweg (busbaan)",
+      "x": 190776.7,
+      "y": 314078.3,
+      "shop": true,
+      "pos": [
+        245.70000000001164,
+        -20.29999999998836
+      ]
+    },
+    {
+      "id": "vvv",
+      "name": "VVV / Visit Zuid-Limburg Shop",
+      "address": "Dorpsstraat 27",
+      "x": 190557.135,
+      "y": 314095.019,
+      "shop": true,
+      "pos": [
+        26.135000000009313,
+        -37.01899999997113
+      ]
+    },
+    {
+      "id": "ilgusto",
+      "name": "Il Gusto",
+      "address": "Dorpsstraat 26",
+      "x": 190526.629,
+      "y": 314098.848,
+      "shop": true,
+      "pos": [
+        -4.371000000013737,
+        -40.84799999999814
+      ]
+    },
+    {
+      "id": "mezzaluna",
+      "name": "IJssalon Mezzaluna",
+      "address": "Dorpsstraat 30",
+      "x": 190550.148,
+      "y": 314047.158,
+      "shop": true,
+      "pos": [
+        19.147999999986496,
+        10.842000000004191
+      ]
+    },
+    {
+      "id": "bormans",
+      "name": "Slagerij Bormans",
+      "address": "Rosstraat 9",
+      "x": 190464.0,
+      "y": 314042.0,
+      "shop": true,
+      "pos": [
+        -67.0,
+        16.0
+      ]
     }
   ],
   "generated": "2026-11-07T12:44:43.919Z",

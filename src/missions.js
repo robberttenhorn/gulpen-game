@@ -900,7 +900,7 @@ export class Missions {
       if (g.mode === 'car') g.exitCar();
       g.setMode('walk');
       const n = g.world.isMobile ? 5 : 6;
-      g.startPolonaise(n);
+      g.startPolonaise(n, { minD: 25, maxD: 120 }); // feestgangers vlak bij de Markt
       this.setActive('polonaise', 'Polonaise door Gulpe', 'De feestgangers staan als roze punten op de kaart. Loop erheen, dan lopen ze achter je aan. Breng ze naar de Markt.', `0 / ${n} feestgangers`);
       const markt = g.world.spotNear(20, 0);
       g.setDestination(markt, 300, async () => {

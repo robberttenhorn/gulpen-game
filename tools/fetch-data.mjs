@@ -42,7 +42,27 @@ const POIS = [
   { id: 'paulissen', name: 'Bakkerij Paulissen', address: 'Rijksweg 54', x: 190693.472, y: 314060.781 },
   { id: 'meertens', name: 'De Eetwinkel van het Heuvelland (Meertens)', address: 'Rijksweg 55', x: 190729.929, y: 314107.174 },
   // Sint-Petruskerk: midden van het kerkgebouw volgens TOP10NL (Kadaster)
+  // tankstation (Rijksweg 70) en busstation: plek volgens TOP10NL
   { id: 'kerk', name: 'Sint-Petruskerk', address: 'Kapelaan Pendersplein', x: 190389.7, y: 313993.0 },
+  // winkels en bedrijven met een eigen gevel (adres via PDOK Locatieserver; namen uit online bedrijvengidsen)
+  { id: 'knubben', name: "IJzerwaren Knubben", address: 'Rijksweg 6', x: 190437.069, y: 313929.797, shop: true },
+  { id: 'bierhuys', name: "Gulpener Bierhuys", address: 'Rijksweg 20', x: 190541.986, y: 313978.653, shop: true },
+  { id: 'apotheek', name: "Apotheek Gulpen", address: 'Rijksweg 29', x: 190619.969, y: 314057.615, shop: true },
+  { id: 'rousseau', name: "Rousseau Chocolade", address: 'Rijksweg 33', x: 190649.805, y: 314061.995, shop: true },
+  { id: 'pearle', name: "Pearle Opticiens", address: 'Rijksweg 37', x: 190665.535, y: 314076.835, shop: true },
+  { id: 'ortmans', name: "Bakkerij Ortmans", address: 'Rijksweg 40', x: 190636.294, y: 314029.037, shop: true },
+  { id: 'hema', name: "HEMA", address: 'Rijksweg 41', x: 190679.9, y: 314079.337, shop: true },
+  { id: 'top1toys', name: "Top1Toys", address: 'Rijksweg 43', x: 190683.918, y: 314084.47, shop: true },
+  { id: 'euronics', name: "Euronics", address: 'Rijksweg 44', x: 190677.126, y: 314021.385, shop: true },
+  { id: 'da', name: "DA Drogisterij & Parfumerie", address: 'Rijksweg 53', x: 190719.218, y: 314102.458, shop: true },
+  { id: 'voncken', name: "Bakkerij Voncken", address: 'Rijksweg 57', x: 190738.597, y: 314113.53, shop: true },
+  { id: 'decorette', name: "Decorette", address: 'Rijksweg 64', x: 190818.874, y: 314129.474, shop: true },
+  { id: 'tankstation', name: "Tankstation", address: 'Rijksweg 70', x: 190852.616, y: 314149.385, shop: true },
+  { id: 'busstation', name: "Busstation Gulpen", address: 'Rijksweg (busbaan)', x: 190776.7, y: 314078.3, shop: true },
+  { id: 'vvv', name: "VVV / Visit Zuid-Limburg Shop", address: 'Dorpsstraat 27', x: 190557.135, y: 314095.019, shop: true },
+  { id: 'ilgusto', name: "Il Gusto", address: 'Dorpsstraat 26', x: 190526.629, y: 314098.848, shop: true },
+  { id: 'mezzaluna', name: "IJssalon Mezzaluna", address: 'Dorpsstraat 30', x: 190550.148, y: 314047.158, shop: true },
+  { id: 'bormans', name: "Slagerij Bormans", address: 'Rosstraat 9', x: 190464.0, y: 314042.0, shop: true },
   // grijze Volvo XC40 op de oprit (staat niet op de kaart)
   { id: 'volvo', name: 'Ringweg 38', address: 'Ringweg 38', x: 190985.6, y: 314375.8 },
 ];
