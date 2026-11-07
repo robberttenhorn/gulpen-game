@@ -18,7 +18,7 @@ Open daarna de link die Vite toont (meestal http://localhost:5173).
 - Mobiel: joystick links, slepen op de rechterhelft om te kijken, knoppen rechtsonder. Tik op de minikaart voor de grote kaart.
 
 **Vervoer**: lopen (ongeveer 15 km/u, rennen 23 km/u), skateboard (34 km/u), fiets (45 km/u) en auto's (tot 120 km/u).
-Overal staan geparkeerde auto's waar je in kunt stappen, ook een grijze Volvo XC40 op de oprit van Ringweg 38.
+Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart).
 Water kun je niet in. Er rijdt verkeer over het echte wegennet en er lopen dorpsbewoners rond.
 
 ## Klussen
@@ -38,6 +38,13 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Penalty's: scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
 | Een schimmig zaakje: een pakketje snel bezorgen | Mariabeeld, top van de Gulperberg |
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
+| Gulperberg op!: fietstijdrit naar het Mariabeeld | Voet van de Gulperberg |
+| Gerst voor de brouwerij: met de tractor naar Gulpener | Boerenland aan de rand van het dorp |
+| Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
+| Polonaise door Gulpe: verzamel feestgangers voor de Vastelaovesfinale | Markt |
+| Nacht van Gulpen (alleen 's avonds): wandelen langs vijf stempelposten | Bij de Markt |
+| Plat kalle: opa overhoort je in het Gulpens | Benkske bij de Markt |
+| Kroegentocht op de Hubertusmarkt: vier cafés, vier verhalen en een live interview met De Razende Reporter | Markt, De Kroon, De Zwarte Ruiter, Neubourg en De Poort |
 
 Voortgang wordt in de browser bewaard.
 
@@ -69,10 +76,11 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 
 ## Nog te controleren
 
-- **Dialect**: de teksten zijn nu vooral Nederlands met een paar Limburgse woorden. Een echte Gulpenaar moet dit nalopen en aanvullen.
+- **Dialect**: de dorpsbewoners spreken af en toe Gulpens, met een Nederlandse vertaling eronder (aan en uit te zetten in de dialoog). Alle Gulpense woorden komen uit de [woordenlijst Gulpens op mijnwoordenboek.nl](https://www.mijnwoordenboek.nl/dialect/Gulpens), die door bezoekers is samengesteld en geen officiële bron is. De zinnetjes zijn met die woorden gemaakt en moeten door een echte Gulpenaar worden nagelopen.
 - **Echte personen**: bewust weggelaten. De mensen in de zaken zijn verzonnen rollen ("de monteur", "de waard"). De nachtburgemeester is verzonnen.
 - **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
 - **Mariabeeld**: de plek komt uit de BGT (een monument op 157 m, de top van de Gulperberg). Het beeld zelf is een gestileerde benadering, niet het echte ontwerp.
+- **Hubertusmarkt**: de weetjes (sinds 1544, Hubertusmis in de Sint-Petruskerk, paardenzegening bij het gemeentehuis, zo'n 150 kramen met onder andere gerookte paling) komen uit aankondigingen van de 482e editie in 2026. De Razende Reporter is een verzonnen figuur. De cafés zijn echte zaken rond de Markt; hun gevels en de stamgasten zijn verzonnen.
 - **Gevels**: de borden, luifels en etalages van de zaken zijn verzonnen in een passende stijl, niet nagemaakt van de echte gevels. Met foto's kan dit realistischer.
 
 ## Techniek

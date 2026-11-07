@@ -198,3 +198,29 @@ body.dialog-open #prompt { display: none !important; }
   #bigmap-panel { width: 100%; max-width: none; flex: 1; padding-top: 12px; }
   .bm-head { font-size: 20px; }
 }
+
+/* ---------- dialect met vertaling ---------- */
+#dialog { position: absolute; }
+#dialog-tr {
+  position: absolute; top: 10px; right: 12px; font: 600 11px Inter, sans-serif; letter-spacing: .3px;
+  border: 1.5px solid #e2d6bd; background: #fff; color: #5a6470; border-radius: 99px; padding: 4px 10px; cursor: pointer;
+}
+#dialog-tr[aria-pressed="false"] { opacity: .6; }
+#dialog-nl { font-size: 13px; font-style: italic; color: #6b7280; margin-top: 4px; }
+#dialog-name { padding-right: 110px; }
+
+/* ---------- live-interview ---------- */
+#live-badge {
+  position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  background: #d32f2f; color: #fff; font: 800 18px Inter, sans-serif; letter-spacing: 1px; padding: 6px 14px;
+  border-radius: 6px; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow); z-index: 3;
+}
+#live-badge small { font-weight: 600; font-size: 12px; letter-spacing: .3px; opacity: .9; }
+#live-badge .dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: livepulse 1s infinite; }
+@keyframes livepulse { 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { #live-badge .dot { animation: none; } }
+body.live #street-sign, body.live #quest-card, body.live #minimap-wrap { visibility: hidden; }
+body.live::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 9;
+  box-shadow: inset 0 70px 0 #000, inset 0 -70px 0 #000;
+}

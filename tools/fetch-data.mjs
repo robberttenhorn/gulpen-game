@@ -33,6 +33,11 @@ const POIS = [
   { id: 'zheng', name: 'Cafetaria Zheng', address: 'Looierstraat 103', x: 190585, y: 314084 },
   { id: 'salma', name: 'Grillroom Pizzeria Salma', address: 'Rijksweg 60A', x: 190748.5, y: 314091.5 },
   { id: 'mariabeeld', name: 'Mariabeeld', address: 'Top van de Gulperberg', x: 191111.4, y: 313932.2 },
+  // cafés voor de kroegentocht tijdens de Hubertusmarkt
+  { id: 'kroon', name: 'Brasserie De Kroon', address: 'Markt 1', x: 190581, y: 314070, cafe: true },
+  { id: 'neubourg', name: 'Grand Café Neubourg', address: 'Marktstraat 1', x: 190590, y: 314056, cafe: true },
+  { id: 'poort', name: 'Gasterij De Poort', address: 'Rosstraat 23', x: 190486.236, y: 314062.656, cafe: true },
+  // grijze Volvo XC40 op de oprit (staat niet op de kaart)
   { id: 'volvo', name: 'Ringweg 38', address: 'Ringweg 38', x: 190985.6, y: 314375.8 },
 ];
 

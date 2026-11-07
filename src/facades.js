@@ -274,6 +274,23 @@ export class Facades {
       }
     }
 
+    // cafés rond de Markt (voor de kroegentocht)
+    const cafes = [
+      ['kroon', 'Brasserie De Kroon', '#3e2a1e', '#e8c77a'],
+      ['neubourg', 'Grand Café Neubourg', '#1f3b2c', '#f1e6c8'],
+      ['poort', 'Gasterij De Poort', '#5a1f1f', '#f5e3c0'],
+    ];
+    for (const [id, name, bg, fg] of cafes) {
+      if (!pois[id]) continue;
+      const fr = F(id);
+      if (!fr) continue;
+      const g = this.group(fr);
+      const w = Math.min(5.5, fr.len - 0.6);
+      this.sign(g, name, { w, h: 0.7, y: 3.3, bg, fg, font: '700 110px "Baloo 2", serif' });
+      this.door(g, { x: w / 2 - 0.6, color: 0x2a1c12 });
+      this.shopWindow(g, { w: Math.max(1.2, w - 1.6), x: -0.5, h: 1.6, y: 0.8, color: 0xffcf8a });
+    }
+
     this.buildPitch(pois.fcgulpen.pos);
     this.buildMaria(pois.mariabeeld.pos);
   }
@@ -501,6 +518,49 @@ export class Facades {
     const ring = [];
     for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; ring.push([x + Math.cos(a) * 3.4, z + Math.sin(a) * 3.4]); }
     w.addObstacle(ring);
+  }
+
+  // Marktkramen van de Hubertusmarkt rond de Markt. Geeft een functie terug om ze weer op te ruimen.
+  marketStalls(n = 18) {
+    const w = this.world;
+    const ok = ['klinkers', 'voetpad', 'erf', 'verhard_open', 'parkeer'];
+    const placed = [];
+    const group = new THREE.Group();
+    const cols = [['#c62828', '#ffffff'], ['#1565c0', '#ffffff'], ['#2e7d32', '#f1e6c8'], ['#f9a825', '#ffffff'], ['#6d4c41', '#efe3c8']];
+    for (let i = 0; i < 600 && placed.length < n; i++) {
+      const a = Math.random() * Math.PI * 2, r = 8 + Math.random() * 55;
+      const x = Math.cos(a) * r + 15, z = Math.sin(a) * r;
+      if (!ok.includes(w.classAt(x, z)) || w.insideBuilding(x, z) || w.blocked(x, z)) continue;
+      if (placed.some(([px, pz]) => Math.hypot(px - x, pz - z) < 5)) continue;
+      const st = w.nearestStreet(x, z);
+      const yaw = st ? Math.atan2(st.x - x, st.z - z) : 0;
+      const stall = new THREE.Group();
+      const c = cols[placed.length % cols.length];
+      const table = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.08, 1.1), std(0x8d6e63));
+      table.position.y = 0.85;
+      const cloth = new THREE.Mesh(new THREE.BoxGeometry(2.62, 0.5, 1.12), std(new THREE.Color(c[0]).getHex()));
+      cloth.position.y = 0.58;
+      const goods = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 0.8), std([0xd9a441, 0x8bc34a, 0xbf360c, 0x795548][placed.length % 4]));
+      goods.position.y = 0.98;
+      stall.add(table, cloth, goods);
+      for (const sx of [-1.25, 1.25]) for (const sz of [-0.5, 0.5]) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 6), std(0xbdbdbd, { metalness: 0.6 }));
+        pole.position.set(sx, 1.15, sz);
+        stall.add(pole);
+      }
+      const roofG = new THREE.Group();
+      roofG.position.set(0, 2.3, 0);
+      this.awning(roofG, { w: 2.8, depth: 1.4, y: 0, colors: c, stripes: 8 });
+      roofG.children.forEach((m) => { m.position.z -= 0.65; });
+      stall.add(roofG);
+      stall.position.set(x, w.groundAt(x, z), z);
+      stall.rotation.y = yaw;
+      stall.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      group.add(stall);
+      placed.push([x, z]);
+    }
+    this.scene.add(group);
+    return () => this.scene.remove(group);
   }
 
   setNight(t) {

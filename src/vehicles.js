@@ -21,6 +21,11 @@ const TYPES = {
     L: 4.95, W: 1.95, wheelR: 0.34, wheelbase: 3.1, belt: 1.16, pillars: [3.55],
     body: [[0, 0.36], [0.02, 1.9], [3.7, 1.95], [4.4, 1.15], [4.92, 1.0], [4.95, 0.36]],
   },
+  sport: {
+    L: 4.4, W: 1.88, wheelR: 0.33, wheelbase: 2.6, belt: 0.92, pillars: [], vmax: 42,
+    body: [[0, 0.3], [0.04, 0.88], [0.6, 0.98], [1.4, 1.2], [2.55, 1.22], [3.3, 0.86], [4.35, 0.68], [4.4, 0.3]],
+  },
+  tractor: { L: 4.0, W: 2.2, wheelR: 0.75, wheelbase: 2.3, vmax: 11, custom: 'tractor' },
 };
 
 const PAINTS = [0x2b2d30, 0xd8d9db, 0x8d9196, 0x1e2a44, 0x7a1e1e, 0xeeeeee, 0x3b4a3a, 0x6b6e72, 0x101012, 0x9c9fa3, 0x2f4f7a];
@@ -61,8 +66,40 @@ function colorize(geo, hex) {
   return geo;
 }
 
+// Tractor: motorkap, cabine, grote achterwielen.
+function buildTractor(t) {
+  const box = (w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return g.toNonIndexed(); };
+  const paint = mergeGeometries([
+    box(1.0, 0.9, 2.0, 0, 1.25, 0.9),   // motorkap
+    box(1.5, 0.12, 1.5, 0, 2.95, -0.6), // dak
+    box(1.6, 0.25, 1.4, 0, 1.25, -0.6), // bodem cabine
+    box(2.3, 0.08, 0.9, 0, 1.85, -1.0), // spatbord
+  ]);
+  paint.computeVertexNormals();
+  const parts = [];
+  const glass = box(1.4, 1.5, 1.4, 0, 2.15, -0.6);
+  parts.push(colorize(glass, 0x15202a));
+  for (const sx of [-1, 1]) {
+    for (const [r, w, z] of [[0.75, 0.5, -0.9], [0.45, 0.3, 1.4]]) {
+      const tire = new THREE.CylinderGeometry(r, r, w, 20); tire.rotateZ(Math.PI / 2); tire.translate(sx * (0.85 + w / 2), r, z);
+      parts.push(colorize(tire.toNonIndexed(), 0x161616));
+      const rim = new THREE.CylinderGeometry(r * 0.55, r * 0.55, w + 0.02, 12); rim.rotateZ(Math.PI / 2); rim.translate(sx * (0.85 + w / 2), r, z);
+      parts.push(colorize(rim.toNonIndexed(), 0xd8c23a));
+    }
+  }
+  const exhaust = new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8); exhaust.translate(0.35, 2.2, 1.5);
+  parts.push(colorize(exhaust.toNonIndexed(), 0x222222));
+  const grille = box(0.9, 0.6, 0.05, 0, 1.2, 1.92);
+  parts.push(colorize(grille, 0x222222));
+  const detail = mergeGeometries(parts);
+  const lights = mergeGeometries([colorize(box(0.2, 0.12, 0.05, -0.35, 1.5, 1.93), 0xfff6e0), colorize(box(0.2, 0.12, 0.05, 0.35, 1.5, 1.93), 0xfff6e0),
+    colorize(box(0.12, 0.12, 0.05, -0.9, 1.75, -1.46), 0xd01818), colorize(box(0.12, 0.12, 0.05, 0.9, 1.75, -1.46), 0xd01818)]);
+  return { paint, detail, lights, ...t };
+}
+
 // Bouwt de geometrie van één autotype: {paint, detail, lights}
 function buildType(t) {
+  if (t.custom === 'tractor') return buildTractor(t);
   const { L, W, wheelR, wheelbase } = t;
   const bevel = { depth: W - 0.16, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 3, curveSegments: 4 };
   const paint = new THREE.ExtrudeGeometry(shapeOf(t.body), bevel);
@@ -183,16 +220,20 @@ export class Vehicles {
   }
 
   // Geparkeerde auto's verspreid over parkeervakken.
-  spawnParked() {
-    const rand = rng(77);
-    const spots = this.world.parkingSpots.filter((s) => s.r < (this.world.isMobile ? 0.28 : 0.42));
-    const max = this.world.isMobile ? 40 : 90;
-    const typeKeys = ['hatch', 'hatch', 'sedan', 'suv', 'suv', 'van'];
+  spawnParked(extra = []) {
+    // elke keer dat je speelt staan de auto's op andere plekken
+    const rand = Math.random;
+    const mobile = this.world.isMobile;
+    const spots = this.world.parkingSpots.filter(() => rand() < (mobile ? 0.28 : 0.42));
+    const max = mobile ? 35 : 80;
+    const typeKeys = ['hatch', 'hatch', 'sedan', 'sedan', 'suv', 'suv', 'van', 'sport'];
     const list = [];
-    for (const s of spots.slice(0, max)) {
-      const type = typeKeys[Math.floor(rand() * typeKeys.length)];
-      list.push(this.addCar(type, s.x, s.z, s.heading, PAINTS[Math.floor(rand() * PAINTS.length)], { parked: true }));
-    }
+    const pick = () => typeKeys[Math.floor(rand() * typeKeys.length)];
+    const paint = () => PAINTS[Math.floor(rand() * PAINTS.length)];
+    for (const s of spots.slice(0, max)) list.push(this.addCar(pick(), s.x, s.z, s.heading, paint(), { parked: true }));
+    // auto's op opritten en erven door het hele dorp
+    for (const d of this.drivewaySpots(mobile ? 25 : 55)) list.push(this.addCar(pick(), d.x, d.z, d.heading, paint(), { parked: true }));
+    for (const e of extra) list.push(this.addCar(e.type, e.x, e.z, e.heading, e.paint, { parked: true, ...e.opts }));
     // per type één set gebundelde meshes
     this.batches = {};
     const tmp = new THREE.Object3D();
@@ -216,6 +257,32 @@ export class Vehicles {
       for (const m of meshes) { m.computeBoundingSphere(); m.castShadow = true; m.receiveShadow = true; this.scene.add(m); }
       this.batches[type] = { meshes };
     }
+  }
+
+  // Willekeurige opritten: tussen een huis en de straat, op verharding.
+  drivewaySpots(n) {
+    const w = this.world;
+    const out = [];
+    const ok = ['erf', 'verhard_open', 'klinkers', 'parkeer', 'verhard_gesloten'];
+    for (let tries = 0; tries < n * 40 && out.length < n; tries++) {
+      const f = w.footprints[Math.floor(Math.random() * w.footprints.length)];
+      if (f.extra) continue;
+      const area = (f.maxX - f.minX) * (f.maxZ - f.minZ);
+      if (area < 60 || area > 900) continue; // gewone woonhuizen
+      const cx = (f.minX + f.maxX) / 2, cz = (f.minZ + f.maxZ) / 2;
+      const st = w.nearestStreet(cx, cz);
+      if (!st || st.dist > 35) continue;
+      const [x, z] = w.spotNear(cx, cz);
+      if (!ok.includes(w.classAt(x, z))) continue;
+      const heading = Math.atan2(st.x - x, st.z - z);
+      // genoeg ruimte voor een auto, en niet te dicht bij een andere
+      const fx = Math.sin(heading), fz = Math.cos(heading);
+      if (w.insideBuilding(x + fx * 2.3, z + fz * 2.3) || w.insideBuilding(x - fx * 2.3, z - fz * 2.3)) continue;
+      if (w.classAt(x + fx * 2.3, z + fz * 2.3) === 'rijbaan') continue; // niet op de weg
+      if (out.some((o) => Math.hypot(o.x - x, o.z - z) < 8) || this.cars.some((c) => Math.hypot(c.x - x, c.z - z) < 6)) continue;
+      out.push({ x, z, heading: heading + (Math.random() < 0.3 ? Math.PI : 0) });
+    }
+    return out;
   }
 
   // stand van een auto op het terrein berekenen
@@ -276,7 +343,8 @@ export class Vehicles {
     const w = this.world;
     const surface = w.classAt(car.x, car.z);
     const onRoad = ['rijbaan', 'klinkers', 'parkeer', 'erf', 'verhard_open', 'verhard_gesloten', 'brug', 'fietspad', 'voetpad'].includes(surface);
-    const vmax = onRoad ? 33 : 13;
+    const top = car.t.vmax ?? 33;
+    const vmax = onRoad || car.type === 'tractor' ? top : Math.min(top, 13);
     const accel = throttle > 0 ? (car.speed < 0 ? 16 : 7.5) : throttle < 0 ? (car.speed > 0 ? 16 : 5) : 0;
     car.speed += throttle * accel * dt;
     if (!throttle) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), (onRoad ? 2.2 : 6) * dt);

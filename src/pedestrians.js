@@ -6,7 +6,9 @@ const SHIRTS = [0x37474f, 0x8d6e63, 0x1565c0, 0xc62828, 0x2e7d32, 0xf9a825, 0x6a
 const PANTS = [0x263238, 0x1a237e, 0x3e2723, 0x424242, 0x5d4037, 0x1b1b1b];
 const HAIR = [0x2a1a10, 0x4a3020, 0x111111, 0x9e9e9e, 0xd7b56d, 0x7a3b1f, 0xdddddd];
 const SKIN = [0xf0c8a0, 0xe0ac80, 0xc68642, 0x8d5524, 0xf5d6b4];
-const LINES = ['Hoi!', 'Goeiedag!', 'Sjoen weer vandaag, hè?', 'Hé, kijk uit!', 'Alaaf!', 'Hoe geit het?'];
+// Gulpense kreten (uit de woordenlijst Gulpens van mijnwoordenboek.nl) met vertaling
+const SHOUTS = [['Toepes!', 'zot'], ['Onnut!', 'viezerik'], ['Behijdskriemer!', 'opschepper'], ['Pliesie!', 'politie']];
+const GREETS = [['Adieje!', 'vaarwel'], ['Joa, joa.', 'ja, ja'], ['Schmiezele, hè?', 'motregen, hè?'], ['Alaaf!', null]];
 
 export class Pedestrians {
   constructor(game, n) {
@@ -55,7 +57,18 @@ export class Pedestrians {
         const [rx, rz] = w.resolve(p.x + (dx / d) * 2.5, p.z + (dz / d) * 2.5, 0.35);
         if (!w.blocked(rx, rz)) { p.x = rx; p.z = rz; }
         p.bubble = 2;
-        if (!p.said) { this.g.ui.toast(LINES[3], 1200); p.said = true; setTimeout(() => (p.said = false), 4000); }
+        if (!p.said) {
+          const [word, nl] = SHOUTS[Math.floor(Math.random() * SHOUTS.length)];
+          this.g.ui.toastDialect(word, nl, 1400);
+          p.said = true; setTimeout(() => (p.said = false), 4000);
+        }
+      } else if (dToPlayer < 2.5 && playerSpeed < 3 && !p.greeted && Math.random() < 0.5) {
+        // groeten als je rustig langsloopt
+        const [word, nl] = GREETS[Math.floor(Math.random() * GREETS.length)];
+        this.g.ui.toastDialect(word, nl, 1400);
+        p.greeted = true; setTimeout(() => (p.greeted = false), 45000);
+      } else if (dToPlayer < 2.5 && !p.greeted) {
+        p.greeted = true; setTimeout(() => (p.greeted = false), 45000);
       }
       p.dist += p.speed * dt;
       if (p.dist >= p.len) {
