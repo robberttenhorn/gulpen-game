@@ -142,6 +142,42 @@
         454.6000000000058,
         -317.79999999998836
       ]
+    },
+    {
+      "id": "kroon",
+      "name": "Brasserie De Kroon",
+      "address": "Markt 1",
+      "x": 190581,
+      "y": 314070,
+      "pos": [
+        50,
+        -12
+      ],
+      "cafe": true
+    },
+    {
+      "id": "neubourg",
+      "name": "Grand Caf\u00e9 Neubourg",
+      "address": "Marktstraat 1",
+      "x": 190590,
+      "y": 314056,
+      "pos": [
+        59,
+        2
+      ],
+      "cafe": true
+    },
+    {
+      "id": "poort",
+      "name": "Gasterij De Poort",
+      "address": "Rosstraat 23",
+      "x": 190486.236,
+      "y": 314062.656,
+      "pos": [
+        -44.763999999995576,
+        -4.6560000000172295
+      ],
+      "cafe": true
     }
   ],
   "generated": "2026-11-07T06:44:02.946Z",

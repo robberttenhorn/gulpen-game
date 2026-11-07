@@ -253,7 +253,7 @@ class Game {
   unlockVehicle(v) { this.vehicles[v] = true; this.updateVehicleButton(); }
 
   availableModes() {
-    if (this.keg) return ['walk'];
+    if (this.keg || this.missions?.active?.noVehicles) return ['walk'];
     if (this.race) return ['skate'];
     const m = ['walk'];
     if (this.vehicles.bike) m.push('bike');
@@ -282,6 +282,7 @@ class Game {
 
   enterCar(car) {
     if (this.keg) { this.ui.toast('Met een vat in je handen? Eerst afleveren!', 2000); return; }
+    if (this.missions?.active?.noVehicles) { this.ui.toast('Je hebt gedronken. Laat die auto staan!', 2200); return; }
     this.cars.activate(car);
     this.car = car;
     car.speed = 0;
@@ -410,7 +411,7 @@ class Game {
 
   setupPoiLabels() {
     for (const p of this.world.meta.pois) {
-      if (p.id === 'ringweg' || p.id === 'volvo') continue;
+      if (p.id === 'ringweg' || p.id === 'volvo' || p.cafe) continue;
       const label = makeLabel(p.name);
       const [x, z] = p.pos;
       label.position.set(x, this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11), z);
@@ -903,6 +904,8 @@ class Game {
     const accel = this.mode === 'walk' ? 12 : this.mode === 'bike' ? 4 : 3.5;
     const decel = this.mode === 'walk' ? 14 : 3;
     p.speed += (want - p.speed) * Math.min(1, (want > p.speed ? accel : decel) * dt);
+    // na een paar pilsjes loop je niet meer helemaal recht
+    if (this.drunk && mag > 0.05) p.heading += Math.sin(this.time * 1.7) * 0.012 * this.drunk;
     if (mag > 0.05) {
       let diff = Math.atan2(dx, dz) - p.heading;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -1047,7 +1050,7 @@ class Game {
     this.camera.lookAt(p.x, p.y + (inCar ? 1.2 : 1.5), p.z);
     if (this.wobble > 0) {
       this.wobble -= dt;
-      this.camera.rotateZ(Math.sin(this.time * 1.3) * Math.min(1, this.wobble / 5) * 0.06);
+      this.camera.rotateZ(Math.sin(this.time * 1.3) * Math.min(1, this.wobble / 5) * 0.06 * (1 + (this.drunk || 0) * 0.6));
     }
     if (this.shake > 0) {
       this.shake -= dt;

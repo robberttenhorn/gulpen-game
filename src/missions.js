@@ -98,6 +98,18 @@ export class Missions {
     const bench = benches[0] || [10, 10];
     add('opa', 'Opa op het benkske', g.world.resolve(bench[0] + 1.2, bench[1] + 0.6, 0.4), { shirt: 0x6d5c4b, pants: 0x4a4a4a, hair: 0xe0e0e0, hat: 'cap', hatColor: 0x3e3e3e });
 
+    // De Razende Reporter op de Markt, met microfoon
+    const rep = add('reporter', 'De Razende Reporter', g.world.spotNear(-6, 14), { shirt: 0x263238, pants: 0x37474f, apron: 0xfdd835, hair: 0x5d4037, hat: 'cap', hatColor: 0xd32f2f });
+    const mic = new THREE.Group();
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.25, 8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshStandardMaterial({ color: 0x9e9e9e, metalness: 0.6 }));
+    head.position.y = 0.15;
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.06, 0.09), new THREE.MeshStandardMaterial({ color: 0xd32f2f }));
+    flag.position.y = 0.07;
+    mic.add(stick, head, flag);
+    mic.position.set(0, -0.68, 0.06);
+    rep.model.userData.parts.armR.add(mic);
+
     Object.values(this.npcs).forEach((n) => { n.active = true; });
     this.refresh();
   }
@@ -118,6 +130,7 @@ export class Missions {
       { id: 'penalty', npc: n.trainer, title: 'Penalty\'s bij FC Gulpen', place: 'Sportpark FC Gulpen', desc: 'Scoor er minstens 3 van de 5.' },
       { id: 'deal', npc: n.jas, title: 'Een schimmig zaakje', place: 'Mariabeeld, Gulperberg', desc: 'Iemand op de Gulperberg heeft een pakketje. Niet te veel vragen stellen.' },
       { id: 'nacht', npc: n.nacht, title: 'De Nachtburgemeester', place: 'Markt (alleen \'s avonds)', desc: 'De Nachtburgemeester is iets kwijt.', nightOnly: true },
+      { id: 'hubertus', npc: n.reporter, title: 'Kroegentocht op de Hubertusmarkt', place: 'Markt (De Razende Reporter)', desc: 'Haal verhalen op in vier cafés rond de Markt en geef daarna een live interview.' },
       { id: 'plat', npc: n.opa, title: 'Plat kalle', place: 'Benkske bij de Markt', desc: 'Opa overhoort je in het Gulpens. Weet jij wat de woorden betekenen?' },
       { id: 'gulperberg', npc: n.wielrenner, title: 'Gulperberg op!', place: 'Voet van de Gulperberg', desc: 'Fiets zo snel mogelijk naar het Mariabeeld op de top.' },
       { id: 'gerst', npc: n.boer, title: 'Gerst voor de brouwerij', place: 'Boerenland aan de rand van het dorp', desc: 'Rij met de tractor een lading gerst naar de Gulpener brouwerij.' },
@@ -159,6 +172,7 @@ export class Missions {
   complete(id, toast) {
     this.done.add(id);
     this.save();
+    this.active?.cleanup?.();
     this.active = null;
     this.g.setTarget(null);
     this.g.ui.toast(toast || 'Klus geklaard!', 3000);
@@ -166,6 +180,7 @@ export class Missions {
   }
 
   fail(text) {
+    this.active?.cleanup?.();
     this.active = null;
     this.g.setTarget(null);
     this.g.collectibles = [];
@@ -182,7 +197,7 @@ export class Missions {
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
-      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat' };
+      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus' };
       const key = Object.keys(n).find((k) => n[k] === npc);
       const mid = missionOf[key];
       const deliverKeg = key === 'waard' && this.active?.id === 'vat';
@@ -201,6 +216,8 @@ export class Missions {
 
   abort() {
     const g = this.g;
+    this.active?.cleanup?.();
+    g.collectibles.forEach((c) => c.cleanup?.());
     if (this.active?.id === 'vat') g.dropKeg();
     if (g.race) g.endRace(false, true);
     if (g.penalty) g.penalty.stop();
@@ -429,6 +446,27 @@ export class Missions {
   // ------------------------------------------------------------ nieuwe Gulpen-klussen
 
   extra = {
+    async reporter(npc, N, ui, g) {
+      const act = this.active?.id === 'hubertus' ? this.active : null;
+      if (act && !act.ready) {
+        await ui.dialog(N, [`Nog ${act.left} kroeg${act.left === 1 ? '' : 'en'} te gaan! Schiet op, over vijf minuten zijn we live!`]);
+        return;
+      }
+      if (act && act.ready) return this.interview(npc, N, ui, g);
+      const a = await ui.dialog(N, [
+        'Hallo hallo! Hier De Razende Reporter, live vanaf de 482e Hubertusmarkt in Gulpen!',
+        'Of nou ja, bijna live. Mijn uitzending begint zo en ik heb nog geen enkel verhaal. Geen tijd, geen tijd!',
+        'Jij gaat voor mij op kroegentocht: Brasserie De Kroon, Herberg De Zwarte Ruiter, Grand Café Neubourg en Gasterij De Poort.',
+        'Bij elke kroeg haal je een bierviltje, drink je een pilsje en hoor je wat de stamgasten over de Hubertusmarkt vertellen.',
+        'Daarna kom je terug, en dan interview ik jou live. En je gaat te voet hè: wie drinkt, rijdt niet!',
+      ], ['Proost, ik ga!', 'Ik moet nog rijden vandaag']);
+      if (a !== 0) { await ui.dialog(N, ['Verstandig! Maar ik zoek wel iemand anders, hoor. Geen tijd, geen tijd!']); return; }
+      await ui.dialog(N, [G('Lope, lope!', 'Lopen, lopen!')]);
+      if (g.mode === 'car') g.exitCar();
+      g.setMode('walk');
+      this.startCrawl();
+    },
+
     async opa(npc, N, ui) {
       // woorden en betekenissen uit de woordenlijst Gulpens (mijnwoordenboek.nl)
       const pool = [
@@ -591,6 +629,112 @@ export class Missions {
       next();
     },
   };
+
+  // ------------------------------------------------------------ kroegentocht Hubertusmarkt
+
+  startCrawl() {
+    const g = this.g;
+    // weetjes over de Hubertusmarkt (bronnen: Regio Online, evenementen.nl, gemeente Gulpen-Wittem)
+    const cafes = [
+      { id: 'kroon', name: 'Brasserie De Kroon', fact: 'Wist je dat de eerste Hubertusmarkt al in 1544 werd gehouden? Dit is dus de 482e keer!' },
+      { id: 'zwarteruiter', name: 'Herberg De Zwarte Ruiter', fact: 'Vanochtend om tien uur begon het met de Hubertusmis in de Sint-Petruskerk. Pas daarna de markt.' },
+      { id: 'neubourg', name: 'Grand Café Neubourg', fact: 'Rond twintig over elf worden bij het gemeentehuis de paarden gezegend. Dat is elk jaar weer een mooi gezicht.' },
+      { id: 'poort', name: 'Gasterij De Poort', fact: 'Er staan zo\'n honderdvijftig kramen. Kleding, streekproducten, en natuurlijk gerookte paling!' },
+    ];
+    const cleanupStalls = g.facades.marketStalls(g.world.isMobile ? 12 : 24);
+    g.tempMarkers = [];
+    const act = {
+      id: 'hubertus', title: 'Kroegentocht op de Hubertusmarkt', noVehicles: true, left: cafes.length, ready: false,
+      desc: 'Loop langs de vier cafés (gele lichtbundels). Bij elk café een bierviltje en een verhaal.',
+      progress: `Bierviltjes 0 / ${cafes.length}`,
+      cleanup: () => { cleanupStalls(); g.drunk = 0; g.tempMarkers = []; g.collectibles.forEach((c) => c.cleanup?.()); g.collectibles = []; },
+    };
+    this.active = act;
+    this.refresh();
+    const coasterGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.02, 24);
+    coasterGeo.rotateX(Math.PI / 2);
+    const coasterMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e1, emissive: 0x6b4d00, emissiveIntensity: 0.25 });
+    g.collectibles = cafes.map((c) => {
+      const f = g.facades.frames[c.id];
+      const poi = g.world.meta.pois.find((p) => p.id === c.id);
+      const [x, z] = f ? g.world.resolve(f.x + f.nx * 2.2, f.z + f.nz * 2.2, 0.4) : g.world.spotNear(...poi.pos);
+      const m = new THREE.Mesh(coasterGeo, coasterMat);
+      m.position.set(x, g.world.groundAt(x, z) + 1.1, z);
+      g.scene.add(m);
+      const beam = g.makeBeam(x, z, 0xf2c14e);
+      const marker = { x, z, color: '#f2c14e', glyph: 'B', done: false };
+      g.tempMarkers.push(marker);
+      const item = {
+        pos: m.position, mesh: m,
+        cleanup: () => g.scene.remove(m, beam),
+        onCollect: async () => {
+          item.cleanup();
+          marker.done = true;
+          g.collectibles = g.collectibles.filter((k) => k !== item);
+          g.player.lockedFor = true;
+          await g.ui.dialog(`Stamgast in ${c.name}`, [
+            'Ah, nog een kroegentocht voor de Hubertusmarkt? Dan moet je dit weten:',
+            c.fact,
+            G('Ee glaas beer!', 'Een glas bier!'),
+          ]);
+          await g.drinkPils();
+          g.drunk = (g.drunk || 0) + 1;
+          g.player.lockedFor = false;
+          act.left--;
+          this.progress(`Bierviltjes ${cafes.length - act.left} / ${cafes.length}`);
+          g.ui.toast(`Bierviltje ${cafes.length - act.left} van ${cafes.length}!`, 1600);
+          if (act.left <= 0) {
+            act.ready = true;
+            act.desc = 'Alle verhalen verzameld. Terug naar De Razende Reporter op de Markt voor het live interview!';
+            this.refresh();
+            g.setTarget(this.npcs.reporter);
+          }
+        },
+      };
+      return item;
+    });
+  }
+
+  async interview(npc, N, ui, g) {
+    // camera van opzij, zodat de reporter en jij samen in beeld staan
+    const ang = Math.atan2(g.player.x - npc.pos.x, g.player.z - npc.pos.z);
+    g.camYaw = ang + Math.PI / 2;
+    g.camDist = 5.5;
+    g.camPitch = 0.08;
+    g.lastManualLook = g.time;
+    document.body.classList.add('live');
+    document.getElementById('live-badge').hidden = false;
+    try {
+      await ui.dialog(N, [
+        'Drie, twee, een... en we zijn LIVE! Goedemiddag Gulpen, hier De Razende Reporter op de Hubertusmarkt!',
+        'Naast mij staat iemand die net een grondige kroegentocht heeft gedaan. Even wat vragen!',
+      ]);
+      const qs = [
+        ['Sinds welk jaar is er een Hubertusmarkt in Gulpen?', ['1544', '1844', '1944'], '1544'],
+        ['Wat gebeurt er rond twintig over elf bij het gemeentehuis?', ['De paarden worden gezegend', 'De burgemeester deelt vlaai uit', 'Er start een optocht'], 'De paarden worden gezegend'],
+        ['Waar begint de dag mee?', ['De Hubertusmis in de Sint-Petruskerk', 'Een mis op de Markt', 'Een mis bij het Mariabeeld'], 'De Hubertusmis in de Sint-Petruskerk'],
+        ['Welke vis wordt er op de markt gerookt verkocht?', ['Paling', 'Haring', 'Zalm'], 'Paling'],
+      ].sort(() => Math.random() - 0.5).slice(0, 3);
+      let good = 0;
+      for (const [q, opts, right] of qs) {
+        const shuffled = opts.slice().sort(() => Math.random() - 0.5);
+        const pick = await ui.dialog(N, [q], shuffled);
+        if (shuffled[pick] === right) { good++; await ui.dialog(N, ['Helemaal goed! Hoor je dat, Gulpen?']); }
+        else await ui.dialog(N, [`Hmm, volgens mij was het: ${right.toLowerCase()}. Dat zijn die pilsjes, denk ik!`]);
+      }
+      await ui.dialog(N, ['En dan nog één vraag: hoeveel pilsjes heb je op?', { name: 'Jij', text: 'Vier. Maar ik ben wel te voet!' }]);
+      if (good >= 2) {
+        await ui.dialog(N, [`${good} van de 3, dat was een topinterview! Dit was De Razende Reporter, live vanaf de Hubertusmarkt in Gulpen!`]);
+        this.complete('hubertus', 'Live op de Hubertusmarkt!');
+      } else {
+        await ui.dialog(N, ['Eh... dat liep niet helemaal lekker. We schakelen even terug naar de studio! Kom straks maar terug voor een herkansing.']);
+        this.fail('Interview mislukt. Praat opnieuw met De Razende Reporter.');
+      }
+    } finally {
+      document.body.classList.remove('live');
+      document.getElementById('live-badge').hidden = true;
+    }
+  }
 
   // ------------------------------------------------------------ onderdelen
 
