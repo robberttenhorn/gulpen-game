@@ -1,0 +1,100 @@
+{
+ "pleister": {
+  "id": "painted_plaster_wall",
+  "size": 2.0,
+  "authors": [
+   "Amal Kumar"
+  ]
+ },
+ "mergel": {
+  "id": "sandstone_blocks_04",
+  "size": 3.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "baksteen_rood": {
+  "id": "red_brick",
+  "size": 1.4,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "baksteen_bruin": {
+  "id": "red_brick_03",
+  "size": 1.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "baksteen_geel": {
+  "id": "yellow_brick",
+  "size": 2.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "grijs": {
+  "id": "grey_plaster",
+  "size": 1.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "leien": {
+  "id": "roof_slates_03",
+  "size": 3.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "pannen_rood": {
+  "id": "roof_tiles",
+  "size": 2.0,
+  "authors": [
+   "Stephan Seeliger"
+  ]
+ },
+ "pannen_antraciet": {
+  "id": "grey_roof_tiles",
+  "size": 3.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "bitumen": {
+  "id": "asphalt_02",
+  "size": 3.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "asfalt": {
+  "id": "asphalt_02",
+  "size": 3.0,
+  "authors": [
+   "Rob Tuytel"
+  ]
+ },
+ "klinkers": {
+  "id": "herringbone_pavement",
+  "size": 2.0,
+  "authors": [
+   "Charlotte Baglioni"
+  ]
+ },
+ "tegels": {
+  "id": "concrete_tiles",
+  "size": 1.85,
+  "authors": [
+   "Dimitrios Savva"
+  ]
+ },
+ "parkeer": {
+  "id": "concrete_pavers",
+  "size": 1.92,
+  "authors": [
+   "Amal Kumar"
+  ]
+ }
+}

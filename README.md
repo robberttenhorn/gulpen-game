@@ -28,7 +28,7 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Klus | Waar |
 | --- | --- |
 | Fiets afstellen: daarna fiets je sneller | Jef Abels Bikes, Rijksweg 113 |
-| Frikandel speciaal: alleen contant, dus eerst muntjes zoeken | Friture An + Piet, Rijksweg 60B |
+| Frikandel super: alleen contant, dus eerst muntjes zoeken | Friture An + Piet, Rijksweg 60B |
 | Bezorgen voor Salma: drie bestellingen op tijd (beloning: Broodje Gulpen) | Grillroom Pizzeria Salma, Rijksweg 60A |
 | Friet bij Zheng: kies je saus | Cafetaria Zheng, Looierstraat 103 |
 | In beslag genomen: skateboard ophalen met een overhoring | Sophianum, Landsraderweg 7 |
@@ -71,8 +71,15 @@ NODE_USE_ENV_PROXY=1 npm run data   # NODE_USE_ENV_PROXY alleen nodig achter een
 | [AHN](https://www.ahn.nl) via PDOK | Hoogtekaart maaiveld | CC0 |
 | [BGT](https://www.pdok.nl) via PDOK | Wegen, water, groen, bomen, bankjes, lantaarnpalen, verkeersborden, sportvelden | CC0 |
 | [NWB](https://www.pdok.nl) (Rijkswaterstaat) via PDOK | Wegennet met straatnamen | CC0 |
+| [Luchtfoto](https://www.beeldmateriaal.nl) (Beeldmateriaal Nederland) via PDOK | Zomerluchtfoto 25 cm: groen, akkers, bos, dakkleuren en het Heuvelland rondom | CC BY 4.0 |
+| [ez-tree](https://github.com/dgreenheck/ez-tree) (Daniel Greenheck) | Boommodellen met schors- en bladtexturen | MIT |
+| [Poly Haven](https://polyhaven.com) | Fototexturen voor baksteen, mergel, pleister, leien, dakpannen, asfalt, klinkers en tegels (namen en makers in `public/data/tex/tex.json`) | CC0 |
 
-Voor de 3D BAG is bronvermelding verplicht (CC BY 4.0). Die staat rechtsonder in beeld.
+Voor de 3D BAG en de luchtfoto is bronvermelding verplicht (CC BY 4.0). Die staat op het laadscherm.
+
+Texturen opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-textures.py` (Python met Pillow).
+Luchtfoto opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-ortho.py` (Python met Pillow).
+Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `node tools/bake-trees.cjs` (Playwright). Zonder `public/data/trees/` maakt de game de bomen zelf, maar laadt dan ~4 MB extra.
 
 ## Naar een ander dorp of andere stad
 
@@ -99,4 +106,6 @@ Vite + Three.js, geen game-engine.
 - Gebouwen krijgen in een shader baksteen, mergelblokken, pleisterwerk, kozijnen met roeden, deuren en dakpannen. 's Avonds gaan ramen branden.
 - Wegen, stoepen (met stoepranden), fietspaden, parkeervakken en water zijn losse meshes uit de BGT-vlakken die het terrein volgen, met herhalende textures.
 - Omgevingsreflecties uit de lucht (auto's, ramen, water) en op de computer een lichte gloed (bloom), vooral 's avonds.
-- Bomen staan per vak van 250 m, geparkeerde auto's en poppetjes zijn gebundeld, zodat het ook op telefoons draait.
+- Bomen staan per vak van 200 m: dichtbij echte boommodellen (ez-tree) die zacht wiegen, veraf eenvoudige bomen. Geparkeerde auto's zijn gebundeld, zodat het ook op telefoons draait.
+- Poppetjes zijn in code gebouwd: één vloeiend model met een skelet (heupen, knieën, ellebogen, nek), gezicht, haar, kleding en hoedjes, met animaties voor lopen, rennen, fietsen, zitten, zwaaien, eten en drinken die zacht in elkaar overlopen.
+- Groen, akkers en daken krijgen hun kleur van de echte luchtfoto. Langs muren ligt een vooraf berekende zachte schaduw. Wolken drijven door de lucht en op de computer zorgt een kleurcorrectie met vignet voor een warmere sfeer.

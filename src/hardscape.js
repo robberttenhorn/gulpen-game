@@ -20,6 +20,16 @@ const CURB_H = 0.14;
 
 export function buildHardscape(world, scene) {
   const tx = makeTextures(world.isMobile);
+  // fototexturen (Poly Haven) als die geladen zijn; de maat volgt de echte afmeting van de foto
+  const layers = { ...LAYERS };
+  const ph = world.photo?.ground;
+  if (ph) {
+    for (const k of ['asfalt', 'klinkers', 'tegels', 'parkeer']) tx[k] = { ...ph[k] };
+    tx.erf = { ...ph.parkeer };
+    // fietspad: rood asfalt
+    tx.fietspad = { ...ph.asfalt, color: new THREE.Color(1.55, 0.62, 0.5) };
+    for (const [cls, l] of Object.entries(layers)) layers[cls] = [l[0], ph[l[0]]?.size ?? (l[0] === 'erf' ? ph.parkeer.size : l[0] === 'fietspad' ? ph.asfalt.size : l[1]), l[2], l[3]];
+  }
   const classes = world.ground.classes;
   const buckets = {};
   const curbs = [];
@@ -37,7 +47,7 @@ export function buildHardscape(world, scene) {
 
   const meshes = [];
   for (const [name, polys] of Object.entries(buckets)) {
-    const [texName, size, lift, offset] = LAYERS[name];
+    const [texName, size, lift, offset] = layers[name];
     const geo = drapePolys(world, polys, lift, size, maxEdge);
     if (!geo) continue;
     const t = tx[texName];
@@ -46,6 +56,8 @@ export function buildHardscape(world, scene) {
       polygonOffset: true, polygonOffsetFactor: offset, polygonOffsetUnits: offset * 2,
     });
     if (t.normalMap) mat.normalScale.set(0.8, 0.8);
+    if (t.color) mat.color.copy(t.color);
+    world.applyAO?.(mat);
     const m = new THREE.Mesh(geo, mat);
     m.receiveShadow = true;
     scene.add(m);

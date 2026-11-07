@@ -15,11 +15,12 @@
   <div id="loading">
     <div class="loading-card">
       <div class="logo">Gulpe!</div>
-      <div class="tagline">Ein daag in Gulpen</div>
+      <div class="tagline">Van de Markt tot de Gulperberg</div>
+      <div class="intro">Loop, fiets of scheur door het echte Gulpen. Help de dorpsgenoten met hun klusjes, haal een frikandel super, proost met een fluitje op de Markt en ontdek wat er achter de gevels gebeurt.</div>
       <div class="bar"><div id="loading-bar"></div></div>
       <div id="loading-text">Gulpen wordt opgebouwd...</div>
       <button id="start-btn" hidden>Speel</button>
-      <div class="sources">Kaartdata: 3D BAG (TU Delft/3DGI, CC BY 4.0), AHN, BGT, NWB en TOP10NL (PDOK)</div>
+      <div class="sources">Kaartdata: 3D BAG (TU Delft/3DGI, CC BY 4.0), luchtfoto Beeldmateriaal Nederland (CC BY 4.0), AHN, BGT, NWB en TOP10NL (PDOK). Bomen: ez-tree (MIT). Texturen: Poly Haven (CC0).</div>
       <div class="hint">WASD of pijltjes om te bewegen, slepen om te kijken, E om te praten of in te stappen, F voor fiets of skateboard, M voor de kaart.<br />Op mobiel: joystick links, slepen rechts, tik op de minikaart voor de grote kaart.</div>
     </div>
   </div>
@@ -28,6 +29,7 @@
     <div id="street-sign"><span id="street-name">Markt</span></div>
 
     <div id="quest-card">
+      <button id="quest-toggle" type="button" aria-label="Opdracht inklappen" aria-expanded="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="quest-label">Opdracht</div>
       <div id="quest-title"></div>
       <div id="quest-desc"></div>
@@ -45,7 +47,7 @@
 
     <div id="toast"></div>
 
-    <div id="race-timer" hidden></div>
+    <div id="race-timer" hidden><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="2.4" fill="none"/><path d="M12 9v4l2.5 2M9.5 2.5h5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><span id="race-timer-text"></span></div>
 
     <div id="live-badge" hidden><span class="dot"></span>LIVE <small>Hubertusmarkt Gulpen</small></div>
 

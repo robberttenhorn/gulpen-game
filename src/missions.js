@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { makeCharacter, makeKeg } from './character.js';
-import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
+import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
 
@@ -45,7 +45,7 @@ export class Missions {
 
     const add = (key, name, spot, look) => (this.npcs[key] = g.addNpc(name, spot, makeCharacter(look)));
     add('monteur', 'De monteur', spotFor('jefabels'), { shirt: 0x2b2b2b, pants: 0x2b3a4a, apron: 0x5a3b22, hair: 0x2a2a2a, hat: 'cap', hatColor: 0xff9800 });
-    add('frituur', 'Achter de toonbank', spotFor('anpiet'), { shirt: 0xffffff, pants: 0x333333, apron: 0xd32f2f, hair: 0x7a5230, hat: 'chef' });
+    add('frituur', 'Mevrouw achter de toonbank', spotFor('anpiet'), { shirt: 0xffffff, pants: 0x333333, apron: 0xd32f2f, hair: 0x7a5230, hairStyle: 'long', female: true });
     add('salma', 'De kok van Salma', spotFor('salma'), { shirt: 0xffffff, pants: 0x222222, apron: 0x2e7d32, hair: 0x1a1a1a });
     add('zheng', 'Achter de toonbank', spotFor('zheng'), { shirt: 0xffffff, pants: 0x222222, apron: 0xb71c1c, hair: 0x111111 });
     add('concierge', 'De conciërge', spotFor('sophianum'), { shirt: 0x546e7a, pants: 0x37474f, hair: 0x9e9e9e });
@@ -78,10 +78,10 @@ export class Missions {
     // ambtsketen los, zodat hij pas weer zichtbaar is als je hem hebt teruggebracht
     const gold = new THREE.MeshStandardMaterial({ color: 0xf2c14e, metalness: 0.95, roughness: 0.2, emissive: 0x3a2a00, emissiveIntensity: 0.3 });
     const keten = new THREE.Group();
-    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 6, 24, Math.PI), gold);
-    arc.position.set(0, 1.45, 0.17); arc.rotation.set(0.2, 0, Math.PI);
-    const medal = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 16), gold);
-    medal.rotation.x = Math.PI / 2; medal.position.set(0, 1.24, 0.24);
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.014, 6, 24, Math.PI), gold);
+    arc.position.set(0, 1.47, 0.07); arc.rotation.set(0.35, 0, Math.PI);
+    const medal = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.012, 16), gold);
+    medal.rotation.x = Math.PI / 2 - 0.25; medal.position.set(0, 1.35, 0.14);
     keten.add(arc, medal);
     this.npcs.nacht.model.userData.parts.body.add(keten);
     keten.visible = this.done.has('nacht');
@@ -99,8 +99,8 @@ export class Missions {
     if (g.farm) add('boer', 'De boer', g.world.resolve(g.farm.x, g.farm.z, 0.5), { shirt: 0x2e5d8a, pants: 0x2b3a4a, hair: 0x8d6e63, hat: 'cap', hatColor: 0x2e7d32, shoes: 0x3e2723 });
     // visser aan de Gulp
     if (g.fishing) add('visser', 'Visser', g.world.resolve(g.fishing.x + 1.4, g.fishing.z + 1.4, 0.4), { shirt: 0x556b2f, pants: 0x3e3e30, hair: 0xbdbdbd, hat: 'cap', hatColor: 0x556b2f });
-    // carnavalsvierder op de Markt
-    add('carnaval', 'Carnavalsvierder', g.world.spotNear(28, -6), { shirt: 0xe53935, pants: 0xfdd835, hair: 0x1e88e5, hat: 'tophat', sash: 0x43a047 });
+    // Prins Carnaval op de Markt, met witte hoed en pauwenveer
+    add('carnaval', 'Prins Carnaval', g.world.spotNear(28, -6), { shirt: 0xe53935, pants: 0xfdd835, hair: 0x3b2a1a, hat: 'prins', sash: 0x43a047, coat: 0xe53935, chain: true });
     // organisator van de Nacht van Gulpen (alleen 's avonds)
     add('organisator', 'Organisator Nacht van Gulpen', g.world.spotNear(-14, 34), { shirt: 0xff9800, pants: 0x263238, hair: 0x4e342e, coat: 0xff9800 });
 
@@ -119,8 +119,10 @@ export class Missions {
     const flag = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.06, 0.09), new THREE.MeshStandardMaterial({ color: 0xd32f2f }));
     flag.position.y = 0.07;
     mic.add(stick, head, flag);
-    mic.position.set(0, -0.68, 0.06);
-    rep.model.userData.parts.armR.add(mic);
+    mic.position.set(0, -0.1, 0.03);
+    rep.model.userData.parts.handR.add(mic);
+    rep.model.userData.handProp = mic; // rechtop houden, arm naar voren
+    rep.model.userData.holdR = true;
 
     // nieuwe winkels en Donny's
     const sp = (id, out = 2.4) => (g.facades.frames[id] ? spotFor(id, out) : null);
@@ -157,7 +159,7 @@ export class Missions {
     const cam = g.addNpc('Cameraman', g.world.resolve(r.pos.x + 3.4, r.pos.z + 1.6, 0.4), makeCharacter({ shirt: 0x424242, pants: 0x212121, hair: 0x111111, hat: 'cap', hatColor: 0x424242 }));
     cam.group.children.forEach((c) => { if (c.isSprite) c.visible = false; }); // geen naambordje
     const tv = makeTvCamera();
-    tv.position.set(0.32, 1.72, 0.12);
+    tv.position.set(0.2, 1.6, 0.1);
     cam.model.userData.parts.body.add(tv);
     cam.pose = 'camera';
     cam.heading = Math.atan2(r.pos.x - cam.pos.x, r.pos.z - cam.pos.z);
@@ -174,7 +176,7 @@ export class Missions {
     const n = this.npcs;
     const items = [
       { id: 'fiets', npc: n.monteur, title: 'Fiets afstellen', place: 'Jef Abels Bikes', desc: 'Laat Jef Abels je fiets afstellen. Daarna fiets je een stuk sneller.' },
-      { id: 'frikandel', npc: n.frituur, title: 'Frikandel speciaal', place: 'Friture An + Piet', desc: 'Alleen contant! Zoek eerst wat muntgeld bij elkaar.' },
+      { id: 'frikandel', npc: n.frituur, title: 'Frikandel super', place: 'Friture An + Piet', desc: 'Alleen contant! Zoek eerst wat muntgeld bij elkaar.' },
       { id: 'salma', npc: n.salma, title: 'Bezorgen voor Salma', place: 'Grillroom Pizzeria Salma', desc: 'Bezorg drie bestellingen op tijd. Beloning: een Broodje Gulpen.' },
       { id: 'zheng', npc: n.zheng, title: 'Friet bij Zheng', place: 'Cafetaria Zheng', desc: 'Een patatje halen. Maar met welke saus?' },
       { id: 'skateboard', npc: n.concierge, title: 'In beslag genomen', place: 'Sophianum', desc: 'Haal je skateboard op bij de conciërge. Eerst een overhoring.' },
@@ -350,23 +352,23 @@ export class Missions {
 
     async frituur(npc, N, ui, g) {
       if (this.active?.id === 'frikandel' && this.active.coinsDone) {
-        await ui.dialog(N, ['Ah, met gepast geld zelfs. Mooi zo!', 'Eén frikandel speciaal: curry, mayo en uitjes. Smakelijk!']);
+        await ui.dialog(N, [G('Hoi sjat!', 'Hoi schat!'), 'Ah, met gepast geld zelfs. Mooi zo!', 'Eén frikandel super, alsjeblieft.', 'Lekker jong!']);
         await g.eat(makeFrikandel(), 4);
         g.player.boost = 60;
-        this.complete('frikandel', 'Frikandel speciaal! Je kunt een minuut lang sprinten.');
+        this.complete('frikandel', 'Frikandel super! Je kunt een minuut lang sprinten.');
         return;
       }
       if (this.active?.id === 'frikandel') {
-        await ui.dialog(N, ['Nog geen muntgeld gevonden? Kijk eens rond in de buurt.']);
+        await ui.dialog(N, [G('Hoi sjat!', 'Hoi schat!'), 'Nog geen muntgeld gevonden? Kijk eens rond in de buurt.']);
         return;
       }
       await ui.dialog(N, [
-        G('Welkom in de frieteboet!', 'Welkom in de friture!'),
+        G('Hoi sjat!', 'Hoi schat!'),
         'Wat mag het zijn?',
-        { name: 'Jij', text: 'Een frikandel speciaal graag. Kan ik pinnen?' },
+        { name: 'Jij', text: 'Een frikandel super graag. Kan ik pinnen?' },
         'Pinnen? Nee hoor, hier is het alleen contant. Al sinds jaar en dag!',
       ]);
-      this.setActive('frikandel', 'Alleen contant', 'Zoek losse munten in de buurt. Volg de gele lichtbundels.', '0 / 4 munten');
+      this.setActive('frikandel', 'Alleen contant', 'Zoek losse munten in de buurt. Ze staan als gele punten op de kaart.', '0 / 4 munten');
       this.spawnCoins();
     },
 
@@ -520,7 +522,7 @@ export class Missions {
       ], ['Oké, geef maar', 'Nee, dat zit me niet lekker']);
       if (a !== 0) { await ui.dialog(N, ['Dan heb je mij nooit gezien.']); return; }
       this.setActive('deal', 'Een schimmig zaakje', 'Breng het pakketje snel naar het adres. Niet treuzelen!', 'Pakketje 1 / 1');
-      g.holdProp(makePackage());
+      g.holdProp(makeShadyPackage());
       this.active.cleanup = () => g.dropProp();
       this.deliveries('deal', 1, async () => {
         await ui.dialog('Bij de deur', ['Ah, eindelijk! Laat eens kijken...']);
@@ -565,7 +567,7 @@ export class Missions {
         return;
       }
       const a = await ui.dialog(N, [
-        'Psst. Kom eens even mee naar binnen. Ik moet je iets laten zien.',
+        'Psst. Kom eens even mee naar binnen. Ik moet je iets laten zien. Het offerblok staat vooraan bij het middenpad.',
         'Je kent het verhaal toch wel van deken Haffmans? Van 1984 tot 2006 de baas in deze kerk.',
         'Volgens de krant en een heel boek ging er bijna twee miljoen euro uit de armenkas. Naar dure auto\'s, dure vakanties en rekeningen in het buitenland.',
         'Hij is in 2007 overleden voordat het ooit voor de rechter kwam, dus bewezen is het nooit. Maar in Gulpen wordt er nog steeds over gepraat, kan ik je vertellen.',
@@ -574,7 +576,7 @@ export class Missions {
       const kerk = g.interiors.room('kerk');
       await new Promise((resolve) => {
         g.enterInterior(kerk, {
-          triggers: [{ x: kerk.offerblok.x, z: kerk.offerblok.z, r: 1.6, label: 'Bekijk het offerblok', action: () => { kerk.activeTriggers = []; resolve(); } }],
+          triggers: [{ x: kerk.offerblok.x, z: kerk.offerblok.z, r: kerk.offerblok.r, label: 'Bekijk het offerblok', action: () => { kerk.activeTriggers = []; resolve(); } }],
         });
       });
       g.player.lockedFor = true;
@@ -848,7 +850,7 @@ export class Missions {
       g.setMode('walk');
       const n = g.world.isMobile ? 5 : 6;
       g.startPolonaise(n);
-      this.setActive('polonaise', 'Polonaise door Gulpe', 'Loop naar de roze markeringen op de kaart. De feestgangers lopen dan achter je aan. Breng ze naar de Markt.', `0 / ${n} feestgangers`);
+      this.setActive('polonaise', 'Polonaise door Gulpe', 'De feestgangers staan als roze punten op de kaart. Loop erheen, dan lopen ze achter je aan. Breng ze naar de Markt.', `0 / ${n} feestgangers`);
       const markt = g.world.spotNear(20, 0);
       g.setDestination(markt, 300, async () => {
         g.fx.confetti(markt[0], g.world.groundAt(...markt) + 3, markt[1], 220);
@@ -1019,7 +1021,7 @@ export class Missions {
       g.sfx?.play('bells');
       await g.enterInterior(kerk, {
         triggers: [{
-          x: kerk.coffeeTable.x, z: kerk.coffeeTable.z, r: 1.6, label: 'Zet de vlaaien op de koffietafel',
+          x: kerk.coffeeTable.x, z: kerk.coffeeTable.z, r: kerk.coffeeTable.r, label: 'Zet de vlaaien op de koffietafel',
           action: async () => {
             kerk.activeTriggers = [];
             g.fragile = null;
@@ -1276,7 +1278,7 @@ export class Missions {
     g.scene.add(chain);
     const beam = g.makeBeam(x, z, 0xf2c14e);
     g.collectibles = [{
-      pos: chain.position, mesh: chain, cleanup: () => g.scene.remove(chain, beam),
+      pos: chain.position, mesh: chain, glyph: '!', cleanup: () => g.scene.remove(chain, beam),
       onCollect: () => {
         g.scene.remove(chain, beam);
         g.collectibles = [];

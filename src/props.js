@@ -76,6 +76,34 @@ export function makePackage() {
   g.add(box(0.34, 0.22, 0.26, mat(0x9b6b3d, { roughness: 0.95 }), 0, 0.11, 0));
   g.add(box(0.35, 0.03, 0.06, mat(0xd8c99a, { roughness: 0.4 }), 0, 0.225, 0));
   g.add(box(0.06, 0.225, 0.265, mat(0xd8c99a, { roughness: 0.4 }), 0, 0.112, 0));
+  g.userData.carrySide = true;
+  return shadows(g);
+}
+
+// Schimmig pakketje: in zwart vuilniszakplastic, kriskras dichtgeplakt met zilvertape.
+// Iets uitvergroot en aan de zijkant gedragen, zodat je het van achteren ziet.
+export function makeShadyPackage() {
+  const g = new THREE.Group();
+  const plastic = mat(0x141416, { roughness: 0.35, metalness: 0.1 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.24, 0.26, 3, 2, 3), plastic);
+  // een beetje gekreukt
+  const pos = body.geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const k = 1 + Math.sin(i * 12.9898) * 0.06;
+    pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) * (1 + Math.cos(i * 4.1) * 0.05), pos.getZ(i) * k);
+  }
+  body.geometry.computeVertexNormals();
+  body.position.y = 0.12;
+  g.add(body);
+  const tape = mat(0xb9bec4, { roughness: 0.3, metalness: 0.6 });
+  g.add(box(0.37, 0.05, 0.285, tape, 0, 0.12, 0));
+  const t1 = box(0.05, 0.27, 0.29, tape, 0.06, 0.12, 0); t1.rotation.y = 0.5; g.add(t1);
+  const t2 = box(0.05, 0.27, 0.29, tape, -0.06, 0.12, 0); t2.rotation.y = -0.5; g.add(t2);
+  // knoop van de zak bovenop
+  const knot = cyl(0.025, 0.06, 0.08, plastic, 0, 0.27, 0, 10);
+  g.add(knot);
+  g.scale.setScalar(1.6);
+  g.userData.carrySide = true;
   return shadows(g);
 }
 
@@ -303,6 +331,7 @@ export function makeMeatPackage() {
   const g = new THREE.Group();
   g.add(box(0.3, 0.12, 0.2, mat(0xf3efe3, { roughness: 0.95 }), 0, 0.06, 0));
   g.add(box(0.31, 0.02, 0.04, mat(0xc62828), 0, 0.12, 0));
+  g.userData.carrySide = true;
   return shadows(g);
 }
 

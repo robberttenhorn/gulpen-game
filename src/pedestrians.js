@@ -5,6 +5,8 @@ import { rng } from './world.js';
 const SHIRTS = [0x37474f, 0x8d6e63, 0x1565c0, 0xc62828, 0x2e7d32, 0xf9a825, 0x6a1b9a, 0xeeeeee, 0x212121, 0xad1457, 0x00838f];
 const PANTS = [0x263238, 0x1a237e, 0x3e2723, 0x424242, 0x5d4037, 0x1b1b1b];
 const HAIR = [0x2a1a10, 0x4a3020, 0x111111, 0x9e9e9e, 0xd7b56d, 0x7a3b1f, 0xdddddd];
+const COATS = [0x3b3f45, 0x5a4632, 0x1f2d3d, 0x6b2e2e, 0x4b5d3a];
+const EYES = [0x4a3222, 0x2f5d8a, 0x3f6b3a, 0x2a1a10];
 const SKIN = [0xf0c8a0, 0xe0ac80, 0xc68642, 0x8d5524, 0xf5d6b4];
 // Gulpense kreten (uit de woordenlijst Gulpens van mijnwoordenboek.nl) met vertaling
 const SHOUTS = [['Toepes!', 'zot'], ['Onnut!', 'viezerik'], ['Behijdskriemer!', 'opschepper'], ['Pliesie!', 'politie']];
@@ -18,10 +20,19 @@ export class Pedestrians {
     const rand = rng(31);
     const roads = this.world.roads.filter(([, l]) => l.length >= 4);
     for (let i = 0; i < n && roads.length; i++) {
+      const female = rand() < 0.5;
+      const old = rand() < 0.25;
+      const hair = old ? (rand() < 0.5 ? 0x9e9e9e : 0xdddddd) : HAIR[Math.floor(rand() * 5)];
       const model = makeCharacter({
+        female,
         shirt: SHIRTS[Math.floor(rand() * SHIRTS.length)], pants: PANTS[Math.floor(rand() * PANTS.length)],
-        hair: HAIR[Math.floor(rand() * HAIR.length)], skin: SKIN[Math.floor(rand() * SKIN.length)],
-        hat: rand() < 0.15 ? 'cap' : null, hatColor: SHIRTS[Math.floor(rand() * SHIRTS.length)], scale: 0.92 + rand() * 0.14,
+        hair, skin: SKIN[Math.floor(rand() * SKIN.length)],
+        hairStyle: female ? (rand() < 0.3 ? 'bun' : 'long') : (old && rand() < 0.5 ? 'bald' : 'short'),
+        sleeves: rand() < 0.55 ? 'long' : 'short', beard: !female && rand() < 0.18, glasses: rand() < (old ? 0.5 : 0.12),
+        coat: rand() < 0.18 ? COATS[Math.floor(rand() * COATS.length)] : null,
+        eyes: EYES[Math.floor(rand() * EYES.length)],
+        hat: rand() < 0.12 ? 'cap' : null, hatColor: SHIRTS[Math.floor(rand() * SHIRTS.length)],
+        scale: (female ? 0.93 : 0.98) + rand() * 0.08,
       });
       model.traverse((o) => { if (o.isMesh) o.castShadow = !this.world.isMobile; });
       this.g.scene.add(model);
@@ -89,7 +100,11 @@ export class Pedestrians {
       if (far) continue;
       p.model.position.set(p.x, w.groundAt(p.x, p.z), p.z);
       p.model.rotation.y = p.heading;
-      p.model.userData.animate(dt, p.speed, 'walk');
+      // verder weg minder vaak animeren
+      p.animDt = (p.animDt || 0) + dt;
+      const every = dToPlayer > 90 ? 4 : dToPlayer > 45 ? 2 : 1;
+      p.animTick = ((p.animTick || 0) + 1) % every;
+      if (p.animTick === 0) { p.model.userData.animate(p.animDt, p.speed, 'walk'); p.animDt = 0; }
     }
   }
 }

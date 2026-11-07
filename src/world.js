@@ -10,6 +10,62 @@ async function fetchJson(name) {
   if (!r.ok) throw new Error(`Kan ${name} niet laden`);
   return r.json();
 }
+function loadTexture(name) {
+  return new Promise((res) => new THREE.TextureLoader().load(DATA + name, (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.flipY = false;
+    t.anisotropy = 8;
+    res(t);
+  }, undefined, () => res(null)));
+}
+// Fototexturen (Poly Haven, CC0): muren en daken als één texture-array voor de gevelshader,
+// bestrating als losse texturen.
+const WALL_LAYERS = ['pleister', 'mergel', 'baksteen_rood', 'baksteen_bruin', 'baksteen_geel', 'grijs', 'leien', 'pannen_rood', 'pannen_antraciet', 'bitumen'];
+async function loadImage(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('kan ' + url + ' niet laden');
+  return createImageBitmap(await r.blob());
+}
+async function loadPhotoTextures(isMobile) {
+  const meta = await fetchJson('tex/tex.json');
+  const sfx = isMobile ? '_m' : '';
+  const S = isMobile ? 512 : 1024, SN = S / 2;
+  const toArray = async (kind, size, srgb) => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    const data = new Uint8Array(size * size * 4 * WALL_LAYERS.length);
+    const avg = [];
+    const imgs = await Promise.all(WALL_LAYERS.map((n) => loadImage(`${DATA}tex/${meta[n].id}_${kind}${sfx}.jpg`)));
+    imgs.forEach((img, i) => {
+      ctx.drawImage(img, 0, 0, size, size);
+      const px = ctx.getImageData(0, 0, size, size).data;
+      data.set(px, i * size * size * 4);
+      // gemiddelde helderheid (lineair), voor het mengen met de luchtfoto op daken
+      let sum = 0;
+      for (let k = 0; k < px.length; k += 64) sum += Math.pow(px[k] / 255, 2.2) * 0.3 + Math.pow(px[k + 1] / 255, 2.2) * 0.55 + Math.pow(px[k + 2] / 255, 2.2) * 0.15;
+      avg.push(sum / (px.length / 64));
+    });
+    const t = new THREE.DataArrayTexture(data, size, size, WALL_LAYERS.length);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.generateMipmaps = true;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.anisotropy = 8;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.needsUpdate = true;
+    return { t, avg };
+  };
+  const [d, n] = await Promise.all([toArray('d', S, true), toArray('n', SN, false)]);
+  const ground = {};
+  await Promise.all(['asfalt', 'klinkers', 'tegels', 'parkeer'].map(async (k) => {
+    const [map, normalMap] = await Promise.all([loadTexture(`tex/${meta[k].id}_d${sfx}.jpg`), loadTexture(`tex/${meta[k].id}_n${sfx}.jpg`)]);
+    for (const t of [map, normalMap]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.flipY = true; }
+    normalMap.colorSpace = THREE.NoColorSpace;
+    ground[k] = { map, normalMap, size: meta[k].size };
+  }));
+  return { meta, wallD: d.t, wallN: n.t, avg: d.avg, sizes: WALL_LAYERS.map((k) => meta[k].size), ground };
+}
 async function fetchBin(name) {
   const r = await fetch(DATA + name).catch(() => null);
   if (r && r.ok) return r.arrayBuffer();
@@ -46,6 +102,9 @@ export class World {
     const step = (p, t) => this.onProgress(p, t);
     step(0.02, 'Kaartgegevens laden...');
     this.meta = await fetchJson('meta.json');
+    // luchtfoto's (PDOK, Beeldmateriaal Nederland) alvast laden
+    const photoP = loadPhotoTextures(isMobile).catch((e) => { console.warn('texturen', e); return null; });
+    const orthoP = Promise.all([loadTexture(isMobile ? 'ortho-core-m.jpg' : 'ortho-core.jpg'), loadTexture('ortho-wide.jpg')]);
     const [coreBuf, wideBuf] = await Promise.all([fetchBin('terrain-core.bin'), fetchBin('terrain-wide.bin')]);
     this.coreRaw = new Float32Array(coreBuf);
     this.wideRaw = new Float32Array(wideBuf);
@@ -56,18 +115,22 @@ export class World {
     this.buildGroundTexture();
 
     step(0.3, 'Het Heuvelland vormen...');
+    const [orthoCore, orthoWide] = await orthoP;
+    this.setupOrtho(orthoCore, orthoWide);
     this.buildTerrainMeshes();
 
     step(0.45, '1.872 huizen neerzetten...');
-    const [bBuf, footprints] = await Promise.all([fetchBin('buildings.bin'), fetchJson('footprints.json')]);
+    const [bBuf, footprints, photo] = await Promise.all([fetchBin('buildings.bin'), fetchJson('footprints.json'), photoP]);
+    this.photo = photo;
     this.buildBuildings(bBuf);
     this.setupCollision(footprints);
+    this.buildAO();
 
     step(0.7, 'Bomen planten...');
     this.objects = await fetchJson('objects.json');
     this.roads = await fetchJson('roads.json');
     this.buildStreetIndex();
-    this.buildTrees();
+    await this.buildTrees();
     this.buildProps();
 
     step(0.85, 'Stoepen en straten leggen...');
@@ -226,6 +289,90 @@ export class World {
     return (a00 * (1 - fx) + a10 * fx) * (1 - fz) + (a01 * (1 - fx) + a11 * fx) * fz;
   }
 
+  // Luchtfoto als ondergrond voor groen en akkers, en als kleur voor de daken.
+  setupOrtho(core, wide) {
+    const { origin: o, core: c, wide: w } = this.meta;
+    const dummy = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1);
+    dummy.needsUpdate = true;
+    this.ortho = {
+      uOrtho: { value: core || dummy },
+      uOrthoBox: { value: new THREE.Vector4(c.minX - o.x, -(c.maxY - o.y), c.maxX - c.minX, c.maxY - c.minY) },
+      uOrthoOn: { value: core ? 1 : 0 },
+      uAO: { value: dummy },
+    };
+    this.orthoWide = wide;
+    this.wideOrthoBox = [w.minX - o.x, -(w.maxY - o.y), w.maxX - w.minX, w.maxY - w.minY];
+  }
+
+  // Zachte schaduw op de grond langs muren (ambient occlusion), vooraf berekend uit de gebouwvlakken.
+  // Werkt ook op telefoons: het is gewoon een extra grijswaardenkaart.
+  buildAO() {
+    const b = this.coreBox;
+    const res = 1; // pixels per meter
+    const W = Math.round((b.x1 - b.x0) * res), H = Math.round((b.z1 - b.z0) * res);
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#000';
+    for (const f of this.footprints) {
+      if (f.extra) continue;
+      ctx.beginPath();
+      f.ring.forEach(([x, z], i) => { const px = (x - b.x0) * res, py = (z - b.z0) * res; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); });
+      ctx.closePath(); ctx.fill();
+    }
+    const src = ctx.getImageData(0, 0, W, H).data;
+    let a = new Float32Array(W * H), t = new Float32Array(W * H);
+    for (let i = 0; i < W * H; i++) a[i] = src[i * 4] / 255;
+    const inside = a.map((v) => (v < 0.5 ? 1 : 0));
+    // drie keer een vervaging: bijna gaussisch, ongeveer 2 meter breed
+    const r = 2;
+    for (let pass = 0; pass < 3; pass++) {
+      for (let y = 0; y < H; y++) {
+        let acc = 0; const row = y * W;
+        for (let x = -r; x <= r; x++) acc += a[row + Math.min(W - 1, Math.max(0, x))];
+        for (let x = 0; x < W; x++) {
+          t[row + x] = acc / (2 * r + 1);
+          acc += a[row + Math.min(W - 1, x + r + 1)] - a[row + Math.max(0, x - r)];
+        }
+      }
+      for (let x = 0; x < W; x++) {
+        let acc = 0;
+        for (let y = -r; y <= r; y++) acc += t[Math.min(H - 1, Math.max(0, y)) * W + x];
+        for (let y = 0; y < H; y++) {
+          a[y * W + x] = acc / (2 * r + 1);
+          acc += t[Math.min(H - 1, y + r + 1) * W + x] - t[Math.max(0, y - r) * W + x];
+        }
+      }
+    }
+    const out = new Uint8Array(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      const v = inside[i] ? 255 : Math.round(255 * Math.min(1, 0.35 + a[i] * 0.65 + (1 - a[i]) * 0.0));
+      out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = v; out[i * 4 + 3] = 255;
+    }
+    const tex = new THREE.DataTexture(out, W, H);
+    tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    this.ortho.uAO.value = tex;
+  }
+
+  // Zelfde schaduwkaart op andere materialen (stoepen, wegen) zetten.
+  applyAO(mat) {
+    const ortho = this.ortho, prev = mat.onBeforeCompile;
+    mat.onBeforeCompile = (shader, r) => {
+      prev?.call(mat, shader, r);
+      shader.uniforms.uAO = ortho.uAO;
+      shader.uniforms.uOrthoBox = ortho.uOrthoBox;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vAOxz;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAOxz = (modelMatrix * vec4(position, 1.0)).xz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vAOxz;\nuniform sampler2D uAO;\nuniform vec4 uOrthoBox;')
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb *= texture2D(uAO, (vAOxz - uOrthoBox.xy) / uOrthoBox.zw).r;');
+    };
+    mat.customProgramCacheKey = () => 'ao' + (prev ? prev.toString().length : 0);
+  }
+
   buildGroundTexture() {
     const b = this.coreBox;
     const W = b.x1 - b.x0, H = b.z1 - b.z0;
@@ -336,13 +483,19 @@ export class World {
     geo.setIndex(gridIndex(gw, gh));
     geo.computeVertexNormals();
     const mat = new THREE.MeshStandardMaterial({ map: this.groundTexture, roughness: 0.95, metalness: 0 });
+    const ortho = this.ortho;
     mat.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, ortho);
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec2 vWorld;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWorld = position.xz;');
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
           varying vec2 vWorld;
+          uniform sampler2D uOrtho;
+          uniform vec4 uOrthoBox;
+          uniform float uOrthoOn;
+          uniform sampler2D uAO;
           float gh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
           float vnoise(vec2 p){
             vec2 i = floor(p), f = fract(p);
@@ -375,6 +528,12 @@ export class World {
             float blade = mix(1.0, 0.88 + fine * 0.24, green * (1.0 - smoothstep(0.3, 1.2, fwidth(vWorld.x * 23.0))));
             diffuseColor.rgb *= pave * grit * grass * blade;
             diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.05, 1.08, 0.9), green * (gn - 0.5));
+            // groen, akkers en bos: de echte luchtfoto, met fijne grasruis voor dichtbij
+            vec3 oc = texture2D(uOrtho, (vWorld - uOrthoBox.xy) / uOrthoBox.zw).rgb;
+            oc = mix(vec3(dot(oc, vec3(0.3, 0.55, 0.15))), oc, 1.12) * 1.12;
+            float soft = (1.0 - paved) * uOrthoOn;
+            diffuseColor.rgb = mix(diffuseColor.rgb, oc * blade * mix(1.0, 0.92 + fine * 0.16, green), soft);
+            diffuseColor.rgb *= texture2D(uAO, (vWorld - uOrthoBox.xy) / uOrthoBox.zw).r;
           }`);
     };
     const mesh = new THREE.Mesh(geo, mat);
@@ -422,9 +581,17 @@ export class World {
     const wgeo = new THREE.BufferGeometry();
     wgeo.setAttribute('position', new THREE.BufferAttribute(wpos, 3));
     wgeo.setAttribute('color', new THREE.BufferAttribute(wcol, 3));
+    // luchtfoto van het Heuvelland eromheen
+    const [ox0, oz0, oW, oH] = this.wideOrthoBox;
+    const wuv = new Float32Array(W2 * H2 * 2);
+    for (let i = 0; i < W2 * H2; i++) { wuv[i * 2] = (wpos[i * 3] - ox0) / oW; wuv[i * 2 + 1] = (wpos[i * 3 + 2] - oz0) / oH; }
+    wgeo.setAttribute('uv', new THREE.BufferAttribute(wuv, 2));
     wgeo.setIndex(gridIndex(W2, H2));
     wgeo.computeVertexNormals();
-    const wmesh = new THREE.Mesh(wgeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+    const wmat = this.orthoWide
+      ? new THREE.MeshStandardMaterial({ map: this.orthoWide, roughness: 1, color: 0xf2f2f2 })
+      : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+    const wmesh = new THREE.Mesh(wgeo, wmat);
     wmesh.receiveShadow = false;
     this.scene.add(wmesh);
 
@@ -492,8 +659,18 @@ export class World {
 
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
     const night = this.nightUniform;
+    const ortho = this.ortho;
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uNight = night;
+      Object.assign(shader.uniforms, ortho);
+      const ph = this.photo;
+      const dummyArr = new THREE.DataArrayTexture(new Uint8Array([128, 128, 255, 255]), 1, 1, 1);
+      dummyArr.needsUpdate = true;
+      shader.uniforms.uTexOn = { value: ph ? 1 : 0 };
+      shader.uniforms.uWallD = { value: ph ? ph.wallD : dummyArr };
+      shader.uniforms.uWallN = { value: ph ? ph.wallN : dummyArr };
+      shader.uniforms.uTexSize = { value: ph ? ph.sizes : new Array(10).fill(1) };
+      shader.uniforms.uTexAvg = { value: ph ? ph.avg : new Array(10).fill(0.1) };
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>
           attribute float btype;
@@ -504,6 +681,7 @@ export class World {
           flat varying float vSeed;
           flat varying vec3 vWall;
           varying vec3 vWN;
+          varying vec2 vWXZ;
           float pickN(float h, float n){ return floor(h * n); }`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vB = uv; // gevels: uv.x = meters vanaf het begin van de gevel, uv.y = hoogte boven maaiveld
@@ -513,6 +691,7 @@ export class World {
           float age = mod(battr.x, 4.0);
           vWall = vec3(battr.y * 0.15, battr.z * 0.15, battr.w * 0.25);
           vWN = normal;
+          vWXZ = position.xz;
           float h = fract(vSeed * 7.13);
           // muren: 0 wit pleister, 1 mergel, 2 rode baksteen, 3 bruine baksteen, 4 gele baksteen, 5 grijs
           if (btype < 0.5) {
@@ -535,6 +714,15 @@ export class World {
           flat varying float vSeed;
           varying vec3 vWN;
           flat varying vec3 vWall;
+          varying vec2 vWXZ;
+          uniform sampler2D uOrtho;
+          uniform vec4 uOrthoBox;
+          uniform float uOrthoOn;
+          uniform float uTexOn;
+          uniform highp sampler2DArray uWallD;
+          uniform highp sampler2DArray uWallN;
+          uniform float uTexSize[10];
+          uniform float uTexAvg[10];
           vec3 srgb(vec3 c){ return pow(c, vec3(2.2)); }
           float hash2(vec2 p){ p = mod(p, 997.0); return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
           float vnoise(vec2 p){
@@ -566,6 +754,9 @@ export class World {
         .replace('#include <color_fragment>', `#include <color_fragment>
           vec3 base;
           float glass = 0.0;
+          float opening = 0.0;
+          vec3 tn = vec3(0.0, 0.0, 1.0);
+          float tnAmt = 0.0;
           float lit = 0.0;
           float rough = 0.85;
           if (vType < 0.5) {
@@ -588,6 +779,16 @@ export class World {
               base = masonry(wp, vec2(0.22, 0.0625), 0.011, srgb(vec3(0.78, 0.65, 0.46)), srgb(vec3(0.8, 0.78, 0.72)), 0.2, vSeed * 50.0);
             } else {
               base = srgb(vec3(0.68, 0.67, 0.64)) * (0.94 + vnoise(wp * 3.0) * 0.08);
+            }
+            // fototextuur (per gebouw een iets andere tint)
+            if (uTexOn > 0.5) {
+              int L = int(vMat + 0.5);
+              vec2 tuv = (wp + vec2(fract(vSeed * 91.7) * 7.0, 0.0)) / uTexSize[L];
+              vec3 tc = texture(uWallD, vec3(tuv, float(L))).rgb;
+              if (L == 0) tc *= 1.18; // wit pleisterwerk
+              base = tc * (0.92 + fract(vSeed * 17.3) * 0.16);
+              tn = texture(uWallN, vec3(tuv, float(L))).xyz * 2.0 - 1.0;
+              tnAmt = 1.0;
             }
             // plint van hardsteen
             float plint = 1.0 - smoothstep(vWall.x + 0.5, vWall.x + 0.52, hgt);
@@ -620,6 +821,7 @@ export class World {
               float panel = boxMask(fract(vec2(f.x * 8.0 - 2.88, f.y * 3.0)), vec2(0.15), vec2(0.85), aa * 6.0);
               base = mix(base, srgb(vec3(0.88, 0.86, 0.82)), dframe * allowed);
               base = mix(base, dc * mix(0.75, 1.0, panel), door * allowed);
+              opening = clamp((door + dframe) * allowed, 0.0, 1.0);
               rough = mix(rough, 0.5, door * allowed);
             } else {
               vec2 lo = vec2(0.32, 0.32), hi = vec2(0.68, 0.84);
@@ -641,7 +843,9 @@ export class World {
               inside *= mix(1.0, 0.6, reveal);
               base = mix(base, inside, glass);
               lit = glass * step(r, 0.58) * uNight;
+              opening = clamp((win + frame + sill) * allowed, 0.0, 1.0);
             }
+            tnAmt *= (1.0 - opening) * (1.0 - plint);
             // vuil en schaduw onderaan de gevel
             base *= mix(0.72, 1.0, smoothstep(vWall.x, vWall.x + 1.2, hgt));
             rough = mix(rough, 0.18, glass);
@@ -650,8 +854,10 @@ export class World {
             vec2 dir = normalize(vec2(vWN.x, -vWN.z) + 1e-4);
             vec2 perp = vec2(-dir.y, dir.x);
             vec2 rp = vec2(dot(vB, perp), dot(vB, dir));
+            float avgL;
             if (vMat < 10.5) {
               base = masonry(rp, vec2(0.25, 0.17), 0.008, srgb(vec3(0.3, 0.32, 0.36)), srgb(vec3(0.16, 0.17, 0.19)), 0.22, vSeed * 30.0);
+              avgL = dot(mix(srgb(vec3(0.16, 0.17, 0.19)), srgb(vec3(0.3, 0.32, 0.36)), 0.82), vec3(0.333));
               rough = 0.6;
             } else if (vMat < 11.5 || vMat < 12.5) {
               vec3 tc = vMat < 11.5 ? srgb(vec3(0.55, 0.25, 0.17)) : srgb(vec3(0.25, 0.25, 0.26));
@@ -664,17 +870,42 @@ export class World {
               float lap = mix(0.7, 1.0, smoothstep(0.0, 0.18 + w.y, fq.y));
               float v = 1.0 + (hash2(floor(q) + vSeed * 9.0) - 0.5) * 0.25;
               base = tc * mix(curve * lap * v, 0.85, far);
+              avgL = dot(tc, vec3(0.333)) * 0.85;
               rough = 0.7;
             } else {
               base = srgb(vec3(0.33, 0.33, 0.32)) * (0.9 + vnoise(vB * 4.0) * 0.15);
+              avgL = dot(srgb(vec3(0.33, 0.33, 0.32)), vec3(0.333)) * 0.97;
               rough = 0.95;
+            }
+            if (uTexOn > 0.5) {
+              int L = 6 + int(vMat - 10.0 + 0.5);
+              // soort dak kiezen op basis van de luchtfoto: roodachtig = rode pannen, anders leien of antraciet
+              if (uOrthoOn > 0.5 && vMat < 12.5) {
+                vec3 o0 = textureLod(uOrtho, (vWXZ - uOrthoBox.xy) / uOrthoBox.zw, 3.5).rgb;
+                float red = (o0.r - o0.b) / max(0.02, dot(o0, vec3(0.333)));
+                L = red > 0.35 ? 7 : (fract(vSeed * 5.3) < 0.65 ? 6 : 8);
+              }
+              base = texture(uWallD, vec3(rp / uTexSize[L], float(L))).rgb;
+              avgL = uTexAvg[L];
             }
             // mos en verkleuring
             base *= 0.92 + vnoise(vB * 0.7) * 0.12;
+            // echte dakkleur uit de luchtfoto (vervaagd, de foto staat iets scheef t.o.v. de daken)
+            vec3 oc = textureLod(uOrtho, (vWXZ - uOrthoBox.xy) / uOrthoBox.zw, 3.0).rgb;
+            // het patroon (pannen, leien) blijft, de kleur komt van de foto
+            float pat = clamp(dot(base, vec3(0.333)) / max(0.01, avgL), 0.4, 1.6);
+            base = mix(base, oc * 1.08 * pat, (uTexOn > 0.5 ? 0.22 : 0.6) * uOrthoOn);
           }
           diffuseColor.rgb = base;`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
           roughnessFactor = rough;`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+          if (tnAmt > 0.01) {
+            vec3 Nw = normalize(vWN);
+            vec3 Tw = normalize(vec3(-Nw.z, 0.0, Nw.x) + 1e-5);
+            vec3 nw = normalize(Tw * tn.x * tnAmt + vec3(0.0, 1.0, 0.0) * tn.y * tnAmt + Nw * max(0.3, tn.z));
+            normal = normalize(mat3(viewMatrix) * nw);
+          }`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
           totalEmissiveRadiance += vec3(1.0, 0.62, 0.3) * lit * (0.5 + 0.35 * fract(vSeed * 13.7));`);
     };
@@ -808,7 +1039,8 @@ export class World {
 
   // ------------------------------------------------------------ bomen en straatmeubilair
 
-  buildTrees() {
+  // Bomen: dichtbij echte boommodellen (ez-tree, MIT) met schors en bladeren, veraf lichte bolletjesbomen.
+  async buildTrees() {
     const rand = rng(2072);
     const pts = this.objects.trees.map(([x, z]) => [x, z, 0.75 + rand() * 0.6, 0]);
     // extra bomen in bospercelen binnen het dorp
@@ -826,41 +1058,188 @@ export class World {
     }
     this.treePoints = pts;
 
+    const variants = await this.makeTreeVariants().catch((e) => { console.warn('bomen', e); return []; });
+
     const trunkGeo = new THREE.CylinderGeometry(0.16, 0.3, 5.2, 6);
     trunkGeo.translate(0, 2.6, 0);
     const canopyGeo = mergeBlobs(rand);
-    // bomen per vak van 250 m, zodat alleen vakken in beeld (en in de schaduwcamera) getekend worden
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1 });
     const canopyMat = new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true });
+    // bomen per vak van 200 m, zodat alleen vakken in beeld (en in de schaduwcamera) getekend worden
+    const T = 200;
     const tiles = new Map();
     for (const t of pts) {
-      const k = Math.floor(t[0] / 250) + ',' + Math.floor(t[1] / 250);
+      const k = Math.floor(t[0] / T) + ',' + Math.floor(t[1] / T);
       if (!tiles.has(k)) tiles.set(k, []);
       tiles.get(k).push(t);
     }
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
     const up = new THREE.Vector3(0, 1, 0);
     const col = new THREE.Color();
-    for (const list of tiles.values()) {
+    this.treeTiles = [];
+    for (const [key, list] of tiles) {
+      const [tx, tz] = key.split(',').map(Number);
+      const far = new THREE.Group(), near = new THREE.Group();
       const trunk = new THREE.InstancedMesh(trunkGeo, trunkMat, list.length);
       const canopy = new THREE.InstancedMesh(canopyGeo, canopyMat, list.length);
-      list.forEach(([x, z, sc, kind], i) => {
+      // per variant de straatbomen voor dichtbij
+      const byVar = variants.map(() => []);
+      let farCount = 0;
+      list.forEach(([x, z, sc, kind]) => {
+        const yaw = rand() * Math.PI * 2;
+        const sy = 0.9 + rand() * 0.3;
         p.set(x, this.heightAt(x, z) - 0.1, z);
-        q.setFromAxisAngle(up, rand() * Math.PI * 2);
-        s.set(sc, sc * (0.9 + rand() * 0.3), sc);
+        q.setFromAxisAngle(up, yaw);
+        s.set(sc, sc * sy, sc);
         m.compose(p, q, s);
-        trunk.setMatrixAt(i, m);
-        canopy.setMatrixAt(i, m);
+        trunk.setMatrixAt(farCount, m);
+        canopy.setMatrixAt(farCount, m);
         if (kind === 1) col.setHSL(0.26 + rand() * 0.05, 0.45, 0.2 + rand() * 0.07);
         else col.setHSL(0.22 + rand() * 0.08, 0.45 + rand() * 0.15, 0.26 + rand() * 0.1);
-        canopy.setColorAt(i, col);
+        canopy.setColorAt(farCount, col);
+        farCount++;
+        if (variants.length) byVar[Math.floor(rand() * variants.length)].push([x, z, sc * sy, yaw]);
       });
-      trunk.computeBoundingSphere();
-      canopy.computeBoundingSphere();
-      trunk.castShadow = true;
-      canopy.castShadow = true;
-      canopy.receiveShadow = true;
-      this.scene.add(trunk, canopy);
+      for (const im of [trunk, canopy]) { im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; far.add(im); }
+      variants.forEach((v, vi) => {
+        const l = byVar[vi];
+        if (!l.length) return;
+        const br = new THREE.InstancedMesh(v.branchGeo, v.barkMat, l.length);
+        const lf = new THREE.InstancedMesh(v.leafGeo, v.leafMat, l.length);
+        l.forEach(([x, z, sc, yaw], i) => {
+          p.set(x, this.heightAt(x, z) - 0.15, z);
+          q.setFromAxisAngle(up, yaw);
+          s.setScalar(v.scale * sc);
+          m.compose(p, q, s);
+          br.setMatrixAt(i, m); lf.setMatrixAt(i, m);
+        });
+        for (const im of [br, lf]) { im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; near.add(im); }
+      });
+      near.visible = false;
+      this.scene.add(far, near);
+      this.treeTiles.push({ cx: (tx + 0.5) * T, cz: (tz + 0.5) * T, far, near, hasNear: near.children.length > 0 });
+    }
+  }
+
+  // Boomsoorten: vooraf gemaakt met ez-tree (tools/bake-trees.cjs) en als klein bestand geladen.
+  // Ontbreekt dat bestand, dan maken we ze hier ter plekke (dan wordt ez-tree zelf geladen, ~4 MB).
+  async makeTreeVariants() {
+    const file = await fetchJson('trees/trees.json').catch(() => null);
+    let vs;
+    if (file) {
+      const use = file.variants.filter((v) => !this.isMobile || v.mobile);
+      const need = new Set(use.flatMap((v) => [v.barkMap, v.barkNormal, v.leafMap]));
+      const tex = {};
+      await Promise.all(file.textures.filter((t) => need.has(t.id)).map(async (t) => {
+        const tx = await loadTexture('trees/' + t.file);
+        tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
+        tx.flipY = t.flipY;
+        tx.repeat.set(...t.repeat);
+        if (!t.srgb) tx.colorSpace = THREE.NoColorSpace;
+        tex[t.id] = tx;
+      }));
+      vs = use.map((v) => ({ ...v, branch: decodeGeo(v.branch), leaf: decodeGeo(v.leaf), barkMap: tex[v.barkMap], barkNormal: tex[v.barkNormal], leafMap: tex[v.leafMap] }));
+    } else {
+      vs = (await this.generateTreeData()).filter((v) => !this.isMobile || v.mobile);
+    }
+    return vs.map((v) => this.treeVariant(v));
+  }
+
+  async generateTreeData() {
+    const { Tree } = await import('@dgreenheck/ez-tree');
+    const list = ['Oak Medium', 'Ash Medium', 'Aspen Medium', 'Oak Large'];
+    return list.map((name, i) => {
+      const t = new Tree();
+      t.loadPreset(name);
+      const o = t.options;
+      o.seed = 4242 + i * 977;
+      // minder segmenten en minder, grotere blaadjes: zelfde silhouet, een fractie van de driehoeken
+      o.branch.sections = { 0: 6, 1: 4, 2: 3, 3: 1 };
+      o.branch.segments = { 0: 6, 1: 4, 2: 3, 3: 3 };
+      o.leaves.count = Math.max(3, Math.round(o.leaves.count * 0.3));
+      o.leaves.size *= 1.7;
+      t.generate();
+      const om = t.branchesMesh.material, ol = t.leavesMesh.material;
+      return {
+        name, mobile: name === 'Aspen Medium' || name === 'Ash Medium', branch: t.branchesMesh.geometry, leaf: t.leavesMesh.geometry,
+        barkMap: om.map, barkNormal: om.normalMap, leafMap: ol.map, barkColor: om.color.getHex(), leafColor: ol.color.getHex(),
+      };
+    });
+  }
+
+  treeVariant(v) {
+    const bg = v.branch, lg = v.leaf;
+    bg.computeBoundingBox();
+    const h = bg.boundingBox.max.y - bg.boundingBox.min.y;
+    const scale = (v.name.includes('Large') ? 14 : 11) / Math.max(1, h);
+    // bladnormalen naar buiten vanuit het midden van de kruin: oogt als een volle, ronde boom
+    lg.computeBoundingBox();
+    const c = new THREE.Vector3(); lg.boundingBox.getCenter(c);
+    const lp = lg.attributes.position;
+    if (!lg.attributes.normal) lg.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(lp.count * 3), 3));
+    const ln = lg.attributes.normal;
+    for (let k = 0; k < lp.count; k++) {
+      const nx = lp.getX(k) - c.x, ny = (lp.getY(k) - c.y) * 0.8 + h * 0.08, nz = lp.getZ(k) - c.z;
+      const l = Math.hypot(nx, ny, nz) || 1;
+      ln.setXYZ(k, nx / l, ny / l, nz / l);
+    }
+    if (!bg.attributes.normal) bg.computeVertexNormals();
+    this.treeTime ||= { value: 0 };
+    const time = this.treeTime;
+    const barkMat = new THREE.MeshStandardMaterial({ map: v.barkMap, normalMap: v.barkNormal, color: v.barkColor, roughness: 0.95 });
+    // esp: zomergroen in plaats van herfstgeel
+    const leafColor = v.name.includes('Aspen') ? new THREE.Color(0x9cc46a) : new THREE.Color(v.leafColor).multiplyScalar(0.9);
+    const leafMat = new THREE.MeshStandardMaterial({
+      map: v.leafMap, color: leafColor, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85,
+    });
+    leafMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = time;
+      // zacht wiegen in de wind (per boom een andere fase)
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uTime;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          #ifdef USE_INSTANCING
+            float ph = instanceMatrix[3].x * 0.37 + instanceMatrix[3].z * 0.21;
+          #else
+            float ph = 0.0;
+          #endif
+          float sway = sin(uTime * 1.3 + ph + position.y * 0.05) * 0.5 + sin(uTime * 2.7 + ph * 1.7) * 0.25;
+          transformed.xz += sway * 0.012 * max(0.0, position.y) * vec2(1.0, 0.6);`);
+      // achterkant van een blad niet donker maken (de normalen wijzen al naar buiten)
+      shader.fragmentShader = shader.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
+    };
+    const tris = ((bg.index ? bg.index.count : 0) + (lg.index ? lg.index.count : 0)) / 3;
+    console.info(`boom ${v.name}: ${Math.round(tris)} driehoeken`);
+    return { branchGeo: bg, leafGeo: lg, barkMat, leafMat, scale, tris, src: v };
+  }
+
+  // Voor tools/bake-trees.cjs: de boomsoorten als data (geometrie in base64, texturen als data-URL).
+  async exportTrees() {
+    const data = await this.generateTreeData();
+    const textures = [];
+    const texId = (t, srgb) => {
+      let e = textures.find((x) => x.src === t.image.src);
+      if (!e) { e = { id: 't' + textures.length, src: t.image.src, repeat: [t.repeat.x, t.repeat.y], flipY: t.flipY, srgb }; textures.push(e); }
+      return e.id;
+    };
+    const variants = data.map((v) => ({
+      name: v.name, mobile: v.mobile, barkColor: v.barkColor, leafColor: v.leafColor,
+      branch: encodeGeo(v.branch), leaf: encodeGeo(v.leaf),
+      barkMap: texId(v.barkMap, true), barkNormal: texId(v.barkNormal, false), leafMap: texId(v.leafMap, true),
+    }));
+    return { variants, textures };
+  }
+
+  // dichtbij echte bomen, veraf de lichte versie
+  updateTrees(cam, time) {
+    if (!this.treeTiles) return;
+    if (this.treeTime) this.treeTime.value = time;
+    const R = this.isMobile ? 150 : 230;
+    for (const t of this.treeTiles) {
+      if (!t.hasNear) continue;
+      const near = Math.hypot(t.cx - cam.x, t.cz - cam.z) < R;
+      t.near.visible = near;
+      t.far.visible = !near;
     }
   }
 
@@ -1074,6 +1453,30 @@ export function pointInRing(x, z, ring) {
     if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
   }
   return inside;
+}
+
+// geometrie <-> base64 (voor het boombestand)
+function b64(arr) {
+  const u8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function unb64(str, Type) {
+  const bin = atob(str);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Type(u8.buffer);
+}
+function encodeGeo(g) {
+  return { pos: b64(new Float32Array(g.attributes.position.array)), uv: b64(new Float32Array(g.attributes.uv.array)), idx: b64(new Uint16Array(g.index.array)) };
+}
+function decodeGeo(e) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(unb64(e.pos, Float32Array), 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(unb64(e.uv, Float32Array), 2));
+  g.setIndex(new THREE.BufferAttribute(unb64(e.idx, Uint16Array), 1));
+  return g;
 }
 
 function mergeBlobs(rand) {
