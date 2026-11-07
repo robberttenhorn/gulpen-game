@@ -1,17 +1,27 @@
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { World } from './world.js';
 import { Input } from './input.js';
-import { UI, Minimap } from './ui.js';
+import { UI, Minimap, BigMap } from './ui.js';
 import { makeCharacter, makeBike, makeSkateboard } from './character.js';
-import { Quests } from './quests.js';
+import { Missions } from './missions.js';
+import { Vehicles, VOLVO_GREY } from './vehicles.js';
+import { Facades } from './facades.js';
+import { Pedestrians } from './pedestrians.js';
 
 const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
+const HIGH = !isMobile;
+
+const SPEED = { walk: 4.0, run: 6.5, bike: 12.5, skate: 9.5, keg: 2.8 };
 
 class Game {
   constructor() {
     this.canvas = document.getElementById('scene');
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: !isMobile, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.5 : 2));
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.shadowMap.enabled = true;
@@ -30,37 +40,49 @@ class Game {
     this.collectibles = [];
     this.vehicles = { bike: false, skate: false };
     this.mode = 'walk';
-    this.timeOfDay = 10.5;
+    this.timeOfDay = 11;
     this.wobble = 0;
+    this.shake = 0;
+    this.time = 0;
 
     addEventListener('resize', () => {
       this.camera.aspect = innerWidth / innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(innerWidth, innerHeight);
+      this.composer?.setSize(innerWidth, innerHeight);
+      if (this.bigmap?.open) { this.bigmap.resize(); this.bigmap.draw(); }
     });
   }
 
   async init() {
     const bar = document.getElementById('loading-bar');
     const txt = document.getElementById('loading-text');
-    this.world = new World(this.scene, (p, t) => { bar.style.width = `${Math.round(p * 100)}%`; txt.textContent = t; });
+    this.world = new World(this.scene, (p, t) => { bar.style.width = `${Math.round(p * 90)}%`; txt.textContent = t; });
     await this.world.load(isMobile);
 
+    txt.textContent = 'Auto\'s parkeren en gevels schilderen...';
     this.setupSky();
     this.setupPlayer();
+    this.facades = new Facades(this);
+    this.facades.build();
+    this.cars = new Vehicles(this);
+    this.cars.spawnParked();
+    this.spawnVolvo();
+    this.cars.spawnTraffic(isMobile ? 6 : 11);
+    this.peds = new Pedestrians(this, isMobile ? 14 : 28);
     this.setupPoiLabels();
     this.minimap = new Minimap(this.world);
-    this.quests = new Quests(this);
-    this.quests.setup();
-    this.minimap.markers = this.world.meta.pois.map((p) => ({ x: p.pos[0], z: p.pos[1], color: '#ffffff' }));
+    this.bigmap = new BigMap(this);
+    this.missions = new Missions(this);
+    this.missions.setup();
+    this.setupPost();
 
     bar.style.width = '100%';
     txt.textContent = 'Gulpen staat klaar.';
-    // eerste frame alvast renderen zodat shaders gecompileerd zijn
     this.updateCamera(0, true);
     this.applyTime();
     this.renderer.compile(this.scene, this.camera);
-    this.renderer.render(this.scene, this.camera);
+    this.render();
 
     const btn = document.getElementById('start-btn');
     btn.hidden = false;
@@ -70,40 +92,43 @@ class Game {
     this.clock.getDelta();
     this.renderer.setAnimationLoop(() => this.tick());
 
-    await this.ui.dialog('Gulpen, zaterdagochtend', [
-      'Welkom in Gulpe! De zon schijnt, de terrassen op de Markt lopen vol en de Gulperberg ligt er prachtig bij.',
-      'Alleen jammer van je fiets... die heeft een lekke band. Tijd om eens langs Jef Abels te gaan.',
+    await this.ui.dialog('Gulpen, zaterdag', [
+      'Welkom in Gulpe! Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto.',
+      'Overal zijn klussen te doen. Tik op de minikaart rechtsboven om ze allemaal te zien, en kies zelf waar je begint.',
     ]);
   }
 
-  // ------------------------------------------------------------ lucht en licht
+  // ------------------------------------------------------------ lucht, licht en nabewerking
 
   setupSky() {
-    this.sky = new Sky();
-    this.sky.scale.setScalar(20000);
-    const u = this.sky.material.uniforms;
-    u.turbidity.value = 4;
-    u.rayleigh.value = 1.4;
-    u.mieCoefficient.value = 0.004;
-    u.mieDirectionalG.value = 0.8;
+    const makeSky = () => {
+      const sky = new Sky();
+      sky.scale.setScalar(20000);
+      const u = sky.material.uniforms;
+      u.turbidity.value = 4; u.rayleigh.value = 1.4; u.mieCoefficient.value = 0.004; u.mieDirectionalG.value = 0.8;
+      return sky;
+    };
+    this.sky = makeSky();
     this.scene.add(this.sky);
+    // aparte lucht voor de omgevingsreflecties (auto's, ramen, water)
+    this.envSky = makeSky();
+    this.envScene = new THREE.Scene();
+    this.envScene.add(this.envSky);
+    this.pmrem = new THREE.PMREMGenerator(this.renderer);
 
     this.sun = new THREE.DirectionalLight(0xfff1dc, 3.2);
     this.sun.castShadow = true;
     const s = isMobile ? 1024 : 2048;
     this.sun.shadow.mapSize.set(s, s);
     const c = this.sun.shadow.camera;
-    c.left = -70; c.right = 70; c.top = 70; c.bottom = -70; c.near = 1; c.far = 600;
-    this.sun.shadow.bias = -0.0004;
-    this.sun.shadow.normalBias = 0.6;
+    c.left = -60; c.right = 60; c.top = 60; c.bottom = -60; c.near = 1; c.far = 600;
+    this.sun.shadow.bias = -0.0012;
+    this.sun.shadow.normalBias = 0.5;
     this.scene.add(this.sun, this.sun.target);
-
-    this.hemi = new THREE.HemisphereLight(0xbfd8ff, 0x5c5a3a, 1.1);
+    this.hemi = new THREE.HemisphereLight(0xbfd8ff, 0x5c5a3a, 0.7);
     this.scene.add(this.hemi);
+    this.scene.fog = new THREE.Fog(0xc9d8e6, 450, 4200);
 
-    this.scene.fog = new THREE.Fog(0xc9d8e6, 400, 4200);
-
-    // sterren voor de nacht
     const n = 1500, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.95);
@@ -117,35 +142,84 @@ class Game {
     this.scene.add(this.stars);
   }
 
+  setupPost() {
+    if (!HIGH) return;
+    const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 });
+    this.composer = new EffectComposer(this.renderer, rt);
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.25, 0.6, 0.92);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
+  }
+
+  render() {
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
+  }
+
   applyTime() {
     const t = this.timeOfDay;
-    const dayAngle = ((t - 6) / 12) * Math.PI; // 0 bij 6u, pi bij 18u
-    const elev = Math.sin(dayAngle) * 52; // graden
-    const az = 100 + ((t - 6) / 12) * 160; // oost -> zuid -> west
+    const dayAngle = ((t - 6) / 12) * Math.PI;
+    const elev = Math.sin(dayAngle) * 52;
+    const az = 100 + ((t - 6) / 12) * 160;
     const phi = THREE.MathUtils.degToRad(90 - Math.max(elev, -10));
     const theta = THREE.MathUtils.degToRad(az);
     const sunDir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
     this.sunDir = sunDir;
     this.sky.material.uniforms.sunPosition.value.copy(sunDir);
+    this.envSky.material.uniforms.sunPosition.value.copy(sunDir);
 
     const day = THREE.MathUtils.smoothstep(elev, -6, 12);
     const night = 1 - day;
     this.night = night;
-    this.world.setNight(THREE.MathUtils.smoothstep(night, 0.4, 1));
+    const lightsOn = THREE.MathUtils.smoothstep(night, 0.4, 1);
+    this.world.setNight(lightsOn);
+    this.facades?.setNight(lightsOn);
+    this.cars?.setNight(lightsOn);
     this.stars.material.opacity = THREE.MathUtils.smoothstep(night, 0.6, 1);
 
     const dusk = THREE.MathUtils.smoothstep(elev, -4, 6) * (1 - THREE.MathUtils.smoothstep(elev, 6, 22));
-    this.sun.intensity = 3.2 * day + 0.6 * night;
+    this.sun.intensity = 3.0 * day + 0.6 * night;
     this.sun.color.setRGB(1, 0.95 - dusk * 0.3, 0.86 - dusk * 0.45);
-    if (night > 0.5) this.sun.color.setRGB(0.55, 0.65, 1); // maanlicht
-    this.hemi.intensity = 1.1 * day + 0.55 * night;
+    if (night > 0.5) this.sun.color.setRGB(0.55, 0.65, 1);
+    this.hemi.intensity = 0.7 * day + 0.45 * night;
     this.hemi.color.setRGB(0.75 * day + 0.25 * night, 0.85 * day + 0.3 * night, 1 * day + 0.55 * night);
     this.renderer.toneMappingExposure = 0.55 * day + 0.9 * night;
+    if (this.bloom) { this.bloom.strength = 0.18 + night * 0.55; this.bloom.threshold = 0.92 - night * 0.3; }
 
     const fogDay = new THREE.Color(0xc9d8e6).lerp(new THREE.Color(0xe8b98a), dusk * 0.6);
     this.scene.fog.color.copy(fogDay.lerp(new THREE.Color(0x0b1424), night));
     this.sky.visible = night < 0.97;
     this.scene.background = night >= 0.97 ? new THREE.Color(0x060b16) : null;
+
+    // omgevingsreflecties bijwerken
+    if (this.envRT) this.envRT.dispose();
+    this.envRT = this.pmrem.fromScene(this.envScene, 0, 1, 20000);
+    this.scene.environment = this.envRT.texture;
+    this.scene.environmentIntensity = 0.55 * day + 0.08 * night;
+    this.missions?.refresh();
+  }
+
+  async skipTime(to) {
+    await this.fade(async () => {
+      this.timeOfDay = to;
+      this.applyTime();
+    });
+  }
+
+  async fade(mid) {
+    const el = document.createElement('div');
+    Object.assign(el.style, { position: 'fixed', inset: 0, background: '#000', opacity: 0, transition: 'opacity 1s', zIndex: 15, pointerEvents: 'none' });
+    document.body.appendChild(el);
+    await wait(30);
+    el.style.opacity = 1;
+    await wait(1050);
+    await mid();
+    await wait(300);
+    el.style.opacity = 0;
+    await wait(1050);
+    el.remove();
   }
 
   // ------------------------------------------------------------ speler
@@ -153,37 +227,26 @@ class Game {
   setupPlayer() {
     const model = makeCharacter({ shirt: 0xe8a33d, pants: 0x2e3f5c, hair: 0x3b2a1a });
     const start = this.world.spotNear(5, 25);
-    this.player = {
-      group: new THREE.Group(),
-      model,
-      x: start[0], z: start[1], y: 0,
-      heading: Math.PI, speed: 0, vx: 0, vz: 0,
-      boost: 0, lockedFor: false,
-    };
+    this.player = { group: new THREE.Group(), model, x: start[0], z: start[1], y: 0, heading: Math.PI, speed: 0, boost: 0, lockedFor: false };
     this.player.group.add(model);
-    this.bike = makeBike();
+    this.bike = makeBike(0xff9800);
     this.board = makeSkateboard();
     this.bike.visible = false;
     this.board.visible = false;
     this.player.group.add(this.bike, this.board);
     this.scene.add(this.player.group);
     this.camYaw = 0.6;
-    this.camPitch = 0.32;
-    this.camDist = innerWidth < innerHeight ? 10 : 7;
+    this.camPitch = 0.3;
+    this.camDist = innerWidth < innerHeight ? 9 : 7;
     this.lastManualLook = -10;
   }
 
-  unlockVehicle(v) {
-    this.vehicles[v] = true;
-    this.updateVehicleButton();
+  makeBikeModel(i) {
+    const cols = [0x1e88e5, 0xe53935, 0x43a047, 0x212121, 0xfdd835, 0x8e24aa, 0xeeeeee, 0x00897b];
+    return makeBike(cols[i % cols.length]);
   }
 
-  updateVehicleButton() {
-    const options = this.availableModes();
-    if (options.length <= 1) { this.ui.setVehicleButton(null); return; }
-    const next = options[(options.indexOf(this.mode) + 1) % options.length];
-    this.ui.setVehicleButton({ walk: 'Lopen', bike: 'Fiets', skate: 'Skate' }[next]);
-  }
+  unlockVehicle(v) { this.vehicles[v] = true; this.updateVehicleButton(); }
 
   availableModes() {
     if (this.keg) return ['walk'];
@@ -194,16 +257,68 @@ class Game {
     return m;
   }
 
+  updateVehicleButton() {
+    if (this.mode === 'car') { this.ui.setVehicleButton(null); return; }
+    const options = this.availableModes();
+    if (options.length <= 1) { this.ui.setVehicleButton(null); return; }
+    const next = options[(options.indexOf(this.mode) + 1) % options.length];
+    this.ui.setVehicleButton({ walk: 'Lopen', bike: 'Fiets', skate: 'Skate' }[next]);
+  }
+
   setMode(mode) {
     this.mode = mode;
     this.bike.visible = mode === 'bike';
     this.board.visible = mode === 'skate';
     this.player.model.position.y = mode === 'bike' ? 0.25 : mode === 'skate' ? 0.12 : 0;
     this.player.model.position.z = mode === 'bike' ? -0.25 : 0;
+    this.player.group.visible = mode !== 'car';
+    document.getElementById('speedo').hidden = mode === 'walk';
     this.updateVehicleButton();
   }
 
+  enterCar(car) {
+    if (this.keg) { this.ui.toast('Met een vat in je handen? Eerst afleveren!', 2000); return; }
+    this.cars.activate(car);
+    this.car = car;
+    car.speed = 0;
+    this.setMode('car');
+    this.camYaw = car.heading + Math.PI;
+    if (car.isVolvo && !this.volvoSeen) { this.volvoSeen = true; this.ui.toast('Grijze Volvo XC40', 2000); }
+  }
+
+  exitCar() {
+    const car = this.car;
+    if (!car) return;
+    if (Math.abs(car.speed) > 3) { this.ui.toast('Eerst stoppen!', 1200); return; }
+    const sx = Math.cos(car.heading), sz = -Math.sin(car.heading);
+    for (const side of [-1, 1]) {
+      const x = car.x + sx * side * 1.7, z = car.z + sz * side * 1.7;
+      if (!this.world.blocked(x, z) && !this.world.insideBuilding(x, z)) {
+        [this.player.x, this.player.z] = this.world.resolve(x, z, 0.4);
+        break;
+      }
+    }
+    this.player.heading = car.heading;
+    this.car = null;
+    this.setMode('walk');
+  }
+
+  spawnVolvo() {
+    const p = this.world.meta.pois.find((q) => q.id === 'volvo');
+    if (!p) return;
+    const [x, z] = this.world.spotNear(...p.pos);
+    const s = this.world.nearestStreet(x, z);
+    // met de neus naar de straat, zoals op een oprit
+    const heading = s ? Math.atan2(s.x - x, s.z - z) : 0;
+    this.volvo = this.cars.addCar('suv', x, z, heading, VOLVO_GREY, { isVolvo: true });
+    // zwart dak, zoals vaak bij de XC40
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.04, 2.0), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3, clearcoat: 1 }));
+    roof.position.set(0, 1.665, -0.1);
+    this.volvo.mesh.add(roof);
+  }
+
   carryKeg(keg) {
+    if (this.mode === 'car') this.exitCar();
     this.keg = keg;
     keg.position.set(0, 1.25, 0.42);
     keg.rotation.x = 0.2;
@@ -218,36 +333,67 @@ class Game {
     this.updateVehicleButton();
   }
 
-  // ------------------------------------------------------------ NPC's, labels en bakens
+  // ------------------------------------------------------------ NPC's, labels, markeringen
 
   addNpc(name, [x, z], model) {
     const group = new THREE.Group();
     group.add(model);
-    group.position.set(x, this.world.heightAt(x, z), z);
+    group.position.set(x, this.world.groundAt(x, z), z);
     this.scene.add(group);
     const label = makeLabel(name, { small: true });
-    label.position.set(0, 2.6, 0);
+    label.position.set(0, 2.55, 0);
     group.add(label);
-    const npc = { name, group, model, pos: group.position, active: false, enabled: true, heading: 0, lookAtPlayer: false };
+    // gele missiemarkering boven het hoofd
+    const marker = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), new THREE.MeshStandardMaterial({ color: 0xf2c14e, emissive: 0xe8a33d, emissiveIntensity: 0.9 }));
+    marker.position.set(0, 3.2, 0);
+    marker.scale.y = 1.5;
+    group.add(marker);
+    const npc = { name, group, model, marker, pos: group.position, x, z, active: false, enabled: true, heading: 0, lookAtPlayer: false };
     this.npcs.push(npc);
     return npc;
   }
 
   setupPoiLabels() {
     for (const p of this.world.meta.pois) {
+      if (p.id === 'volvo' || p.id === 'ringweg') continue;
       const label = makeLabel(p.name);
       const [x, z] = p.pos;
-      label.position.set(x, this.world.heightAt(x, z) + 11, z);
+      label.position.set(x, this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11), z);
       this.scene.add(label);
     }
+  }
+
+  // alles wat op de (grote) kaart staat
+  mapItems() {
+    const items = [];
+    const colors = { open: '#f2c14e', klaar: '#7cc576', actief: '#ff6b5a' };
+    const labels = { open: 'Open', klaar: 'Gedaan', actief: 'Bezig' };
+    const night = this.night > 0.5;
+    this.missions.list().forEach((m) => {
+      if (m.nightOnly && !night && m.state !== 'actief') {
+        items.push({ key: m.id, x: m.npc.pos.x, z: m.npc.pos.z, title: m.title, place: m.place, color: '#9aa4b0', glyph: 'z', state: '', stateLabel: 'Alleen \'s avonds' });
+        return;
+      }
+      items.push({ key: m.id, x: m.npc.pos.x, z: m.npc.pos.z, title: m.title, place: m.place, color: colors[m.state], glyph: m.state === 'klaar' ? '✓' : '!', state: m.state, stateLabel: labels[m.state] });
+    });
+    if (this.volvo) items.push({ key: 'volvo', x: this.volvo.x, z: this.volvo.z, title: 'Grijze Volvo XC40', place: 'Oprit Ringweg 38', color: '#64b5f6', glyph: 'A', state: '', stateLabel: 'Auto' });
+    return items;
+  }
+
+  updateMarkers() {
+    if (!this.minimap) return;
+    this.minimap.markers = this.mapItems().filter((i) => i.state !== '' || i.key === 'volvo');
+    for (const m of this.missions.list()) {
+      const night = this.night > 0.5;
+      m.npc.marker.visible = m.state === 'open' && (!m.nightOnly || night) && !this.missions.active;
+    }
+    if (this.bigmap?.open) { this.bigmap.renderList(); this.bigmap.draw(); }
   }
 
   makeBeam(x, z, color = 0xe8a33d) {
     const geo = new THREE.CylinderGeometry(0.9, 0.9, 140, 16, 1, true);
     geo.translate(0, 70, 0);
-    const mat = new THREE.MeshBasicMaterial({
-      color, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
-    });
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, this.world.heightAt(x, z), z);
     this.scene.add(m);
@@ -260,62 +406,115 @@ class Game {
     if (t) this.targetBeam = this.makeBeam(t.pos.x, t.pos.z);
   }
 
-  // ------------------------------------------------------------ minigames en effecten
+  setWaypoint(it) {
+    if (this.waypointBeam) this.scene.remove(this.waypointBeam);
+    this.waypoint = { x: it.x, z: it.z };
+    this.waypointBeam = this.makeBeam(it.x, it.z, 0x64b5f6);
+    this.ui.toast(`Route naar ${it.title}`, 1600);
+  }
 
-  async startRace(path, rival) {
+  // willekeurig adres (deur van een huis) op afstand van de speler
+  randomAddress(minD, maxD) {
+    const w = this.world;
+    for (let i = 0; i < 300; i++) {
+      const f = w.footprints[Math.floor(Math.random() * w.footprints.length)];
+      if (f.extra) continue;
+      const cx = (f.minX + f.maxX) / 2, cz = (f.minZ + f.maxZ) / 2;
+      const d = Math.hypot(cx - this.player.x, cz - this.player.z);
+      if (d < minD || d > maxD) continue;
+      const s = w.nearestStreet(cx, cz);
+      if (!s || s.dist > 30) continue;
+      const spot = w.spotNear(cx, cz);
+      if (w.blocked(...spot)) continue;
+      return spot;
+    }
+    return w.spotNear(100, 100);
+  }
+
+  setDestination([x, z], limit, onArrive, onFail) {
+    this.clearDestination();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.15, 8, 32), new THREE.MeshBasicMaterial({ color: 0xf2c14e }));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(x, this.world.groundAt(x, z) + 0.3, z);
+    this.scene.add(ring);
+    this.destination = { x, z, left: limit, onArrive, onFail, ring };
+    this.setTarget({ pos: new THREE.Vector3(x, 0, z) });
+  }
+
+  clearDestination() {
+    if (!this.destination) return;
+    this.scene.remove(this.destination.ring);
+    this.destination = null;
+    this.ui.timer(null);
+    this.setTarget(null);
+  }
+
+  updateDestination(dt) {
+    const d = this.destination;
+    if (!d) return;
+    d.left -= dt;
+    this.ui.timer(Math.max(0, d.left).toFixed(0) + ' s');
+    d.ring.rotation.z += dt;
+    if (Math.hypot(this.player.x - d.x, this.player.z - d.z) < 5) {
+      const cb = d.onArrive;
+      this.clearDestination();
+      cb();
+    } else if (d.left <= 0) {
+      const cb = d.onFail;
+      this.clearDestination();
+      cb();
+    }
+  }
+
+  // ------------------------------------------------------------ minigames
+
+  async startRace(path, rival, onDone) {
     if (!path || path.length < 2) return;
-    // checkpoints elke ~45 m langs de Ringweg
-    const pts = [];
+    if (this.mode === 'car') this.exitCar();
+    const pts = [path[0]];
     let acc = 0;
-    pts.push(path[0]);
     for (let i = 1; i < path.length; i++) {
-      const seg = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
-      acc += seg;
+      acc += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
       if (acc >= 45 || i === path.length - 1) { pts.push(path[i]); acc = 0; }
     }
     const total = path.reduce((s, p, i) => (i ? s + Math.hypot(p[0] - path[i - 1][0], p[1] - path[i - 1][1]) : 0), 0);
-    const limit = Math.max(25, Math.round(total / 6.2));
-
-    // speler naar de start
+    const limit = Math.max(25, Math.round(total / 7.2));
     const [sx, sz] = this.world.resolve(pts[0][0], pts[0][1], 0.5);
     this.player.x = sx; this.player.z = sz;
     this.player.heading = Math.atan2(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]);
     this.camYaw = this.player.heading + Math.PI;
-    this.race = { pts, idx: 1, time: 0, limit, rival, path, total, rivalDist: 0, done: false, markers: [] };
+    rival.home = rival.pos.clone();
+    this.race = { pts, idx: 1, time: 0, limit, rival, path, total, rivalDist: 0, done: false, markers: [], onDone };
     this.setMode('skate');
     this.setTarget(null);
-
     const ringGeo = new THREE.TorusGeometry(3.2, 0.25, 8, 32);
-    const ringMat = new THREE.MeshStandardMaterial({ color: 0xe8a33d, emissive: 0xe8a33d, emissiveIntensity: 0.6 });
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0xe8a33d, emissive: 0xe8a33d, emissiveIntensity: 0.8 });
     this.race.markers = pts.slice(1).map(([x, z], i) => {
       const m = new THREE.Mesh(ringGeo, ringMat);
       const next = pts[Math.min(i + 2, pts.length - 1)];
-      m.position.set(x, this.world.heightAt(x, z) + 3, z);
+      m.position.set(x, this.world.groundAt(x, z) + 3, z);
       m.rotation.y = Math.atan2(next[0] - x, next[1] - z);
       m.visible = i < 2;
       this.scene.add(m);
       return m;
     });
-
     this.player.lockedFor = true;
     for (const c of ['3', '2', '1']) { this.ui.toast(c, 700); await wait(800); }
     this.ui.toast('GO!', 800);
     this.player.lockedFor = false;
     this.race.started = true;
-    this.ui.setQuest('Ringweg Race', `Haal alle checkpoints binnen ${limit} seconden en wees sneller dan de skater.`, `Checkpoint 0 / ${pts.length - 1}`);
+    this.missions.progress(`Checkpoint 0 / ${pts.length - 1}`);
   }
 
   updateRace(dt) {
     const r = this.race;
     if (!r || !r.started || r.done) return;
     r.time += dt;
-    const left = r.limit - r.time;
-    this.ui.timer(left.toFixed(1));
-    // rivaal volgt de route
+    this.ui.timer((r.limit - r.time).toFixed(1));
     r.rivalDist += dt * (r.total / (r.limit * 1.04));
     const rp = pointAlong(r.path, r.rivalDist);
     if (rp) {
-      r.rival.pos.set(rp.x, this.world.heightAt(rp.x, rp.z), rp.z);
+      r.rival.pos.set(rp.x, this.world.groundAt(rp.x, rp.z), rp.z);
       r.rival.heading = rp.heading;
       r.rival.mode = 'skate';
     }
@@ -324,21 +523,122 @@ class Game {
       r.markers[r.idx - 1].visible = false;
       r.idx++;
       if (r.markers[r.idx]) r.markers[r.idx].visible = true;
-      this.ui.setProgress(`Checkpoint ${r.idx - 1} / ${r.pts.length - 1}`);
+      this.missions.progress(`Checkpoint ${r.idx - 1} / ${r.pts.length - 1}`);
       if (r.idx >= r.pts.length) return this.endRace(true);
     }
-    if (left <= 0) this.endRace(false);
+    if (r.time >= r.limit) this.endRace(false);
   }
 
-  endRace(won) {
+  endRace(won, silent = false) {
     const r = this.race;
+    if (!r) return;
     r.done = true;
     r.markers.forEach((m) => this.scene.remove(m));
     r.rival.mode = null;
+    if (r.rival.home) r.rival.pos.copy(r.rival.home);
     this.ui.timer(null);
     this.race = null;
     this.updateVehicleButton();
-    this.quests.raceFinished(won);
+    if (!silent) r.onDone(won);
+  }
+
+  // Penalty's nemen bij FC Gulpen. Geeft het aantal goals terug.
+  startPenalty() {
+    return new Promise((resolve) => {
+      const f = this.facades;
+      if (!f.pitch) { resolve(0); return; }
+      if (this.mode === 'car') this.exitCar();
+      this.setMode('walk');
+      const { L } = f.pitch;
+      const goalZ = L / 2;
+      const [spotX, spotZ] = f.pitchToWorld(0, goalZ - 11);
+      const [gx, gz] = f.pitchToWorld(0, goalZ);
+      const dirX = gx - spotX, dirZ = gz - spotZ;
+      const heading = Math.atan2(dirX, dirZ);
+      const right = [Math.cos(heading), -Math.sin(heading)];
+      const toWorld = (lateral, along) => [spotX + Math.sin(heading) * along + right[0] * -lateral, spotZ + Math.cos(heading) * along + right[1] * -lateral];
+      const baseY = this.world.heightAt(gx, gz);
+
+      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, flatShading: true }));
+      ball.castShadow = true;
+      this.scene.add(ball);
+      const keeper = makeCharacter({ shirt: 0x43a047, pants: 0x111111, hair: 0x222222 });
+      this.scene.add(keeper);
+      const aim = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.26, 24), new THREE.MeshBasicMaterial({ color: 0xff5252, side: THREE.DoubleSide, depthTest: false }));
+      aim.renderOrder = 20;
+      this.scene.add(aim);
+
+      let shots = 0, goals = 0, phase = 'aim', t = 0, shot = null;
+      const reset = () => {
+        const [bx, bz] = toWorld(0, 0);
+        ball.position.set(bx, this.world.heightAt(bx, bz) + 0.11, bz);
+        const [kx, kz] = toWorld(0, 10.6);
+        keeper.position.set(kx, baseY, kz);
+        keeper.rotation.set(0, heading + Math.PI, 0);
+        const [px, pz] = toWorld(0, -1.4);
+        this.player.x = px; this.player.z = pz; this.player.heading = heading;
+        this.camYaw = heading + Math.PI;
+        this.camPitch = 0.12;
+        phase = 'aim';
+        t = Math.random() * 3;
+        aim.visible = true;
+      };
+      reset();
+      this.ui.setActionLabel('Schiet');
+      this.penalty = {
+        stop: () => {
+          this.scene.remove(ball, keeper, aim);
+          this.penalty = null;
+          this.player.lockedFor = false;
+        },
+        update: (dt) => {
+          t += dt;
+          this.player.lockedFor = true;
+          if (phase === 'aim') {
+            const ax = Math.sin(t * 1.9) * 3.5;
+            const ay = 0.25 + (Math.sin(t * 2.7 + 1) * 0.5 + 0.5) * 2.05;
+            const [wx, wz] = toWorld(ax, 11);
+            aim.position.set(wx, baseY + ay, wz);
+            aim.lookAt(this.camera.position);
+            keeper.userData.animate(dt, 0, 'idle');
+            if (this.input.consumeAction() || this.input.spacePressed) {
+              this.input.spacePressed = false;
+              const dive = [-2.6, -1.2, 0, 1.2, 2.6][Math.floor(Math.random() * 5)];
+              shot = { ax, ay, dive, t: 0 };
+              phase = 'fly';
+              aim.visible = false;
+              this.player.speed = 3;
+            }
+          } else if (phase === 'fly') {
+            shot.t += dt / 0.6;
+            const k = Math.min(1, shot.t);
+            const [sx2, sz2] = toWorld(0, 0);
+            const [ex, ez] = toWorld(shot.ax, 11);
+            ball.position.set(sx2 + (ex - sx2) * k, this.world.heightAt(sx2, sz2) + 0.11 + (baseY + shot.ay - this.world.heightAt(sx2, sz2) - 0.11) * k + Math.sin(k * Math.PI) * 0.4, sz2 + (ez - sz2) * k);
+            const kd = Math.min(1, shot.t * 1.6);
+            const [kx, kz] = toWorld(shot.dive * kd, 10.6);
+            keeper.position.set(kx, baseY + Math.sin(kd * Math.PI) * 0.35, kz);
+            keeper.rotation.z = -Math.sign(shot.dive) * kd * 1.2;
+            if (k >= 1) {
+              shots++;
+              const reach = Math.abs(shot.ax - shot.dive) < 1.25 && shot.ay < 2.1;
+              const post = Math.abs(shot.ax) > 3.45;
+              if (post) this.ui.toast('Paal!', 1200);
+              else if (reach) this.ui.toast('Gestopt!', 1200);
+              else { goals++; this.ui.toast('GOAL!', 1200); }
+              this.missions.progress(`${goals} goals uit ${shots} van de 5`);
+              phase = 'wait'; t = 0;
+            }
+          } else if (phase === 'wait' && t > 1.4) {
+            keeper.rotation.z = 0;
+            if (shots >= 5) {
+              this.penalty.stop();
+              resolve(goals);
+            } else reset();
+          }
+        },
+      };
+    });
   }
 
   async drinkPils() {
@@ -349,131 +649,156 @@ class Game {
     this.wobble = 25;
   }
 
-  async transitionToNight() {
-    const fade = document.createElement('div');
-    Object.assign(fade.style, { position: 'fixed', inset: 0, background: '#000', opacity: 0, transition: 'opacity 1.2s', zIndex: 15, pointerEvents: 'none' });
-    document.body.appendChild(fade);
-    await wait(50);
-    fade.style.opacity = 1;
-    await wait(1300);
-    this.timeOfDay = 22.5;
-    this.applyTime();
-    await wait(400);
-    fade.style.opacity = 0;
-    await wait(1300);
-    fade.remove();
-  }
-
   // ------------------------------------------------------------ hoofdlus
 
   tick() {
     const dt = Math.min(0.05, this.clock.getDelta());
+    this.time += dt;
     this.input.update();
-    this.updatePlayer(dt);
+    if (this.bigmap.open) { this.render(); return; }
+    if (this.mode === 'car') this.updateCar(dt);
+    else this.updatePlayer(dt);
+    this.penalty?.update(dt);
     this.updateNpcs(dt);
+    this.cars.updateTraffic(dt, this.mode === 'car' ? this.car : this.player);
+    this.peds.update(dt, this.player, this.mode === 'car' ? Math.abs(this.car.speed) : this.player.speed);
     this.updateRace(dt);
+    this.updateDestination(dt);
     this.updateInteractions(dt);
+    this.world.hardscape.update(dt);
     this.updateCamera(dt);
     this.updateHud(dt);
-    this.renderer.render(this.scene, this.camera);
+    this.render();
+  }
+
+  updateCar(dt) {
+    const car = this.car, inp = this.input;
+    const busy = this.ui.dialogOpen;
+    const throttle = busy ? 0 : -inp.move.y;
+    const steer = busy ? 0 : inp.move.x;
+    this.cars.drive(car, dt, throttle, steer, inp.keys.has('Space'));
+    const p = this.player;
+    p.x = car.x; p.z = car.z; p.y = car.y; p.heading = car.heading; p.speed = Math.abs(car.speed);
+    document.getElementById('speed-value').textContent = Math.round(Math.abs(car.speed) * 3.6);
   }
 
   updatePlayer(dt) {
     const p = this.player, inp = this.input;
     const busy = this.ui.dialogOpen || p.lockedFor;
-
     if (inp.consumeVehicle() && !busy) {
       const opts = this.availableModes();
       if (opts.length > 1) this.setMode(opts[(opts.indexOf(this.mode) + 1) % opts.length]);
     }
-
-    let mx = busy ? 0 : inp.move.x, my = busy ? 0 : inp.move.y;
+    const mx = busy ? 0 : inp.move.x, my = busy ? 0 : inp.move.y;
     const fwdX = -Math.sin(this.camYaw), fwdZ = -Math.cos(this.camYaw);
     const rightX = Math.cos(this.camYaw), rightZ = -Math.sin(this.camYaw);
-    let dx = fwdX * -my + rightX * mx, dz = fwdZ * -my + rightZ * mx;
+    const dx = fwdX * -my + rightX * mx, dz = fwdZ * -my + rightZ * mx;
     const mag = Math.hypot(dx, dz);
 
     if (p.boost > 0) p.boost -= dt;
-    let maxSpeed = { walk: 4.2, bike: 10, skate: 8.5 }[this.mode];
-    if (this.mode === 'walk' && (inp.sprint || p.boost > 0)) maxSpeed = 7.2;
-    if (this.keg) maxSpeed = 2.8;
-
-    const accel = this.mode === 'walk' ? 14 : 5;
-    const target = mag > 0.05 ? maxSpeed * Math.min(1, mag) : 0;
-    p.speed += (target - p.speed) * Math.min(1, accel * dt);
+    let maxSpeed = SPEED[this.mode];
+    if (this.mode === 'walk' && (inp.sprint || p.boost > 0)) maxSpeed = SPEED.run;
+    if (this.keg) maxSpeed = SPEED.keg;
+    // op de fiets en het skateboard gaat de joystick niet half: altijd volle snelheid
+    const want = mag > 0.05 ? maxSpeed * (this.mode === 'walk' ? Math.min(1, mag * 1.2) : 1) : 0;
+    const accel = this.mode === 'walk' ? 12 : this.mode === 'bike' ? 4 : 3.5;
+    const decel = this.mode === 'walk' ? 14 : 3;
+    p.speed += (want - p.speed) * Math.min(1, (want > p.speed ? accel : decel) * dt);
     if (mag > 0.05) {
-      const want = Math.atan2(dx, dz);
-      let diff = want - p.heading;
+      let diff = Math.atan2(dx, dz) - p.heading;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      const turn = this.mode === 'walk' ? 12 : 4.5;
-      p.heading += diff * Math.min(1, turn * dt);
+      p.heading += diff * Math.min(1, (this.mode === 'walk' ? 12 : 5) * dt);
     }
-    // hellingen: bergop langzamer
-    const ahead = this.world.heightAt(p.x + Math.sin(p.heading) * 1.5, p.z + Math.cos(p.heading) * 1.5);
     const here = this.world.heightAt(p.x, p.z);
+    const ahead = this.world.heightAt(p.x + Math.sin(p.heading) * 1.5, p.z + Math.cos(p.heading) * 1.5);
     const slope = (ahead - here) / 1.5;
-    const slopeFactor = THREE.MathUtils.clamp(1 - slope * (this.mode === 'walk' ? 1.2 : 2.5), 0.45, 1.35);
-
-    const nx = p.x + Math.sin(p.heading) * p.speed * slopeFactor * dt;
-    const nz = p.z + Math.cos(p.heading) * p.speed * slopeFactor * dt;
+    const slopeFactor = THREE.MathUtils.clamp(1 - slope * (this.mode === 'walk' ? 1.2 : 2.2), 0.5, 1.35);
+    const step = p.speed * slopeFactor * dt;
+    let nx = p.x + Math.sin(p.heading) * step, nz = p.z + Math.cos(p.heading) * step;
+    // water: niet doorheen, langs de rand glijden
+    if (this.world.blocked(nx, nz)) {
+      if (!this.world.blocked(nx, p.z)) nz = p.z;
+      else if (!this.world.blocked(p.x, nz)) nx = p.x;
+      else { nx = p.x; nz = p.z; p.speed *= 0.5; }
+    }
     const [rx, rz] = this.world.resolve(nx, nz, this.mode === 'bike' ? 0.55 : 0.4);
-    // bij een botsing snelheid verminderen
     const wanted = Math.hypot(nx - p.x, nz - p.z), got = Math.hypot(rx - p.x, rz - p.z);
     if (wanted > 0.001 && got < wanted * 0.5 && this.mode !== 'walk') p.speed *= 0.85;
-    p.x = rx; p.z = rz;
-    p.y = this.world.heightAt(p.x, p.z);
-
+    // niet door geparkeerde auto's
+    let fx = rx, fz = rz;
+    for (const c of this.cars.cars) {
+      const d = Math.hypot(c.x - fx, c.z - fz);
+      if (d < 1.6 && d > 0.01) { fx = c.x + ((fx - c.x) / d) * 1.6; fz = c.z + ((fz - c.z) / d) * 1.6; }
+    }
+    p.x = fx; p.z = fz;
+    p.y = this.world.groundAt(p.x, p.z);
     p.group.position.set(p.x, p.y, p.z);
     p.group.rotation.y = p.heading;
-    // kantelen op het skateboard / de fiets in bochten
     p.model.userData.animate(dt, p.speed, p.pose || (this.mode === 'walk' ? 'walk' : this.mode));
+    if (this.mode !== 'walk') document.getElementById('speed-value').textContent = Math.round(p.speed * 3.6);
   }
 
   updateNpcs(dt) {
     const p = this.player;
     for (const n of this.npcs) {
       if (!n.group.visible) continue;
+      if (n.marker.visible) { n.marker.rotation.y += dt * 2; n.marker.position.y = 3.2 + Math.sin(this.time * 2.5) * 0.12; }
       const d = Math.hypot(p.x - n.pos.x, p.z - n.pos.z);
+      if (d > 120) continue;
       if (n.mode === 'skate') {
         n.group.rotation.y = n.heading;
         n.model.userData.animate(dt, 6, 'skate');
         continue;
       }
       if (d < 9 || n.lookAtPlayer) {
-        const want = Math.atan2(p.x - n.pos.x, p.z - n.pos.z);
-        let diff = want - n.heading;
+        let diff = Math.atan2(p.x - n.pos.x, p.z - n.pos.z) - n.heading;
         diff = Math.atan2(Math.sin(diff), Math.cos(diff));
         n.heading += diff * Math.min(1, 5 * dt);
       }
       n.group.rotation.y = n.heading;
-      n.model.userData.animate(dt, 0, n.active && d < 14 && d > 3 ? 'wave' : 'idle');
+      n.model.userData.animate(dt, 0, n.marker.visible && d < 14 && d > 3 ? 'wave' : 'idle');
     }
   }
 
   updateInteractions(dt) {
     const p = this.player;
-    this.time = (this.time || 0) + dt;
-
-    // verzamelobjecten
     for (const c of this.collectibles) {
       c.mesh.rotation.y += dt * 2.5;
-      c.mesh.position.y += Math.sin(this.time * 3) * 0.003;
-      if (Math.hypot(p.x - c.pos.x, p.z - c.pos.z) < 2.2) { c.onCollect(); break; }
+      if (Math.hypot(p.x - c.pos.x, p.z - c.pos.z) < (this.mode === 'car' ? 3.5 : 2.2)) { c.onCollect(); break; }
     }
+    if (this.waypoint && Math.hypot(p.x - this.waypoint.x, p.z - this.waypoint.z) < 10) {
+      this.scene.remove(this.waypointBeam);
+      this.waypoint = null;
+      this.ui.toast('Je bent er!', 1200);
+    }
+    if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty) { if (!this.penalty) this.ui.prompt(null); return; }
 
-    if (this.ui.dialogOpen || p.lockedFor || this.race) { this.ui.prompt(null); return; }
-
+    if (this.mode === 'car') {
+      this.ui.prompt(Math.abs(this.car.speed) < 3 ? 'Uitstappen' : null);
+      this.ui.setActionLabel('Uit');
+      if (this.input.consumeAction()) this.exitCar();
+      return;
+    }
     let near = null, nd = 4;
     for (const n of this.npcs) {
-      if (!n.active || !n.enabled) continue;
+      if (!n.active || !n.enabled || !n.group.visible) continue;
       const d = Math.hypot(p.x - n.pos.x, p.z - n.pos.z);
       if (d < nd) { near = n; nd = d; }
     }
-    this.ui.prompt(near ? `Praat met ${near.name.toLowerCase().startsWith('de ') ? near.name.toLowerCase() : near.name}` : null);
-    this.ui.setActionLabel(near ? 'Praat' : '...');
-    if (this.input.consumeAction() && near) {
-      p.speed = 0;
-      this.quests.talk(near);
+    const car = !near ? this.cars.nearestCar(p.x, p.z, 1.8) : null;
+    if (near) {
+      this.ui.prompt(`Praat met ${near.name.toLowerCase().startsWith('de ') ? near.name.toLowerCase() : near.name}`);
+      this.ui.setActionLabel('Praat');
+    } else if (car) {
+      this.ui.prompt(car.isVolvo ? 'Instappen in de Volvo XC40' : 'Instappen');
+      this.ui.setActionLabel('Auto');
+    } else {
+      this.ui.prompt(null);
+      this.ui.setActionLabel('...');
+    }
+    if (this.input.consumeAction()) {
+      if (near) { p.speed = 0; this.missions.talk(near); }
+      else if (car) this.enterCar(car);
     }
   }
 
@@ -483,36 +808,53 @@ class Game {
     if (look.x || look.y) {
       this.camYaw -= look.x * 0.006;
       this.camPitch = THREE.MathUtils.clamp(this.camPitch + look.y * 0.004, -0.1, 1.2);
-      this.lastManualLook = this.time || 0;
+      this.lastManualLook = this.time;
     }
     if (this.input.zoom) {
       this.camDist = THREE.MathUtils.clamp(this.camDist + this.input.zoom * 0.8, 3.5, 30);
       this.input.zoom = 0;
     }
-    // camera draait vanzelf achter de speler aan als die beweegt
-    if (!instant && p.speed > 1 && (this.time || 0) - this.lastManualLook > 1.5) {
+    const inCar = this.mode === 'car';
+    const followRate = inCar ? 3.5 : this.mode === 'walk' ? 1.2 : 2.4;
+    if (!instant && p.speed > 1 && this.time - this.lastManualLook > (inCar ? 0.8 : 1.5) && !this.penalty) {
       const behind = p.heading + Math.PI;
       let diff = behind - this.camYaw;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      this.camYaw += diff * Math.min(1, dt * (this.mode === 'walk' ? 1.2 : 2.2));
+      this.camYaw += diff * Math.min(1, dt * followRate);
     }
-    const dist = this.camDist + (this.mode !== 'walk' ? 1.5 : 0);
-    const cx = p.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * dist;
-    const cz = p.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * dist;
-    let cy = p.y + 1.7 + Math.sin(this.camPitch) * dist;
-    cy = Math.max(cy, this.world.heightAt(cx, cz) + 0.6);
-    const targetPos = new THREE.Vector3(cx, cy, cz);
+    const dist = inCar ? this.camDist + 3.5 + Math.min(4, p.speed * 0.12) : this.camDist + (this.mode !== 'walk' ? 1.5 : 0);
+    const pitch = inCar ? Math.max(0.12, this.camPitch * 0.7) : this.camPitch;
+    const cx = p.x + Math.sin(this.camYaw) * Math.cos(pitch) * dist;
+    const cz = p.z + Math.cos(this.camYaw) * Math.cos(pitch) * dist;
+    let cy = p.y + (inCar ? 2.2 : 1.7) + Math.sin(pitch) * dist;
+    cy = Math.max(cy, this.world.groundAt(cx, cz) + 0.6);
+    // camera niet achter een muur: dichterbij komen als er een gebouw tussen zit
+    const hy = p.y + 1.6;
+    const occ = this.world.occlusion(p.x, hy, p.z, cx, cy, cz);
+    let tx = cx, ty = cy, tz = cz;
+    if (occ < 1) {
+      const k = Math.max(inCar ? 0.45 : 0.15, occ - 0.08);
+      tx = p.x + (cx - p.x) * k; ty = hy + (cy - hy) * k; tz = p.z + (cz - p.z) * k;
+      // bij weinig ruimte de camera wat optillen, zoals in een racegame
+      ty += (1 - k) * (inCar ? 4 : 1.5);
+    }
+    const targetPos = new THREE.Vector3(tx, ty, tz);
     if (instant) this.camera.position.copy(targetPos);
-    else this.camera.position.lerp(targetPos, Math.min(1, dt * 10));
+    else this.camera.position.lerp(targetPos, Math.min(1, dt * (occ < 1 ? 20 : inCar ? 8 : 10)));
+    // sneller rijden = breder beeld
+    const fov = 60 + (inCar ? Math.min(14, p.speed * 0.45) : 0);
+    if (Math.abs(this.camera.fov - fov) > 0.05) { this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); }
     this.camera.up.set(0, 1, 0);
-    this.camera.lookAt(p.x, p.y + 1.5, p.z);
+    this.camera.lookAt(p.x, p.y + (inCar ? 1.2 : 1.5), p.z);
     if (this.wobble > 0) {
       this.wobble -= dt;
-      const a = Math.min(1, this.wobble / 5) * 0.06;
-      this.camera.rotateZ(Math.sin((this.time || 0) * 1.3) * a);
+      this.camera.rotateZ(Math.sin(this.time * 1.3) * Math.min(1, this.wobble / 5) * 0.06);
     }
-
-    // schaduwcamera volgt de speler
+    if (this.shake > 0) {
+      this.shake -= dt;
+      this.camera.position.x += (Math.random() - 0.5) * this.shake * 0.6;
+      this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.6;
+    }
     if (this.sunDir) {
       this.sun.position.set(p.x + this.sunDir.x * 250, p.y + Math.max(this.sunDir.y, 0.15) * 250, p.z + this.sunDir.z * 250);
       this.sun.target.position.set(p.x, p.y, p.z);
@@ -529,13 +871,11 @@ class Game {
       const s = this.world.nearestStreet(p.x, p.z);
       this.ui.setStreet(s && s.dist < 40 ? s.name : '');
     }
-    if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin((this.time || 0) * 3) * 0.06;
-    const t = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : null;
-    this.minimap.draw(p.x, p.z, p.heading, this.camYaw, t);
+    if (this.targetBeam) this.targetBeam.material.opacity = 0.18 + Math.sin(this.time * 3) * 0.06;
+    const tgt = this.target ? { x: this.target.pos.x, z: this.target.pos.z } : this.waypoint;
+    this.minimap.draw(p.x, p.z, p.heading, this.camYaw, tgt);
   }
 }
-
-// ------------------------------------------------------------ hulpjes
 
 function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
@@ -571,8 +911,7 @@ function makeLabel(text, { small = false } = {}) {
   ctx.fillText(text, 30, c.height / 2 + 3);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: !small ? true : true, fog: false, transparent: true });
-  const s = new THREE.Sprite(mat);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, fog: false, transparent: true }));
   const h = small ? 0.45 : 2.6;
   s.scale.set((h * w) / c.height, h, 1);
   s.renderOrder = 10;

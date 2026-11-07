@@ -80,6 +80,17 @@
     {
       "id": "ringweg",
       "name": "Ringweg",
+      "address": "Ringweg",
+      "x": 191104,
+      "y": 314313,
+      "pos": [
+        573,
+        -255
+      ]
+    },
+    {
+      "id": "fcgulpen",
+      "name": "FC Gulpen",
       "address": "Ringweg 14",
       "x": 191263,
       "y": 314332,
@@ -87,8 +98,52 @@
         732,
         -274
       ]
+    },
+    {
+      "id": "zheng",
+      "name": "Cafetaria Zheng",
+      "address": "Looierstraat 103",
+      "x": 190585,
+      "y": 314084,
+      "pos": [
+        54,
+        -26
+      ]
+    },
+    {
+      "id": "salma",
+      "name": "Grillroom Pizzeria Salma",
+      "address": "Rijksweg 60A",
+      "x": 190748.5,
+      "y": 314091.5,
+      "pos": [
+        217.5,
+        -33.5
+      ]
+    },
+    {
+      "id": "mariabeeld",
+      "name": "Mariabeeld",
+      "address": "Top van de Gulperberg",
+      "x": 191111.4,
+      "y": 313932.2,
+      "pos": [
+        580.3999999999942,
+        125.79999999998836
+      ]
+    },
+    {
+      "id": "volvo",
+      "name": "Ringweg 38",
+      "address": "Ringweg 38",
+      "x": 190985.6,
+      "y": 314375.8,
+      "pos": [
+        454.6000000000058,
+        -317.79999999998836
+      ]
     }
   ],
-  "generated": "2026-11-07T01:49:10.583Z",
+  "generated": "2026-11-07T06:44:02.946Z",
   "attribution": "3D BAG (TU Delft / 3DGI, CC BY 4.0), AHN (Rijkswaterstaat, CC0), BGT en NWB (PDOK, CC0)"
 }
