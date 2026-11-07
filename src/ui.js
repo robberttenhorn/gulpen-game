@@ -9,6 +9,22 @@ export class UI {
     $('dialog').addEventListener('pointerdown', (e) => {
       if (e.target.tagName !== 'BUTTON') this.input.actionPressed = true;
     });
+    // vertaling van Gulpense zinnen aan/uit (onthouden per apparaat)
+    this.translate = true;
+    try { this.translate = localStorage.getItem('gulpe-vertaling') !== 'uit'; } catch { /* geen opslag */ }
+    const tr = $('dialog-tr');
+    const sync = () => {
+      tr.textContent = this.translate ? 'Vertaling aan' : 'Vertaling uit';
+      tr.setAttribute('aria-pressed', String(this.translate));
+      $('dialog-nl').hidden = !this.translate || !this.currentNl;
+    };
+    tr.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.translate = !this.translate;
+      try { localStorage.setItem('gulpe-vertaling', this.translate ? 'aan' : 'uit'); } catch { /* negeren */ }
+      sync();
+    });
+    this.syncTranslation = sync;
   }
 
   setQuest(title, desc, progress = '') {
@@ -22,6 +38,11 @@ export class UI {
     const el = $('street-name');
     if (el.textContent !== name) el.textContent = name;
     $('street-sign').style.opacity = name ? 1 : 0;
+  }
+
+  // Gulpens woord met vertaling (als de vertaling aan staat)
+  toastDialect(word, nl, ms = 1600) {
+    this.toast(this.translate && nl ? `${word} (${nl})` : word, ms);
   }
 
   toast(text, ms = 2600) {
@@ -61,8 +82,13 @@ export class UI {
     this.prompt(null);
     $('dialog-next').textContent = this.input.isTouch ? 'Tik om verder te gaan' : 'Druk op E of tik om verder te gaan';
     for (let i = 0; i < lines.length; i++) {
-      const line = typeof lines[i] === 'string' ? { name, text: lines[i] } : lines[i];
+      const line = typeof lines[i] === 'string' ? { name, text: lines[i] } : { name, ...lines[i] };
       $('dialog-name').textContent = line.name;
+      // Gulpense zin: vertaling eronder
+      this.currentNl = line.nl || '';
+      $('dialog-nl').textContent = line.nl ? line.nl : '';
+      $('dialog-tr').hidden = !line.nl;
+      this.syncTranslation();
       $('dialog-choices').innerHTML = '';
       const isLast = i === lines.length - 1;
       if (isLast && choices) {

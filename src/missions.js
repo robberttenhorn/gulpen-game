@@ -8,6 +8,10 @@ import { makeCharacter, makeKeg } from './character.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
 
+// Gulpense zin met Nederlandse vertaling. De Gulpense woorden komen uit de woordenlijst Gulpens
+// van mijnwoordenboek.nl (door bezoekers samengesteld). Laat ze nakijken door een Gulpenaar.
+const G = (text, nl) => ({ text, nl });
+
 export class Missions {
   constructor(game) {
     this.g = game;
@@ -88,6 +92,12 @@ export class Missions {
     // organisator van de Nacht van Gulpen (alleen 's avonds)
     add('organisator', 'Organisator Nacht van Gulpen', g.world.spotNear(-14, 34), { shirt: 0xff9800, pants: 0x263238, hair: 0x4e342e, coat: 0xff9800 });
 
+    // opa op een bankje bij de Markt
+    const benches = (g.world.objects.furniture || []).filter((f) => f[0] === 'bank')
+      .map(([, x, z]) => [x, z, Math.hypot(x, z)]).filter((b) => b[2] < 160).sort((a, b) => a[2] - b[2]);
+    const bench = benches[0] || [10, 10];
+    add('opa', 'Opa op het benkske', g.world.resolve(bench[0] + 1.2, bench[1] + 0.6, 0.4), { shirt: 0x6d5c4b, pants: 0x4a4a4a, hair: 0xe0e0e0, hat: 'cap', hatColor: 0x3e3e3e });
+
     Object.values(this.npcs).forEach((n) => { n.active = true; });
     this.refresh();
   }
@@ -108,6 +118,7 @@ export class Missions {
       { id: 'penalty', npc: n.trainer, title: 'Penalty\'s bij FC Gulpen', place: 'Sportpark FC Gulpen', desc: 'Scoor er minstens 3 van de 5.' },
       { id: 'deal', npc: n.jas, title: 'Een schimmig zaakje', place: 'Mariabeeld, Gulperberg', desc: 'Iemand op de Gulperberg heeft een pakketje. Niet te veel vragen stellen.' },
       { id: 'nacht', npc: n.nacht, title: 'De Nachtburgemeester', place: 'Markt (alleen \'s avonds)', desc: 'De Nachtburgemeester is iets kwijt.', nightOnly: true },
+      { id: 'plat', npc: n.opa, title: 'Plat kalle', place: 'Benkske bij de Markt', desc: 'Opa overhoort je in het Gulpens. Weet jij wat de woorden betekenen?' },
       { id: 'gulperberg', npc: n.wielrenner, title: 'Gulperberg op!', place: 'Voet van de Gulperberg', desc: 'Fiets zo snel mogelijk naar het Mariabeeld op de top.' },
       { id: 'gerst', npc: n.boer, title: 'Gerst voor de brouwerij', place: 'Boerenland aan de rand van het dorp', desc: 'Rij met de tractor een lading gerst naar de Gulpener brouwerij.' },
       { id: 'vissen', npc: n.visser, title: 'Vissen in de Gulp', place: 'Oever van de Gulp', desc: 'Vang drie vissen. Tik pas als de dobber onder gaat.' },
@@ -130,7 +141,7 @@ export class Missions {
       g.ui.setQuest(this.active.title, this.active.desc, this.active.progress || '');
     } else {
       const open = this.list().filter((m) => m.state === 'open' && (!m.nightOnly || night)).length;
-      g.ui.setQuest('Vrij rondlopen', `Er staan ${open} klussen open. Tik op de kaart om ze te zien, of loop naar een gele markering.`, `${this.done.size} klussen gedaan`);
+      g.ui.setQuest('Vrij rondlopen', `Er staan ${open} klussen open. Tik op de kaart om ze te zien, of loop naar een gele markering.`, `${this.done.size} ${this.done.size === 1 ? 'klus' : 'klussen'} gedaan`);
     }
     g.updateMarkers();
   }
@@ -171,7 +182,7 @@ export class Missions {
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
-      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen' };
+      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat' };
       const key = Object.keys(n).find((k) => n[k] === npc);
       const mid = missionOf[key];
       const deliverKeg = key === 'waard' && this.active?.id === 'vat';
@@ -211,9 +222,11 @@ export class Missions {
         return;
       }
       await ui.dialog(N, [
-        'Hoi! Laat eens kijken... Ja hoor, dat is een flinke lekke band.',
+        G('Joa? Ee blutsj in de fiets?', 'Ja? Een deuk in de fiets?'),
+        'Laat eens kijken... Nee, geen deuk. Wel een flinke lekke band.',
         'Die Gulperberg op en af met zachte banden, dat houdt geen band lang vol.',
-        'Momentje... plakken, oppompen... klaar! Hij rijdt weer als een zonnetje.',
+        'Momentje... plakken, oppompen...',
+        G('Veâdig! Hea is aaf.', 'Klaar! Hij is klaar.'),
       ]);
       g.unlockVehicle('bike');
       await ui.dialog('Tip', [g.input.isTouch ? 'Tik op de knop "Fiets" om op te stappen.' : 'Druk op F om op je fiets te stappen.']);
@@ -232,7 +245,8 @@ export class Missions {
         return;
       }
       await ui.dialog(N, [
-        'Goeiendag! Wat mag het zijn?',
+        G('Welkom in de frieteboet!', 'Welkom in de friture!'),
+        'Wat mag het zijn?',
         { name: 'Jij', text: 'Een frikandel speciaal graag. Kan ik pinnen?' },
         'Pinnen? Nee hoor, hier is het alleen contant. Al sinds jaar en dag!',
       ]);
@@ -258,7 +272,7 @@ export class Missions {
     },
 
     async zheng(npc, N, ui, g) {
-      const a = await ui.dialog(N, ['Hallo! Wat mag het zijn?'], ['Patat met mayo', 'Patatje oorlog', 'Patat speciaal', 'Gewoon zonder']);
+      const a = await ui.dialog(N, [G('Joa? Welkom in de frieteboet!', 'Ja? Welkom in de friture!'), 'Wat mag het zijn?'], ['Patat met mayo', 'Patatje oorlog', 'Patat speciaal', 'Gewoon zonder']);
       const reply = [
         'Patat met mayo, de klassieker. Komt eraan!',
         'Patatje oorlog: mayo, pindasaus en uitjes. Jij durft!',
@@ -276,6 +290,7 @@ export class Missions {
         return;
       }
       await ui.dialog(N, [
+        G('Neet skate bie de sjoel!', 'Niet skaten bij school!'),
         'Zo, kom je je skateboard ophalen? Op het schoolplein wordt niet geskatet, dat weet je.',
         'Goed, je krijgt hem terug. Maar eerst een overhoring. Je zit tenslotte op het Sophianum!',
       ]);
@@ -320,6 +335,7 @@ export class Missions {
         return;
       }
       await ui.dialog(N, [
+        G('Beer? Ummer!', 'Bier? Altijd!'),
         'Een vat voor de Zwarte Ruiter? Komt goed.',
         'Hier wordt al sinds 1825 gebrouwen. Deze zomer is de brouwerij helemaal overgenomen door Grolsch, zeggen ze.',
         'Maar wat er in dit vat zit, wordt nog steeds gewoon hier in Gulpen gebrouwen.',
@@ -332,14 +348,14 @@ export class Missions {
 
     async waard(npc, N, ui, g) {
       if (this.active?.id === 'vat' && g.keg) {
-        await ui.dialog(N, ['Daar is ie! Precies op tijd, de tap was bijna droog.', 'Dat verdient een pilsje van de zaak. Proost!']);
+        await ui.dialog(N, ['Daar is ie! Precies op tijd, de tap was bijna droog.', G('Ee glaas beer va de zaak!', 'Een glas bier van de zaak!')]);
         g.dropKeg();
         await g.drinkPils();
         this.complete('vat', 'Vat bezorgd!');
         return;
       }
       const night = g.night > 0.5;
-      const a = await ui.dialog(N, [night ? 'Nog eentje dan? Daarna gaan we sluiten hoor.' : 'Goeiemiddag! Zin in een pilsje op het terras?'],
+      const a = await ui.dialog(N, [night ? G('Nog ee glaas beer, braggelear?', 'Nog een glas bier, nachtbraker?') : G('Ee glaas beer op de maat?', 'Een glas bier op de markt?')],
         [night ? 'Nog eentje (tot morgenochtend)' : 'Graag, een pilsje!', 'Nee, dank je']);
       if (a !== 0) return;
       await g.drinkPils();
@@ -373,7 +389,8 @@ export class Missions {
         return;
       }
       const a = await ui.dialog(N, [
-        'Psst. Jij daar. Niet zo opvallend kijken.',
+        G('Psst. Hot de moel.', 'Psst. Zwijg.'),
+        'Niet zo opvallend kijken. En let op de pliesie.',
         'Ik heb hier een pakketje dat zo snel mogelijk naar een adres in het dorp moet. Geen vragen.',
         'Je hebt niet veel tijd. Doe je het?',
       ], ['Oké, geef maar', 'Nee, dat zit me niet lekker']);
@@ -399,7 +416,8 @@ export class Missions {
         return;
       }
       await ui.dialog(N, [
-        'Goedenavond! Ik ben de Nachtburgemeester van Gulpen. Als de echte burgemeester slaapt, waak ik over het dorp.',
+        G('Ah, nog ee braggelear!', 'Ah, nog een nachtbraker!'),
+        'Ik ben de Nachtburgemeester van Gulpen. Als de echte burgemeester slaapt, waak ik over het dorp.',
         'Maar ik ben mijn ambtsketen kwijt! Zonder keten neemt niemand me serieus.',
         'Ik had hem nog bij een bruggetje over de Gulp. Wil je helpen zoeken?',
       ]);
@@ -411,6 +429,39 @@ export class Missions {
   // ------------------------------------------------------------ nieuwe Gulpen-klussen
 
   extra = {
+    async opa(npc, N, ui) {
+      // woorden en betekenissen uit de woordenlijst Gulpens (mijnwoordenboek.nl)
+      const pool = [
+        ['kuusj', 'varken'], ['braggelear', 'nachtbraker'], ['frieteboet', 'friture'], ['sjtroat', 'straat'],
+        ['pliesie', 'politie'], ['elbur', 'aardbei'], ['maat', 'markt'], ['knien', 'konijn'], ['sjoel', 'school'],
+        ['péat', 'paard'], ['sjoepkar', 'kruiwagen'], ['pieëpul', 'vlinder'], ['huuve', 'knikkers'],
+        ['moelejan', 'roddelaar'], ['behijdskriemer', 'opschepper'], ['schmiezele', 'motregenen'],
+        ['kanjel', 'dakgoot'], ['toepes', 'zot'], ['trèkkar', 'bolderwagen'], ['bölke', 'snoepje'],
+      ];
+      const a = await ui.dialog(N, [
+        'Hé jong, kom eens bij me zitten op het benkske.',
+        'Spreek jij nog plat? Of is het allewiel alleen nog Hollands?',
+      ], ['Natuurlijk spreek ik plat!', 'Een beetje...', 'Nee, opa']);
+      void a;
+      await ui.dialog(N, ['Eens kijken. Ik noem een woord, jij zegt wat het betekent. Drie van de vier goed, dan ben je een echte Gulpenaar.']);
+      const qs = pool.slice().sort(() => Math.random() - 0.5).slice(0, 4);
+      let good = 0;
+      for (const [word, meaning] of qs) {
+        const wrong = pool.filter((p) => p[1] !== meaning).sort(() => Math.random() - 0.5).slice(0, 2).map((p) => p[1]);
+        const opts = [meaning, ...wrong].sort(() => Math.random() - 0.5);
+        const pick = await ui.dialog(N, [`Wat is "${word}"?`], opts);
+        if (opts[pick] === meaning) { good++; await ui.dialog(N, ['Joa! Goed zo.']); }
+        else await ui.dialog(N, [`Nee nee. "${word}" is ${meaning}.`]);
+      }
+      if (good >= 3) {
+        await ui.dialog(N, [`${good} van de 4! Jij bent een echte Gulpenaar.`, G('Opgedrage an alle lu i Gullepe, die hun plat nog kalle!', 'Opgedragen aan alle mensen in Gulpen die hun dialect nog spreken!')]);
+        this.complete('plat', 'Plat kalle: geslaagd!');
+      } else {
+        await ui.dialog(N, [`${good} van de 4... Kom morgen maar weer op het benkske zitten, dan oefenen we nog wat.`]);
+        this.refresh();
+      }
+    },
+
     async wielrenner(npc, N, ui, g) {
       if (!g.vehicles.bike) {
         await ui.dialog(N, ['Te voet de Gulperberg op? Dat gaat je niet lukken binnen de tijd. Laat eerst je fiets maken bij Jef Abels.']);
@@ -421,6 +472,7 @@ export class Missions {
         'Mijn record naar het Mariabeeld op de top staat al jaren. Durf jij het aan, op de fiets?',
       ], ['Kom maar op!', 'Mijn benen zijn nog moe']);
       if (a !== 0) return;
+      await ui.dialog(N, [G('Bis bôäve!', 'Tot boven!')]);
       if (g.mode === 'car') g.exitCar();
       g.setMode('bike');
       const p = g.world.meta.pois.find((q) => q.id === 'mariabeeld').pos;
@@ -457,7 +509,7 @@ export class Missions {
       const dest = f ? g.world.resolve(f.x + f.nx * 6, f.z + f.nz * 6, 1.2) : g.world.spotNear(...g.world.meta.pois.find((q) => q.id === 'brouwerij').pos);
       const dist = Math.hypot(dest[0] - g.tractor.x, dest[1] - g.tractor.z);
       this.setActive('gerst', 'Gerst voor de brouwerij', 'Stap in de tractor en breng de gerst naar de Gulpener brouwerij aan de Rijksweg.');
-      await ui.dialog(N, ['De tractor staat hier op het land. Rustig aan door het dorp hè, hij gaat niet harder dan 40!']);
+      await ui.dialog(N, [G('Neet mit de trèkkar, mit de tractor!', 'Niet met de bolderwagen, met de tractor!'), 'Hij staat hier op het land. Rustig aan door het dorp, hij gaat niet harder dan 40!']);
       g.setDestination(dest, Math.round(dist / 6 + 90), async () => {
         if (this.grain) { this.grain.parent?.remove(this.grain); this.grain = null; }
         await ui.dialog('De brouwer', ['Mooie gerst! Daar brouwen we weer een paar flinke vaten van. Dank je wel!']);
@@ -470,7 +522,8 @@ export class Missions {
 
     async visser(npc, N, ui, g) {
       const a = await ui.dialog(N, [
-        'Ssst, niet zo hard. Je jaagt de vissen weg.',
+        G('Ssst. Hot de moel!', 'Ssst. Zwijg!'),
+        'Je jaagt de visch weg.',
         'Wil je het ook eens proberen? Wacht tot de dobber onder gaat, en dan pas ophalen.',
       ], ['Geef die hengel maar', 'Ik kijk wel even']);
       if (a !== 0) return;
@@ -491,7 +544,8 @@ export class Missions {
         return;
       }
       const a = await ui.dialog(N, [
-        'Alaaf! De Vastelaovesfinale op de Markt begint zo, maar de helft van het gezelschap is zoek!',
+        G('Alaaf! Ee cramignon door Gullepe!', 'Alaaf! Achter elkaar springen op muziek door Gulpen!'),
+        'De Vastelaovesfinale op de Markt begint zo, maar de helft van het gezelschap is zoek!',
         'Ze lopen verspreid door het dorp. Haal ze op en kom met een polonaise terug naar de Markt. Te voet natuurlijk!',
       ], ['Alaaf, ik ga!', 'Ik ben geen feestbeest']);
       if (a !== 0) return;
@@ -517,6 +571,7 @@ export class Missions {
         'Ik test vanavond een proefrondje door het dorp. Loop jij langs de vijf stempelposten? Te voet, uiteraard.',
       ], ['Ik loop mee', 'Een andere keer']);
       if (a !== 0) return;
+      await ui.dialog(N, [G('Lope, lope, lope!', 'Lopen, lopen, lopen!')]);
       if (g.mode === 'car') g.exitCar();
       g.setMode('walk');
       this.setActive('nachtvangulpen', 'Nacht van Gulpen', 'Loop naar de stempelpost. Alleen te voet!', 'Stempel 0 / 5');

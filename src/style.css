@@ -198,3 +198,13 @@ body.dialog-open #prompt { display: none !important; }
   #bigmap-panel { width: 100%; max-width: none; flex: 1; padding-top: 12px; }
   .bm-head { font-size: 20px; }
 }
+
+/* ---------- dialect met vertaling ---------- */
+#dialog { position: absolute; }
+#dialog-tr {
+  position: absolute; top: 10px; right: 12px; font: 600 11px Inter, sans-serif; letter-spacing: .3px;
+  border: 1.5px solid #e2d6bd; background: #fff; color: #5a6470; border-radius: 99px; padding: 4px 10px; cursor: pointer;
+}
+#dialog-tr[aria-pressed="false"] { opacity: .6; }
+#dialog-nl { font-size: 13px; font-style: italic; color: #6b7280; margin-top: 4px; }
+#dialog-name { padding-right: 110px; }

@@ -43,6 +43,7 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
 | Polonaise door Gulpe: verzamel feestgangers voor de Vastelaovesfinale | Markt |
 | Nacht van Gulpen (alleen 's avonds): wandelen langs vijf stempelposten | Bij de Markt |
+| Plat kalle: opa overhoort je in het Gulpens | Benkske bij de Markt |
 
 Voortgang wordt in de browser bewaard.
 
@@ -74,7 +75,7 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 
 ## Nog te controleren
 
-- **Dialect**: de teksten zijn nu vooral Nederlands met een paar Limburgse woorden. Een echte Gulpenaar moet dit nalopen en aanvullen.
+- **Dialect**: de dorpsbewoners spreken af en toe Gulpens, met een Nederlandse vertaling eronder (aan en uit te zetten in de dialoog). Alle Gulpense woorden komen uit de [woordenlijst Gulpens op mijnwoordenboek.nl](https://www.mijnwoordenboek.nl/dialect/Gulpens), die door bezoekers is samengesteld en geen officiële bron is. De zinnetjes zijn met die woorden gemaakt en moeten door een echte Gulpenaar worden nagelopen.
 - **Echte personen**: bewust weggelaten. De mensen in de zaken zijn verzonnen rollen ("de monteur", "de waard"). De nachtburgemeester is verzonnen.
 - **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
 - **Mariabeeld**: de plek komt uit de BGT (een monument op 157 m, de top van de Gulperberg). Het beeld zelf is een gestileerde benadering, niet het echte ontwerp.

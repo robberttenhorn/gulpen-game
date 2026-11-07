@@ -96,7 +96,8 @@ class Game {
     this.renderer.setAnimationLoop(() => this.tick());
 
     await this.ui.dialog('Gulpen, zaterdag', [
-      'Welkom in Gulpe! Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto.',
+      { text: 'Welkom in Gullepe!', nl: 'Welkom in Gulpen!' },
+      'Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto.',
       'Overal zijn klussen te doen. Tik op de minikaart rechtsboven om ze allemaal te zien, en kies zelf waar je begint.',
     ]);
   }
@@ -733,7 +734,7 @@ class Game {
       rod.rotation.x = 1.0;
       this.player.group.add(rod);
       let phase = 'wait', t = 0, wait = 1.5 + Math.random() * 3, caught = 0, tries = 0;
-      const fishNames = ['Een mooie vis!', 'Wat een joekel!', 'Een kleintje, maar telt!', 'Beet!'];
+      const fishNames = ['Ee visch!', 'Wat een joekel!', 'Een kleintje, maar telt!', 'Beet!'];
       this.ui.setActionLabel('Haal op');
       const finish = () => {
         this.scene.remove(bob, line);
@@ -811,7 +812,7 @@ class Game {
         if (this.mode === 'walk' && Math.hypot(p.x - f.x, p.z - f.z) < 2.6) {
           f.joined = true;
           f.marker.done = true;
-          this.ui.toast(['Alaaf!', 'Ik doe mee!', 'Polonaise!', 'Hup, achter je aan!'][Math.floor(Math.random() * 4)], 1200);
+          this.ui.toast(['Alaaf!', 'Ik doe mee!', 'Cramignon!', 'Hup, achter je aan!'][Math.floor(Math.random() * 4)], 1200);
           this.missions.progress(`${this.followersJoined()} / ${this.followers.length} feestgangers`);
         }
         continue;
