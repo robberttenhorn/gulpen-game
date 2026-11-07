@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { makeCharacter, makeKeg } from './character.js';
-import { makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
+import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
 
@@ -129,6 +129,9 @@ export class Missions {
     if (sp('paulissen')) add('bakker', 'De bakker', sp('paulissen'), { shirt: 0xffffff, pants: 0x9e9e9e, apron: 0xf3e6c8, hair: 0x8d6e63, hat: 'chef' });
     if (sp('meertens')) add('slager', 'De slager', sp('meertens'), { shirt: 0xffffff, pants: 0x37474f, apron: 0xb71c1c, hair: 0x424242 });
 
+    // koster bij de Sint-Petruskerk
+    if (sp('kerk')) add('koster', 'De koster', sp('kerk', 3), { shirt: 0x263238, pants: 0x212121, hair: 0xbdbdbd, coat: 0x212121 });
+
     // voorwerpen en houdingen die bij de mensen horen
     g.attachToHand(this.npcs.waard.model, makeFluitje());
     g.attachToHand(this.npcs.brouwer.model, makeFluitje());
@@ -181,6 +184,7 @@ export class Missions {
       { id: 'penalty', npc: n.trainer, title: 'Penalty\'s bij FC Gulpen', place: 'Sportpark FC Gulpen', desc: 'Scoor er minstens 3 van de 5.' },
       { id: 'deal', npc: n.jas, title: 'Een schimmig zaakje', place: 'Mariabeeld, Gulperberg', desc: 'Iemand op de Gulperberg heeft een pakketje. Niet te veel vragen stellen.' },
       { id: 'nacht', npc: n.nacht, title: 'De Nachtburgemeester', place: 'Markt (alleen \'s avonds)', desc: 'De Nachtburgemeester is iets kwijt.', nightOnly: true },
+      { id: 'armenfonds', npc: n.koster, title: 'Het verdwenen armenfonds', place: 'Sint-Petruskerk', desc: 'Het offerblok is leeg. Zoek de sporen van deken Haffmans door het dorp.' },
       { id: 'borrelplank', npc: n.donnys, title: 'De Gezellerie-borrelplank', place: "Donny's Gezellerie", desc: 'Haal kaas en worst bij Meertens en brood bij Paulissen voor een borrelplank.' },
       { id: 'karretjes', npc: n.plus, title: 'Karretjes-trein', place: 'PLUS supermarkt', desc: 'Winkelwagentjes zijn door het dorp gezworven. Breng ze in één lange trein terug.' },
       { id: 'vlaaien', npc: n.bakker, title: 'Vlaaien voor na de mis', place: 'Bakkerij Paulissen', desc: 'Breng drie vlaaien naar de Sint-Petruskerk zonder ergens tegenaan te lopen.' },
@@ -256,7 +260,7 @@ export class Missions {
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
-      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager' };
+      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', koster: 'armenfonds', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager' };
       const key = Object.keys(n).find((k) => n[k] === npc);
       const mid = missionOf[key];
       const deliverKeg = key === 'waard' && this.active?.id === 'vat';
@@ -519,6 +523,36 @@ export class Missions {
   // ------------------------------------------------------------ nieuwe Gulpen-klussen
 
   extra = {
+    // Sint-Petruskerk: speurtocht naar het verdwenen armenfonds van deken Haffmans.
+    // Gebaseerd op berichtgeving (L1, Wikipedia, het boek 'In Gods naam'); nooit bewezen in een rechtszaak.
+    async koster(npc, N, ui, g) {
+      if (this.active?.id === 'armenfonds') {
+        await ui.dialog(N, [this.active.carReady ? 'Waar blijft die gouden bak? Rij hem hierheen, dan zien we wel wie er gelijk had!' : 'Nog niet alles gevonden? Kijk op de kaart, de sporen zijn met een dollarteken gemarkeerd. Of nou ja, een euroteken.']);
+        return;
+      }
+      const a = await ui.dialog(N, [
+        'Psst. Kom eens even mee naar binnen. Ik moet je iets laten zien.',
+        'Je kent het verhaal toch wel van deken Haffmans? Van 1984 tot 2006 de baas in deze kerk.',
+        'Volgens de krant en een heel boek ging er bijna twee miljoen euro uit de armenkas. Naar dure auto\'s, dure vakanties en rekeningen in het buitenland.',
+        'Hij is in 2007 overleden voordat het ooit voor de rechter kwam, dus bewezen is het nooit. Maar in Gulpen wordt er nog steeds over gepraat, kan ik je vertellen.',
+      ], ['Laat zien!', 'Laat de doden maar rusten']);
+      if (a !== 0) { await ui.dialog(N, ['Ook goed. Maar als je van gedachten verandert: ik sta hier elke dag, net als het offerblok. Dat is tenminste nog wel hier.']); return; }
+      const kerk = g.interiors.room('kerk');
+      await new Promise((resolve) => {
+        g.enterInterior(kerk, {
+          triggers: [{ x: kerk.offerblok.x, z: kerk.offerblok.z, r: 1.6, label: 'Bekijk het offerblok', action: () => { kerk.activeTriggers = []; resolve(); } }],
+        });
+      });
+      g.player.lockedFor = true;
+      await ui.dialog(N, [
+        'Kijk. Het offerblok. Helemaal leeg. Alleen dit briefje: "Even geleend, voor de goede zaak."',
+        'De goede zaak! Ik wed dat die goede zaak vier wielen had en een zwembad op de achterbank.',
+        'Ik heb gehoord dat er nog wat sporen door het dorp slingeren. Een koffer vol reisstickers, en een bankafschrift uit het buitenland. Ga jij even kijken?',
+      ]);
+      g.player.lockedFor = false;
+      this.startArmenfonds(npc);
+    },
+
     // Donny's Gezellerie: borrelplank samenstellen met spullen uit het dorp
     async donnys(npc, N, ui, g) {
       const act = this.active?.id === 'borrelplank' ? this.active : null;
@@ -627,7 +661,7 @@ export class Missions {
       this.setActive('slager', 'Bestelling in het plat', 'Ga naar buiten en breng het pakketje naar de klant. Volg de lichtbundel.');
       this.active.cleanup = () => g.dropProp();
       const dest = g.randomAddress(150, 450);
-      const dist = Math.hypot(dest[0] - g.player.x, dest[1] - g.player.z);
+      const dist = g.distOutside(dest);
       g.setDestination(dest, Math.round(dist / 5 + 40), async () => {
         g.dropProp();
         await ui.dialog('Bij de klant', [G('Ah, de bestelling va de slechter!', 'Ah, de bestelling van de slager!'), 'Hier, voor de moeite:', G('Ee pletzke!', 'Een koekje!')]);
@@ -704,7 +738,7 @@ export class Missions {
       g.setMode('bike');
       const p = g.world.meta.pois.find((q) => q.id === 'mariabeeld').pos;
       const dest = g.world.resolve(p[0] + 7, p[1] + 3, 0.5);
-      const dist = Math.hypot(dest[0] - g.player.x, dest[1] - g.player.z);
+      const dist = g.distOutside(dest);
       const limit = Math.round(dist * 1.5 / 8 + 20);
       this.setActive('gulperberg', 'Gulperberg op!', `Fiets naar het Mariabeeld op de top binnen ${limit} seconden. Alleen op de fiets!`);
       g.setDestination(dest, limit, async () => {
@@ -811,7 +845,7 @@ export class Missions {
           return;
         }
         const dest = g.randomAddress(110, 260);
-        const dist = Math.hypot(dest[0] - g.player.x, dest[1] - g.player.z);
+        const dist = g.distOutside(dest);
         // stempelpost met lantaarn en vlag
         const post = makeStampPost();
         const [sx, sz] = g.world.resolve(dest[0] + 1.5, dest[1] + 1.5, 0.6);
@@ -826,6 +860,94 @@ export class Missions {
       next();
     },
   };
+
+  // speurtocht armenfonds: twee sporen, daarna de gouden sportwagen naar de kerk rijden
+  startArmenfonds(koster) {
+    const g = this.g, ui = g.ui;
+    g.tempMarkers = [];
+    const act = { id: 'armenfonds', title: 'Het verdwenen armenfonds', left: 2, carReady: false, desc: 'Ga naar buiten en zoek de twee sporen (gemarkeerd op de kaart).', progress: 'Sporen: 0 / 2' };
+    let golden = null;
+    act.cleanup = () => { g.tempMarkers = []; g.collectibles.forEach((c) => c.cleanup?.()); g.collectibles = []; };
+    this.active = act;
+    this.refresh();
+    const clues = [
+      {
+        prop: makeSuitcase(), title: 'Een koffer vol reisstickers',
+        lines: ['Een dure koffer, helemaal beplakt met stickers van zon, zee en strand. Op het label staat: "Retour: de pastorie, Gulpen".', 'De armen kregen een ansichtkaart. Als ze geluk hadden.'],
+      },
+      {
+        prop: makeBankStatement(), title: 'Een buitenlands bankafschrift',
+        lines: ['Een envelop met een bankafschrift van een rekening ver over de grens. Het saldo is zo lang dat het van het papier af loopt.', 'Onderaan, met de hand: "Collecte zondag". Amen.'],
+      },
+    ];
+    g.collectibles = clues.map((c) => {
+      const [x, z] = g.randomAddress(150, 420);
+      const m = c.prop;
+      m.position.set(x, g.world.groundAt(x, z) + 0.6, z);
+      m.scale.setScalar(1.6);
+      g.scene.add(m);
+      const beam = g.makeBeam(x, z, 0xf2c14e);
+      const marker = { x, z, color: '#f2c14e', glyph: '€', done: false };
+      g.tempMarkers.push(marker);
+      const item = {
+        pos: m.position, mesh: m,
+        cleanup: () => g.scene.remove(m, beam),
+        onCollect: async () => {
+          item.cleanup();
+          marker.done = true;
+          g.collectibles = g.collectibles.filter((k) => k !== item);
+          g.player.lockedFor = true;
+          await ui.dialog(c.title, c.lines);
+          g.player.lockedFor = false;
+          act.left--;
+          this.progress(`Sporen: ${2 - act.left} / 2`);
+          if (act.left <= 0) this.revealGoldenCar(act, koster);
+        },
+      };
+      return item;
+    });
+  }
+
+  revealGoldenCar(act, koster) {
+    const g = this.g, ui = g.ui;
+    // een glimmende gouden sportwagen op een parkeerplaats
+    const spots = g.world.parkingSpots.filter((s) => Math.hypot(s.x - g.player.x, s.z - g.player.z) > 120 && !g.cars.cars.some((c) => Math.hypot(c.x - s.x, c.z - s.z) < 4));
+    const s = spots[Math.floor(Math.random() * spots.length)] || { x: g.player.x + 20, z: g.player.z, heading: 0 };
+    const car = g.cars.addCar('sport', s.x, s.z, s.heading, 0xd4af37, { isGolden: true });
+    car.mesh.children[0].material.metalness = 0.95;
+    car.mesh.children[0].material.roughness = 0.18;
+    act.carReady = true;
+    act.desc = 'Er staat een gouden sportwagen in het dorp. Pak hem en rij hem naar de Sint-Petruskerk!';
+    g.tempMarkers.push({ x: car.x, z: car.z, color: '#d4af37', glyph: '€', done: false });
+    this.refresh();
+    g.setTarget({ pos: car.mesh.position });
+    ui.toast('Kijk daar: een gouden sportwagen!', 2200);
+    const f = g.facades.frames.kerk;
+    const poi = g.world.meta.pois.find((p) => p.id === 'kerk');
+    const dest = f ? g.world.resolve(f.x + f.nx * 6, f.z + f.nz * 6, 1.2) : g.world.spotNear(...poi.pos);
+    // wachten tot de speler instapt, dan de bestemming zetten
+    const wait = setInterval(() => {
+      if (this.active !== act) { clearInterval(wait); return; }
+      if (g.car !== car) return;
+      clearInterval(wait);
+      g.tempMarkers = [];
+      ui.toast('Hallelujah, wat een bak!', 1800);
+      g.setDestination(dest, 240, async () => {
+        if (g.car === car) g.exitCar();
+        g.fx.confetti(g.player.x, g.player.y + 3, g.player.z, 220);
+        g.sfx?.play('bells');
+        await ui.dialog(koster.name, [
+          'Kijk nou! Een gouden sportwagen voor de kerk. Daar had de armenkas dus al die jaren in gezeten.',
+          'Dure auto\'s, verre reizen, rekeningen in het buitenland... de deken had zijn eigen interpretatie van "geven aan de armen".',
+          'Maar vergeet niet: bewezen is het nooit. Hij overleed in 2007, en een rechter heeft er nooit over geoordeeld.',
+          'Ik zet hem wel achter de pastorie. Voor de goede zaak, natuurlijk.',
+        ]);
+        this.complete('armenfonds', 'Het armenfonds is (een beetje) terecht!');
+      }, (msg) => this.fail(msg || 'Te lang getreuzeld. De gouden bak is alweer verdwenen.'), {
+        require: () => (g.car === car ? null : 'Kom met de gouden sportwagen!'),
+      });
+    }, 300);
+  }
 
   // vlaaien dragen: elke botsing kost een vlaai; aankomen bij de koffietafel in de kerk
   carryVlaaien(act) {
@@ -1141,7 +1263,7 @@ export class Missions {
       if (this.active?.id !== id) return;
       if (i >= count) { onDone(); return; }
       const dest = g.randomAddress(220, 650);
-      const dist = Math.hypot(dest[0] - g.player.x, dest[1] - g.player.z);
+      const dist = g.distOutside(dest);
       const limit = Math.round((dist / 6 + 25) * timeFactor);
       if (count > 1) this.progress(`Bestelling ${i + 1} / ${count}`);
       g.setDestination(dest, limit, () => { i++; g.ui.toast(i < count ? 'Bezorgd! Op naar de volgende.' : 'Bezorgd!', 1800); next(); },

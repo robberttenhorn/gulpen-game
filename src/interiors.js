@@ -2,7 +2,7 @@
 // De ruimtes staan ver buiten het dorp; als je naar binnen gaat, word je erheen verplaatst.
 import * as THREE from 'three';
 import { makeCharacter } from './character.js';
-import { makeVlaai, makeFluitje } from './props.js';
+import { makeVlaai, makeFluitje, makeOfferblok } from './props.js';
 import { signTexture } from './textures.js';
 
 const BASE_X = 9000, BASE_Z = 9000;
@@ -352,6 +352,9 @@ export class Interiors {
     r.add(new THREE.BoxGeometry(2.1, 0.74, 0.8), std(0x8d6e63), 4.2, 0.37, -10.5, false);
     for (const x of [3.6, 4.0]) r.add(new THREE.CylinderGeometry(0.08, 0.1, 0.3, 12), std(0x37474f, { metalness: 0.6 }), x, 0.94, -10.5, false);
     r.coffeeTable = { x: 4.2, z: -9.6 };
+    // offerblok bij de ingang (voor de missie over het armenfonds)
+    r.obj(makeOfferblok(), 3.2, 0, 12.6, 0, [0.25, 0.2]);
+    r.offerblok = { x: 3.2, z: 11.8 };
     r.person({ shirt: 0x37474f, pants: 0x263238, hair: 0xbdbdbd }, 5.4, -10.5, -Math.PI / 2);
     r.person({ shirt: 0xad1457, pants: 0x37474f, hair: 0x9e9e9e }, 3.2, -9.4, Math.PI * 0.8);
     return r;

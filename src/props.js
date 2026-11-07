@@ -323,3 +323,41 @@ export function makeStringLights(length = 8, n = 12) {
   g.userData.bulb = bulb;
   return g;
 }
+
+// Koffer vol reisstickers.
+export function makeSuitcase() {
+  const g = new THREE.Group();
+  g.add(box(0.5, 0.36, 0.18, mat(0x6d2f1e, { roughness: 0.6 }), 0, 0.18, 0));
+  g.add(box(0.16, 0.04, 0.04, mat(0x222222), 0, 0.39, 0));
+  const cols = [0xfdd835, 0x29b6f6, 0xef5350, 0x66bb6a, 0xffffff, 0xab47bc];
+  for (let i = 0; i < 7; i++) {
+    const st = box(0.09 + (i % 3) * 0.02, 0.07, 0.005, mat(cols[i % cols.length]), -0.18 + (i % 4) * 0.12, 0.1 + Math.floor(i / 4) * 0.12, 0.093);
+    st.rotation.z = (i % 2 ? 1 : -1) * 0.2;
+    g.add(st);
+  }
+  return shadows(g);
+}
+
+// Envelop met een buitenlands bankafschrift.
+export function makeBankStatement() {
+  const g = new THREE.Group();
+  g.add(box(0.32, 0.01, 0.22, mat(0xf5f0e1), 0, 0.005, 0));
+  g.add(box(0.3, 0.012, 0.2, mat(0xffffff), 0.02, 0.012, -0.02));
+  for (let i = 0; i < 5; i++) g.add(box(0.2, 0.002, 0.012, mat(0x37474f), 0.0, 0.02, -0.07 + i * 0.03));
+  g.add(box(0.05, 0.003, 0.05, mat(0xc62828), 0.1, 0.02, 0.06));
+  return shadows(g);
+}
+
+// Houten offerblok met gleuf.
+export function makeOfferblok() {
+  const g = new THREE.Group();
+  g.add(box(0.45, 0.9, 0.35, mat(0x4e342e, { roughness: 0.6 }), 0, 0.45, 0));
+  g.add(box(0.5, 0.06, 0.4, mat(0x3e2723), 0, 0.93, 0));
+  g.add(box(0.2, 0.012, 0.03, mat(0x111111), 0, 0.965, 0));
+  g.add(box(0.12, 0.1, 0.02, mat(0xd4af37, { metalness: 1, roughness: 0.3 }), 0, 0.7, 0.18));
+  // briefje
+  const note = box(0.14, 0.003, 0.1, mat(0xfffde7), 0.08, 0.97, 0.05);
+  note.rotation.y = 0.4;
+  g.add(note);
+  return shadows(g);
+}

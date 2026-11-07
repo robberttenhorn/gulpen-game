@@ -49,6 +49,7 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Karretjes-trein: losgeslagen winkelwagentjes terugbrengen | PLUS supermarkt, Passage 1 |
 | Vlaaien voor na de mis: van de bakkerij naar de koffietafel in de kerk, zonder te botsen | Bakkerij Paulissen, Rijksweg 54, en de Sint-Petruskerk |
 | Bestelling in het plat: een bestelling in het Gulpens inpakken en bezorgen | De Eetwinkel van het Heuvelland (Meertens), Rijksweg 55 |
+| Het verdwenen armenfonds: speurtocht naar de sporen van deken Haffmans, met een gouden sportwagen | Sint-Petruskerk |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
@@ -89,6 +90,7 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 - **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
 - **Mariabeeld**: de plek komt uit de BGT (een monument op 157 m, de top van de Gulperberg). Het beeld zelf is een gestileerde benadering, niet het echte ontwerp.
 - **Hubertusmarkt**: de weetjes (sinds 1544, Hubertusmis in de Sint-Petruskerk, paardenzegening bij het gemeentehuis, zo'n 150 kramen met onder andere gerookte paling) komen uit aankondigingen van de 482e editie in 2026. De Razende Reporter is een verzonnen figuur. De cafés zijn echte zaken rond de Markt; hun gevels en de stamgasten zijn verzonnen.
+- **Het verdwenen armenfonds**: gaat over Joep Haffmans (1943-2007), deken van Gulpen van 1984 tot 2006. De missie gebruikt alleen wat in de berichtgeving stond (L1, Wikipedia, het boek *In Gods naam*): bijna 2 miljoen euro uit de armenkas, dure auto's, dure vakanties en buitenlandse rekeningen. In de game wordt gezegd dat het nooit bewezen is, omdat hij overleed voordat het voor de rechter kwam. De voorwerpen (koffer, bankafschrift, briefje, gouden auto) en de grappen zijn verzonnen.
 - **Gevels**: de borden, luifels en etalages van de zaken zijn verzonnen in een passende stijl, niet nagemaakt van de echte gevels. Met foto's kan dit realistischer.
 
 ## Techniek
