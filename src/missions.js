@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { makeCharacter, makeKeg } from './character.js';
+import { runTikTok, ORDERS, formatViews } from './tiktok.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
@@ -48,6 +49,12 @@ export class Missions {
     add('frituur', 'Mevrouw achter de toonbank', spotFor('anpiet'), { shirt: 0xffffff, pants: 0x333333, apron: 0xd32f2f, hair: 0x7a5230, hairStyle: 'long', female: true });
     add('salma', 'De kok van Salma', spotFor('salma'), { shirt: 0xffffff, pants: 0x222222, apron: 0x2e7d32, hair: 0x1a1a1a });
     add('zheng', 'Achter de toonbank', spotFor('zheng'), { shirt: 0xffffff, pants: 0x222222, apron: 0xb71c1c, hair: 0x111111 });
+    // stagiair van Zheng met telefoon en ringlamp (TikTok-missie, verzonnen figuur)
+    {
+      const f = g.facades.frames.zheng;
+      const sp = f ? g.world.resolve(f.x + f.nx * 2.8 + f.nz * 3.2, f.z + f.nz * 2.8 - f.nx * 3.2, 0.5) : spotFor('zheng', 4);
+      add('stagiair', 'De stagiair van Zheng', sp, { shirt: 0x263238, pants: 0x1b1b1b, hair: 0x3e2723, hat: 'cap', hatColor: 0xc62828, sleeves: 'long' });
+    }
     add('concierge', 'De conciërge', spotFor('sophianum'), { shirt: 0x546e7a, pants: 0x37474f, hair: 0x9e9e9e });
     add('brouwer', 'De brouwer', spotFor('brouwerij'), { shirt: 0x0f5132, pants: 0x2e2e2e, apron: 0x8d6e63, hair: 0x5d4037 });
     add('waard', 'De waard', spotFor('zwarteruiter'), { shirt: 0x111111, pants: 0x222222, apron: 0xf5f5f5, hair: 0x3e2723 });
@@ -179,6 +186,7 @@ export class Missions {
       { id: 'frikandel', npc: n.frituur, title: 'Frikandel super', place: 'Friture An + Piet', desc: 'Alleen contant! Zoek eerst wat muntgeld bij elkaar.' },
       { id: 'salma', npc: n.salma, title: 'Bezorgen voor Salma', place: 'Grillroom Pizzeria Salma', desc: 'Bezorg drie bestellingen op tijd. Beloning: een Broodje Gulpen.' },
       { id: 'zheng', npc: n.zheng, title: 'Friet bij Zheng', place: 'Cafetaria Zheng', desc: 'Een patatje halen. Maar met welke saus?' },
+      { id: 'tiktok', npc: n.stagiair, title: 'Viraal met een frietje', place: 'Cafetaria Zheng', desc: 'Film binnen een POV-filmpje van het klaarmaken van een bestelling. Zo veel mogelijk views op TikTok!' },
       { id: 'skateboard', npc: n.concierge, title: 'In beslag genomen', place: 'Sophianum', desc: 'Haal je skateboard op bij de conciërge. Eerst een overhoring.' },
       { id: 'race', npc: n.skater, title: 'Ringweg Race', place: 'Ringweg', desc: 'Skatewedstrijd over de Ringweg. Je hebt je skateboard nodig.' },
       { id: 'vat', npc: n.brouwer, title: 'Vers van \'t vat', place: 'Gulpener Bierbrouwerij', desc: 'Breng een vat naar Herberg De Zwarte Ruiter.' },
@@ -264,7 +272,7 @@ export class Missions {
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
-      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', koster: 'armenfonds', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager' };
+      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', stagiair: 'tiktok', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'gerst', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', koster: 'armenfonds', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager' };
       const key = Object.keys(n).find((k) => n[k] === npc);
       const mid = missionOf[key];
       const deliverKeg = key === 'waard' && this.active?.id === 'vat';
@@ -587,6 +595,49 @@ export class Missions {
       ]);
       g.player.lockedFor = false;
       this.startArmenfonds(npc);
+    },
+
+    // Cafetaria Zheng: een POV-filmpje voor TikTok opnemen in de keuken
+    async stagiair(npc, N, ui, g) {
+      const best = this.tiktokBest || 0;
+      const a = await ui.dialog(N, [
+        best ? `Daar is onze ster! Je vorige filmpje had ${formatViews(best)} views. Nog eentje?` : 'Hé! Jij daar! Heb jij verstand van TikTok?',
+        'De baas wil dat Cafetaria Zheng viraal gaat. Ik heb een telefoon, een ringlamp en nul talent.',
+        'Het plan: een POV. Jij maakt achter de toonbank een bestelling klaar, de camera zit op je hoofd. Hoe strakker het gaat, hoe meer views.',
+        'Onder de 15.000 views telt niet, zegt de baas. Doe je mee?',
+      ], ['Ik ga viraal', 'Ik ben camera-schuw']);
+      if (a !== 0) { await ui.dialog(N, ['Jammer. Dan film ik wel weer de frituur. Vorige keer: 14 views. Waarvan 11 van mijn moeder.']); return; }
+      const order = ORDERS[Math.floor(Math.random() * ORDERS.length)];
+      this.setActive('tiktok', 'Viraal met een frietje', `Ga naar binnen en start de opname bij de toonbank. Bestelling: ${order.text.toLowerCase()}.`, 'Doel: 15.000 views');
+      const room = g.interiors.room('cafetaria');
+      await g.enterInterior(room, {
+        triggers: [{
+          x: room.counter.x, z: room.counter.z, r: room.counter.r, label: 'Start de opname',
+          action: async () => {
+            room.activeTriggers = [];
+            g.player.lockedFor = true;
+            await ui.dialog(N, [`Bestelling: ${order.text.toLowerCase()}. Telefoon staat aan... en... actie!`]);
+            if (this.active?.id !== 'tiktok') return;
+            const r = await runTikTok(g, room, order);
+            if (!r || this.active?.id !== 'tiktok') return;
+            const v = Math.round(r.views);
+            this.tiktokBest = Math.max(this.tiktokBest || 0, v);
+            const perfect = r.results.filter((x) => x === 'perfect').length;
+            if (v >= 15000) {
+              await ui.dialog(N, [
+                `${formatViews(v)} views! ${v >= 250000 ? 'Dit is groter dan carnaval!' : v >= 80000 ? 'Heel Limburg kijkt mee!' : 'Gulpe kijkt mee!'}`,
+                r.results.includes('fail') ? 'En dat bakje dat viel... de mensen kunnen er geen genoeg van krijgen.' : perfect >= 4 ? 'Strak als een frituurmandje. De baas gaat dit inlijsten.' : 'Netjes gedaan. De baas is tevreden.',
+                'Hier, een patatje van de zaak. Voor de content natuurlijk.',
+              ]);
+              await g.eat(makePuntzak(), 3);
+              this.complete('tiktok', `Viraal! ${formatViews(v)} views`);
+            } else {
+              await ui.dialog(N, [`${formatViews(v)} views... Daar ga ik niet mee naar de baas. Probeer je het nog een keer?`]);
+              this.fail('Te weinig views. Praat nog eens met de stagiair.');
+            }
+          },
+        }],
+      });
     },
 
     // Donny's Gezellerie: borrelplank samenstellen met spullen uit het dorp

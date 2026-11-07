@@ -1048,7 +1048,7 @@ class Game {
     });
     this.player.lockedFor = false;
     // laten zien waar je iets kunt doen
-    if (triggers.length) this.ui.toast(`${triggers[0].label}: loop naar de gele markering`, 3500);
+    if (triggers.length) this.ui.toast('Loop naar de gele markering', 2500);
   }
 
   // Gele, zwevende markeringen boven de actieplekken in een binnenruimte.
@@ -1177,7 +1177,8 @@ class Game {
     if (this.mode === 'car') this.updateCar(dt);
     else this.updatePlayer(dt);
     this.penalty?.update(dt);
-    this.minigame?.update(dt);
+    // een fout in een minispel mag nooit de hele game laten vastlopen
+    try { this.minigame?.update(dt); } catch (e) { console.error('minispel', e); try { this.minigame?.stop?.(); } catch (e2) { /* negeren */ } this.minigame = null; this.player.lockedFor = false; }
     this.updateFollowers(dt);
     this.updateNpcs(dt);
     this.cars.updateTraffic(dt, this.mode === 'car' ? this.car : this.player);
@@ -1417,6 +1418,21 @@ class Game {
 
   updateCamera(dt, instant = false) {
     const p = this.player;
+    // POV-opname (TikTok bij Zheng): camera op een vaste plek in de keuken
+    if (this.pov) {
+      this.input.consumeLook();
+      const k = instant ? 1 : Math.min(1, dt * 4);
+      this.camera.position.lerp(this.pov.pos, k);
+      this.povLook ||= this.pov.look.clone();
+      this.povLook.lerp(this.pov.look, k);
+      this.camera.up.set(0, 1, 0);
+      this.camera.lookAt(this.povLook);
+      // een beetje handheld
+      this.camera.rotateZ(Math.sin(this.time * 1.7) * 0.008);
+      this.camera.rotateX(Math.sin(this.time * 2.3) * 0.006);
+      return;
+    }
+    this.povLook = null;
     const look = this.input.consumeLook();
     if (look.x || look.y) {
       this.camYaw -= look.x * 0.006;
