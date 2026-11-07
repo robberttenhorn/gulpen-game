@@ -60,7 +60,12 @@ export class UI {
     el.textContent = (this.input.isTouch ? '' : '[E] ') + text;
   }
 
-  setActionLabel(text) { $('btn-action').textContent = text; }
+  // zonder actie geen knop
+  setActionLabel(text) {
+    const b = $('btn-action');
+    b.hidden = !text;
+    if (text) b.textContent = text;
+  }
 
   setVehicleButton(label) {
     const b = $('btn-vehicle');
@@ -76,6 +81,7 @@ export class UI {
 
   // Toont een reeks regels; lines = [{name, text}] of strings. Met choices: geeft index terug.
   async dialog(name, lines, choices = null) {
+    if (!this.dialogOpen) this.sfx?.play('open');
     this.dialogOpen = true;
     document.body.classList.add('dialog-open');
     $('dialog').hidden = false;

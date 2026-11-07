@@ -1,0 +1,325 @@
+// Kleine voorwerpen en effecten: bier, friet, pakketjes, confetti, spetters.
+// De voorwerpen zijn iets groter dan in het echt, zodat je ze vanaf de camera goed ziet.
+import * as THREE from 'three';
+
+const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
+const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); return o; };
+const cyl = (rt, rb, h, m, x = 0, y = 0, z = 0, seg = 16) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m); o.position.set(x, y, z); return o; };
+const shadows = (g) => { g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return g; };
+
+// Een fluitje bier: smal glas, goudgeel bier en een schuimkraag.
+export function makeFluitje() {
+  const g = new THREE.Group();
+  const glass = cyl(0.045, 0.036, 0.26, new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, roughness: 0.05, depthWrite: false }), 0, 0.13, 0, 20);
+  glass.renderOrder = 2;
+  const beer = cyl(0.04, 0.032, 0.19, mat(0xf0a818, { emissive: 0xa05a00, emissiveIntensity: 0.55, roughness: 0.15 }), 0, 0.1, 0, 20);
+  const foam = cyl(0.043, 0.04, 0.05, mat(0xfffbef, { roughness: 0.9 }), 0, 0.22, 0, 20);
+  g.add(glass, beer, foam);
+  g.userData.beer = beer;
+  g.userData.foam = foam;
+  g.scale.setScalar(1.5); // iets groter, zodat je hem goed ziet
+  return shadows(g);
+}
+
+// Kartonnen bakje met frikandel speciaal: mayo, curry en uitjes.
+export function makeFrikandel() {
+  const g = new THREE.Group();
+  g.add(box(0.3, 0.05, 0.12, mat(0xf5f1e6), 0, 0.025, 0));
+  const fk = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.22, 4, 10), mat(0x7a3e1d, { roughness: 0.8 }));
+  fk.rotation.z = Math.PI / 2;
+  fk.position.y = 0.075;
+  g.add(fk);
+  g.add(box(0.2, 0.012, 0.035, mat(0xfff4cf), 0, 0.105, 0));           // mayo
+  g.add(box(0.2, 0.012, 0.02, mat(0xb3261e), 0, 0.112, 0.012));        // curry
+  for (let i = 0; i < 7; i++) g.add(box(0.012, 0.01, 0.012, mat(0xf2ede0), -0.09 + i * 0.03, 0.12, -0.01 + (i % 2) * 0.02)); // uitjes
+  return shadows(g);
+}
+
+// Puntzak friet met een flinke klodder mayo.
+export function makePuntzak() {
+  const g = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.24, 16, 1, true), mat(0xffffff, { side: THREE.DoubleSide }));
+  cone.rotation.x = Math.PI;
+  cone.position.y = 0.12;
+  g.add(cone);
+  const fry = mat(0xf2c14e, { roughness: 0.7 });
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2, r = 0.02 + (i % 3) * 0.018;
+    const f = box(0.014, 0.12, 0.014, fry, Math.cos(a) * r, 0.26 + (i % 4) * 0.012, Math.sin(a) * r);
+    f.rotation.set((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.4);
+    g.add(f);
+  }
+  const mayo = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), mat(0xfff4cf, { roughness: 0.3 }));
+  mayo.position.y = 0.31;
+  mayo.scale.y = 0.6;
+  g.add(mayo);
+  return shadows(g);
+}
+
+// Broodje Gulpen in een papiertje.
+export function makeBroodje() {
+  const g = new THREE.Group();
+  const bun = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.16, 4, 12), mat(0xc98a4b, { roughness: 0.8 }));
+  bun.rotation.z = Math.PI / 2;
+  bun.position.y = 0.06;
+  bun.scale.set(1, 1, 0.85);
+  g.add(bun);
+  g.add(box(0.2, 0.02, 0.1, mat(0x8a4b2a), 0, 0.06, 0));          // döner
+  g.add(box(0.19, 0.012, 0.1, mat(0xf2c14e), 0, 0.075, 0));       // kaas
+  g.add(box(0.14, 0.08, 0.13, mat(0xf3efe3), 0.06, 0.04, 0));     // papiertje
+  return shadows(g);
+}
+
+// Bruin pakketje met tape.
+export function makePackage() {
+  const g = new THREE.Group();
+  g.add(box(0.34, 0.22, 0.26, mat(0x9b6b3d, { roughness: 0.95 }), 0, 0.11, 0));
+  g.add(box(0.35, 0.03, 0.06, mat(0xd8c99a, { roughness: 0.4 }), 0, 0.225, 0));
+  g.add(box(0.06, 0.225, 0.265, mat(0xd8c99a, { roughness: 0.4 }), 0, 0.112, 0));
+  return shadows(g);
+}
+
+// Limburgse kersenvlaai met roosterwerk.
+export function makeVlaai() {
+  const g = new THREE.Group();
+  g.add(cyl(0.2, 0.19, 0.05, mat(0xd29a52, { roughness: 0.8 }), 0, 0.025, 0, 24));
+  g.add(cyl(0.18, 0.18, 0.012, mat(0x7a0f1e, { roughness: 0.3 }), 0, 0.052, 0, 24));
+  const crust = mat(0xe0ab62, { roughness: 0.8 });
+  for (let i = -2; i <= 2; i++) {
+    g.add(box(0.34 - Math.abs(i) * 0.06, 0.012, 0.022, crust, 0, 0.06, i * 0.065));
+    g.add(box(0.022, 0.012, 0.34 - Math.abs(i) * 0.06, crust, i * 0.065, 0.062, 0));
+  }
+  return shadows(g);
+}
+
+// Rode bezorgtas voor op de rug.
+export function makeDeliveryBag() {
+  const g = new THREE.Group();
+  g.add(box(0.42, 0.42, 0.3, mat(0xc62828, { roughness: 0.7 }), 0, 0, 0));
+  g.add(box(0.43, 0.06, 0.31, mat(0xffffff), 0, 0.08, 0));
+  return shadows(g);
+}
+
+// Tv-camera voor op de schouder, met rood opnamelampje.
+export function makeTvCamera() {
+  const g = new THREE.Group();
+  g.add(box(0.18, 0.2, 0.45, mat(0x222222, { metalness: 0.4 }), 0, 0, 0));
+  g.add(cyl(0.07, 0.08, 0.16, mat(0x111111, { metalness: 0.6 }), 0, 0.01, 0.3).rotateX(Math.PI / 2));
+  const lens = cyl(0.06, 0.06, 0.01, new THREE.MeshPhysicalMaterial({ color: 0x223355, roughness: 0.05, metalness: 0.8 }), 0, 0.01, 0.385);
+  lens.rotation.x = Math.PI / 2;
+  g.add(lens);
+  const tally = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 2 }));
+  tally.position.set(0, 0.12, 0.18);
+  g.add(tally);
+  g.add(box(0.04, 0.1, 0.14, mat(0x333333), 0, 0.14, -0.05));
+  g.userData.tally = tally;
+  return shadows(g);
+}
+
+export function makePitchfork() {
+  const g = new THREE.Group();
+  g.add(cyl(0.018, 0.018, 1.5, mat(0x8d6e63), 0, 0, 0, 8));
+  const steel = mat(0x9e9e9e, { metalness: 0.8, roughness: 0.3 });
+  g.add(box(0.2, 0.025, 0.025, steel, 0, 0.75, 0));
+  for (const x of [-0.09, 0, 0.09]) g.add(cyl(0.008, 0.004, 0.32, steel, x, 0.92, 0, 6));
+  return shadows(g);
+}
+
+export function makeWrench() {
+  const g = new THREE.Group();
+  const steel = mat(0xb0b4b8, { metalness: 0.9, roughness: 0.25 });
+  g.add(box(0.03, 0.26, 0.012, steel, 0, 0, 0));
+  const head = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.012, 6, 12, Math.PI * 1.5), steel);
+  head.position.y = 0.15;
+  g.add(head);
+  return shadows(g);
+}
+
+export function makeRod() {
+  const g = new THREE.Group();
+  const rod = cyl(0.008, 0.02, 2.6, mat(0x3e2723), 0, 1.3, 0, 6);
+  g.add(rod);
+  g.add(cyl(0.03, 0.03, 0.05, mat(0x9e9e9e, { metalness: 0.7 }), 0.03, 0.3, 0, 10).rotateZ(Math.PI / 2));
+  return shadows(g);
+}
+
+export function makeLantern(lit = true) {
+  const g = new THREE.Group();
+  g.add(box(0.14, 0.02, 0.14, mat(0x222222), 0, 0, 0));
+  g.add(box(0.14, 0.02, 0.14, mat(0x222222), 0, 0.22, 0));
+  const glow = box(0.1, 0.18, 0.1, new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffa040, emissiveIntensity: lit ? 2.2 : 0 }), 0, 0.11, 0);
+  g.add(glow);
+  g.add(new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 6, 12), mat(0x222222)).translateY(0.27));
+  return shadows(g);
+}
+
+// Stempelpost voor de Nacht van Gulpen: tafeltje, lantaarn en een oranje vlag.
+export function makeStampPost() {
+  const g = new THREE.Group();
+  g.add(box(0.9, 0.04, 0.6, mat(0x8d6e63), 0, 0.75, 0));
+  for (const x of [-0.4, 0.4]) for (const z of [-0.25, 0.25]) g.add(cyl(0.02, 0.02, 0.75, mat(0x5d4037), x, 0.375, z, 6));
+  const lantern = makeLantern(true);
+  lantern.position.set(-0.25, 0.77, 0);
+  g.add(lantern);
+  g.add(box(0.12, 0.04, 0.08, mat(0x1565c0), 0.2, 0.79, 0)); // stempel
+  g.add(cyl(0.02, 0.02, 2.2, mat(0xdddddd, { metalness: 0.5 }), 0.55, 1.1, 0, 6));
+  const flag = box(0.5, 0.32, 0.01, mat(0xff9800, { side: THREE.DoubleSide }), 0.81, 2.0, 0);
+  g.add(flag);
+  return shadows(g);
+}
+
+// Finishboog over de weg, met geblokte vlag.
+export function makeFinishBanner(width = 9) {
+  const g = new THREE.Group();
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 96;
+  const ctx = c.getContext('2d');
+  for (let x = 0; x < 512; x += 24) for (let y = 0; y < 96; y += 24) { ctx.fillStyle = ((x + y) / 24) % 2 ? '#111' : '#fff'; ctx.fillRect(x, y, 24, 24); }
+  ctx.fillStyle = 'rgba(232,163,61,.92)';
+  ctx.fillRect(130, 14, 252, 68);
+  ctx.fillStyle = '#1b2430';
+  ctx.font = '800 54px "Baloo 2", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('FINISH', 256, 50);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(width, 1.2), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
+  banner.position.y = 4.2;
+  g.add(banner);
+  for (const x of [-width / 2, width / 2]) g.add(cyl(0.08, 0.1, 4.8, mat(0xe8a33d), x, 2.4, 0, 8));
+  return shadows(g);
+}
+
+// ------------------------------------------------------------ effecten
+
+// Confetti-explosie die na een paar seconden vanzelf verdwijnt.
+export class Effects {
+  constructor(scene) {
+    this.scene = scene;
+    this.bursts = [];
+    this.rings = [];
+  }
+
+  confetti(x, y, z, n = 140) {
+    const geo = new THREE.PlaneGeometry(0.12, 0.07);
+    const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true });
+    const inst = new THREE.InstancedMesh(geo, m, n);
+    const colors = [0xe53935, 0xfdd835, 0x43a047, 0x1e88e5, 0x8e24aa, 0xff7043, 0xffffff];
+    const parts = [];
+    const c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 4;
+      parts.push({ p: new THREE.Vector3(x, y, z), v: new THREE.Vector3(Math.cos(a) * s * 0.6, 4 + Math.random() * 5, Math.sin(a) * s * 0.6), r: new THREE.Euler(Math.random() * 6, Math.random() * 6, 0), spin: (Math.random() - 0.5) * 12 });
+      inst.setColorAt(i, c.set(colors[i % colors.length]));
+    }
+    inst.frustumCulled = false;
+    this.scene.add(inst);
+    this.bursts.push({ inst, parts, t: 0 });
+  }
+
+  // uitdijende kring op het water
+  splash(x, y, z, size = 1) {
+    const m = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.12, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, y + 0.02, z);
+    this.scene.add(m);
+    this.rings.push({ m, t: 0, size });
+  }
+
+  update(dt) {
+    const q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), mtx = new THREE.Matrix4();
+    for (const b of this.bursts) {
+      b.t += dt;
+      b.parts.forEach((p, i) => {
+        p.v.y -= 9.8 * dt * 0.6;
+        p.v.multiplyScalar(1 - dt * 0.9);
+        p.p.addScaledVector(p.v, dt);
+        p.r.x += p.spin * dt; p.r.y += p.spin * dt * 0.7;
+        q.setFromEuler(p.r);
+        mtx.compose(p.p, q, s);
+        b.inst.setMatrixAt(i, mtx);
+      });
+      b.inst.instanceMatrix.needsUpdate = true;
+      b.inst.material.opacity = Math.max(0, 1 - Math.max(0, b.t - 2.2) / 0.8);
+    }
+    this.bursts = this.bursts.filter((b) => { if (b.t > 3) { this.scene.remove(b.inst); return false; } return true; });
+    for (const r of this.rings) {
+      r.t += dt;
+      const k = 1 + r.t * 6 * r.size;
+      r.m.scale.set(k, k, k);
+      r.m.material.opacity = Math.max(0, 0.7 - r.t * 0.8);
+    }
+    this.rings = this.rings.filter((r) => { if (r.t > 0.9) { this.scene.remove(r.m); return false; } return true; });
+  }
+}
+
+// Winkelwagentje (voor de karretjes-trein bij de PLUS).
+export function makeCart() {
+  const g = new THREE.Group();
+  const metal = mat(0xc0c4c8, { metalness: 0.8, roughness: 0.3 });
+  const red = mat(0xc62828);
+  // mand als open bak van dunne wanden
+  const walls = [[0.6, 0.45, 0.02, 0, 0.75, 0.42], [0.6, 0.45, 0.02, 0, 0.75, -0.42], [0.02, 0.45, 0.84, 0.3, 0.75, 0], [0.02, 0.45, 0.84, -0.3, 0.75, 0], [0.6, 0.02, 0.84, 0, 0.53, 0]];
+  for (const [w, h, d, x, y, z] of walls) g.add(box(w, h, d, new THREE.MeshStandardMaterial({ color: 0xc0c4c8, metalness: 0.7, roughness: 0.4, transparent: true, opacity: 0.75 }), x, y, z));
+  g.add(box(0.64, 0.04, 0.04, red, 0, 1.0, -0.5)); // handvat
+  g.add(box(0.5, 0.03, 0.75, metal, 0, 0.18, 0));
+  for (const [x, z] of [[-0.22, 0.32], [0.22, 0.32], [-0.22, -0.32], [0.22, -0.32]]) {
+    const wheel = cyl(0.05, 0.05, 0.03, mat(0x222222), x, 0.05, z, 10);
+    wheel.rotation.z = Math.PI / 2;
+    g.add(wheel);
+  }
+  return shadows(g);
+}
+
+// Stapel van drie vlaaien op bordjes. userData.layers = de vlaaien, van onder naar boven.
+export function makeVlaaiStack() {
+  const g = new THREE.Group();
+  const tops = [0x7a0f1e, 0xf3e6c0, 0x4a1d3a]; // kersen, rijst, pruimen
+  g.userData.layers = [];
+  tops.forEach((top, i) => {
+    const l = new THREE.Group();
+    l.add(cyl(0.21, 0.21, 0.012, mat(0xffffff), 0, 0, 0, 24));
+    l.add(cyl(0.19, 0.18, 0.045, mat(0xd29a52, { roughness: 0.8 }), 0, 0.03, 0, 24));
+    l.add(cyl(0.17, 0.17, 0.012, mat(top, { roughness: 0.35 }), 0, 0.055, 0, 24));
+    l.position.y = i * 0.075;
+    g.add(l);
+    g.userData.layers.push(l);
+  });
+  return shadows(g);
+}
+
+// Borrelplank met kaas, worst en brood.
+export function makeBorrelplank() {
+  const g = new THREE.Group();
+  g.add(box(0.5, 0.03, 0.28, mat(0x8d6e63, { roughness: 0.9 }), 0, 0.015, 0));
+  for (let i = 0; i < 5; i++) g.add(box(0.05, 0.04, 0.05, mat(0xf2c14e), -0.18 + i * 0.05, 0.05, -0.07));
+  for (let i = 0; i < 6; i++) g.add(cyl(0.022, 0.022, 0.012, mat(0xa0522d), -0.18 + i * 0.06, 0.04, 0.05, 10));
+  g.add(box(0.14, 0.06, 0.07, mat(0xc98a4b), 0.15, 0.06, 0.02));
+  return shadows(g);
+}
+
+// Pakketje in slagerspapier.
+export function makeMeatPackage() {
+  const g = new THREE.Group();
+  g.add(box(0.3, 0.12, 0.2, mat(0xf3efe3, { roughness: 0.95 }), 0, 0.06, 0));
+  g.add(box(0.31, 0.02, 0.04, mat(0xc62828), 0, 0.12, 0));
+  return shadows(g);
+}
+
+// Lichtsnoer met lampjes tussen twee punten (voor een terras).
+export function makeStringLights(length = 8, n = 12) {
+  const g = new THREE.Group();
+  const bulb = new THREE.MeshStandardMaterial({ color: 0xfff1c8, emissive: 0xffc070, emissiveIntensity: 1.2 });
+  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, length, 4), mat(0x222222));
+  wire.rotation.z = Math.PI / 2;
+  g.add(wire);
+  for (let i = 0; i < n; i++) {
+    const x = -length / 2 + (i + 0.5) * (length / n);
+    const sag = -0.25 * Math.sin(((i + 0.5) / n) * Math.PI);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), bulb);
+    b.position.set(x, sag, 0);
+    g.add(b);
+  }
+  g.userData.bulb = bulb;
+  return g;
+}

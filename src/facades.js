@@ -1,9 +1,11 @@
 // Gedetailleerde gevels en aankleding voor de plekken met missies en interacties.
 import * as THREE from 'three';
 import { signTexture } from './textures.js';
+import { makeCart, makeStringLights, makeVlaai } from './props.js';
 import { pointInRing } from './world.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
+const at = (m, x, y, z) => { m.position.set(x, y, z); return m; };
 
 export class Facades {
   constructor(game) {
@@ -291,6 +293,95 @@ export class Facades {
       this.shopWindow(g, { w: Math.max(1.2, w - 1.6), x: -0.5, h: 1.6, y: 0.8, color: 0xffcf8a });
     }
 
+    // Donny's Gezellerie: warm bord, lichtsnoeren en een terrasje
+    f = pois.donnys && F('donnys');
+    if (f) {
+      const g = this.group(f);
+      const w = Math.min(6, f.len - 0.4);
+      this.sign(g, "Donny's Gezellerie", { w, h: 0.8, y: 3.4, bg: '#2f3a2b', fg: '#f3d9a4', font: 'italic 800 120px "Baloo 2", serif', sub: 'eten · drinken · gezelligheid', subFont: 'italic 600 50px Inter, serif' });
+      this.door(g, { x: w / 2 - 0.6, color: 0x2f3a2b });
+      this.shopWindow(g, { w: Math.max(1.4, w - 1.6), x: -0.6, h: 1.8, y: 0.6, color: 0xffc070 });
+      for (const zOff of [2.2, 4.4]) {
+        const l = makeStringLights(Math.min(8, f.len + 2), 14);
+        l.position.set(0, 3.0, zOff);
+        g.add(l);
+        this.signMats.push({ isWindow: true, mat: l.userData.bulb });
+      }
+      this.terrace(f, 3);
+    }
+
+    // PLUS supermarkt: groot bord, etalage en een karretjeshok
+    f = pois.plus && F('plus');
+    if (f) {
+      const g = this.group(f);
+      const w = Math.min(9, f.len - 0.4);
+      this.sign(g, 'PLUS supermarkt', { w, h: 1.0, y: 4.2, bg: '#1b6e3a', fg: '#ffffff', font: '800 140px "Baloo 2", sans-serif' });
+      this.shopWindow(g, { w: w - 1.0, x: 0, h: 2.4, y: 0.3, color: 0xf5f5f0 });
+      // karretjeshok met een rij wagentjes
+      const shed = new THREE.Group();
+      shed.position.set(-w / 2 - 3.5, 0, 3);
+      shed.add(at(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.08, 1.6), std(0x1b6e3a)), 0, 2.2, 0));
+      for (const sx of [-2, 2]) for (const sz of [-0.7, 0.7]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 6), std(0x9e9e9e, { metalness: 0.6 }));
+        post.position.set(sx, 1.1, sz);
+        shed.add(post);
+      }
+      for (let i = 0; i < 5; i++) {
+        const c = makeCart();
+        c.position.set(-1.5 + i * 0.32, 0, 0);
+        c.rotation.y = Math.PI / 2;
+        shed.add(c);
+      }
+      g.add(shed);
+      this.cartShed = { x: f.x + f.ux * (-w / 2 - 3.5) + f.nx * 3, z: f.z + f.uz * (-w / 2 - 3.5) + f.nz * 3 };
+    }
+
+    // Bakkerij Paulissen: crèmekleurig bord en vlaaien in de etalage
+    f = pois.paulissen && F('paulissen');
+    if (f) {
+      const g = this.group(f);
+      const w = Math.min(6, f.len - 0.4);
+      this.sign(g, 'Bakkerij Paulissen', { w, h: 0.8, y: 3.4, bg: '#f3e6c8', fg: '#5a3a1e', font: '800 120px "Baloo 2", serif', sub: 'brood · vlaai · banket', subFont: '600 50px Inter, serif' });
+      this.awning(g, { w, colors: ['#5a3a1e', '#f3e6c8'], stripes: 10 });
+      this.shopWindow(g, { w: Math.max(1.4, w - 1.6), x: -0.6, h: 1.6, y: 0.8, color: 0xffe0b0 });
+      this.door(g, { x: w / 2 - 0.6, color: 0x5a3a1e });
+      // vlaaien op een schap in de etalage
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(Math.max(1.2, w - 1.8), 0.04, 0.3), std(0xffffff));
+      shelf.position.set(-0.6, 1.1, 0.25);
+      g.add(shelf);
+      for (let i = 0; i < 4; i++) {
+        const v = makeVlaai();
+        v.scale.setScalar(0.9);
+        v.position.set(-0.6 - (w - 2.4) / 2 + i * ((w - 2.4) / 3 || 0.4), 1.12, 0.25);
+        g.add(v);
+      }
+    }
+
+    // De Eetwinkel van het Heuvelland (Meertens): slagerij met groente, fruit en kaas
+    f = pois.meertens && F('meertens');
+    if (f) {
+      const g = this.group(f);
+      const w = Math.min(7, f.len - 0.4);
+      this.sign(g, 'De Eetwinkel van het Heuvelland', { w, h: 0.9, y: 3.5, bg: '#7a1f1f', fg: '#fff3e0', font: '800 100px "Baloo 2", serif', sub: 'Meertens · slagerij · groente · kaas', subFont: '600 46px Inter, sans-serif' });
+      this.awning(g, { w, colors: ['#7a1f1f', '#ffffff'], stripes: 12 });
+      this.shopWindow(g, { w: Math.max(1.4, w - 1.6), x: 0.6, h: 1.6, y: 0.8, color: 0xfff3e0 });
+      this.door(g, { x: -w / 2 + 0.6, color: 0x7a1f1f });
+      // kistjes met groente en fruit voor de deur
+      const veg = [0xd32f2f, 0x7cb342, 0xff9800, 0x6d4c41, 0xfdd835];
+      for (let i = 0; i < 5; i++) {
+        const crate = new THREE.Group();
+        crate.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.35), std(0xa1887f)));
+        const fill = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.06, 0.31), std(veg[i]));
+        fill.position.y = 0.12;
+        crate.add(fill);
+        crate.position.set(-w / 2 + 1.6 + i * 0.6, 0.11 + (i % 2) * 0.3, 0.45);
+        crate.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+        g.add(crate);
+      }
+    }
+
+    if (pois.kerk) F('kerk');
+    this.buildChurch();
     this.buildPitch(pois.fcgulpen.pos);
     this.buildMaria(pois.mariabeeld.pos);
   }
@@ -484,6 +575,54 @@ export class Facades {
   pitchToWorld(lx, lz) {
     const p = this.pitch;
     return [p.cx + Math.cos(p.ang) * lx + Math.sin(p.ang) * lz, p.cz - Math.sin(p.ang) * lx + Math.cos(p.ang) * lz];
+  }
+
+  // Sint-Petruskerk: klokken en een kruis op de toren (de toren zelf komt uit de 3D BAG).
+  buildChurch() {
+    const w = this.world;
+    // torenlocatie volgens TOP10NL (Kadaster), in lokale coördinaten
+    const tx = -177.0, tz = 53.2;
+    let tower = null;
+    for (const i of w.nearbyFootprints(tx, tz)) if (pointInRing(tx, tz, w.footprints[i].ring)) tower = w.footprints[i];
+    if (!tower) return;
+    const cx = (tower.minX + tower.maxX) / 2, cz = (tower.minZ + tower.maxZ) / 2;
+    const hw = (tower.maxX - tower.minX) / 2, hd = (tower.maxZ - tower.minZ) / 2;
+    const top = tower.top;
+    // wijzerplaten op vier kanten
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f5f0e1'; ctx.beginPath(); ctx.arc(128, 128, 120, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 10; ctx.strokeStyle = '#1b1b1b'; ctx.stroke();
+    ctx.fillStyle = '#1b1b1b';
+    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; ctx.fillRect(128 + Math.sin(a) * 96 - 4, 128 - Math.cos(a) * 96 - 10, 8, 20); }
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(128, 128); ctx.lineTo(128, 62); ctx.stroke();
+    ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(128, 128); ctx.lineTo(178, 128); ctx.stroke();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const faceMat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, emissive: 0xfff1d0, emissiveMap: tex, emissiveIntensity: 0 });
+    this.signMats.push({ isWindow: true, mat: faceMat });
+    const size = Math.min(hw, hd) * 1.3;
+    const y = top - Math.max(4, size + 1.5);
+    for (const [dx, dz, ry] of [[0, hd + 0.05, 0], [0, -hd - 0.05, Math.PI], [hw + 0.05, 0, Math.PI / 2], [-hw - 0.05, 0, -Math.PI / 2]]) {
+      const m = new THREE.Mesh(new THREE.CircleGeometry(size / 2, 32), faceMat);
+      m.position.set(cx + dx, y, cz + dz);
+      m.rotation.y = ry;
+      this.scene.add(m);
+    }
+    // kruis met haan bovenop
+    const gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1, roughness: 0.3 });
+    const cross = new THREE.Group();
+    cross.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3, 8), gold), 0, 1.5, 0));
+    cross.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.1), gold), 0, 2.2, 0));
+    const haan = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.5, 4), gold);
+    haan.rotation.z = Math.PI / 2;
+    haan.position.set(0, 3.1, 0);
+    cross.add(haan);
+    cross.position.set(cx, top, cz);
+    this.scene.add(cross);
+    this.church = { x: cx, z: cz, top };
   }
 
   // Het Mariamonument op de top van de Gulperberg (ruim tien meter, beton).

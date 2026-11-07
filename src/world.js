@@ -274,7 +274,9 @@ export class World {
         ctx.stroke();
       }
     }
-    this.classData = cctx.getImageData(0, 0, this.classCanvas.width, this.classCanvas.height).data;
+    // De klassenkaart (wat is weg, stoep, water...) exact rasteren zonder vloeiende randen.
+    // Vloeiende randen gaven losse 'water'-pixels op grenzen tussen vlakken, waar je dan op vastliep.
+    this.classGrid = rasterClasses(this.ground.polys, this.classCanvas.width, this.classCanvas.height, b.x0, b.z0, cs);
     this.classScale = cs;
 
     // korrelige ruis voor detail
@@ -304,7 +306,7 @@ export class World {
     const px = Math.floor((x - b.x0) * this.classScale);
     const py = Math.floor((z - b.z0) * this.classScale);
     if (px < 0 || py < 0 || px >= this.classCanvas.width || py >= this.classCanvas.height) return null;
-    const v = this.classData[(py * this.classCanvas.width + px) * 4];
+    const v = this.classGrid[py * this.classCanvas.width + px];
     return v === 0 ? 'gras' : this.ground.classes[v - 1];
   }
 
@@ -1109,4 +1111,37 @@ function signFaceTexture() {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+// Even-odd scanline-rastering van alle grondvlakken (in tekenvolgorde) naar klasse+1 per pixel.
+function rasterClasses(polys, W, H, x0, z0, scale) {
+  const grid = new Uint8Array(W * H);
+  const xs = [];
+  for (const [cls, rings] of polys) {
+    let minY = Infinity, maxY = -Infinity;
+    for (const r of rings) for (let i = 1; i < r.length; i += 2) { const y = (r[i] - z0) * scale; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    const y0 = Math.max(0, Math.floor(minY)), y1 = Math.min(H - 1, Math.ceil(maxY));
+    const v = cls + 1;
+    for (let py = y0; py <= y1; py++) {
+      const sy = py + 0.5;
+      xs.length = 0;
+      for (const r of rings) {
+        const n = r.length / 2;
+        for (let i = 0, j = n - 1; i < n; j = i++) {
+          const ay = (r[i * 2 + 1] - z0) * scale, by = (r[j * 2 + 1] - z0) * scale;
+          if ((ay > sy) === (by > sy)) continue;
+          const ax = (r[i * 2] - x0) * scale, bx = (r[j * 2] - x0) * scale;
+          xs.push(ax + ((sy - ay) / (by - ay)) * (bx - ax));
+        }
+      }
+      if (xs.length < 2) continue;
+      xs.sort((a, c) => a - c);
+      const row = py * W;
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const from = Math.max(0, Math.ceil(xs[k] - 0.5)), to = Math.min(W - 1, Math.floor(xs[k + 1] - 0.5));
+        for (let px = from; px <= to; px++) grid[row + px] = v;
+      }
+    }
+  }
+  return grid;
 }

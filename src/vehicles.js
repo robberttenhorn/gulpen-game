@@ -224,15 +224,15 @@ export class Vehicles {
     // elke keer dat je speelt staan de auto's op andere plekken
     const rand = Math.random;
     const mobile = this.world.isMobile;
-    const spots = this.world.parkingSpots.filter(() => rand() < (mobile ? 0.28 : 0.42));
-    const max = mobile ? 35 : 80;
+    const spots = this.world.parkingSpots.filter(() => rand() < (mobile ? 0.4 : 0.6));
+    const max = mobile ? 55 : 120;
     const typeKeys = ['hatch', 'hatch', 'sedan', 'sedan', 'suv', 'suv', 'van', 'sport'];
     const list = [];
     const pick = () => typeKeys[Math.floor(rand() * typeKeys.length)];
     const paint = () => PAINTS[Math.floor(rand() * PAINTS.length)];
     for (const s of spots.slice(0, max)) list.push(this.addCar(pick(), s.x, s.z, s.heading, paint(), { parked: true }));
     // auto's op opritten en erven door het hele dorp
-    for (const d of this.drivewaySpots(mobile ? 25 : 55)) list.push(this.addCar(pick(), d.x, d.z, d.heading, paint(), { parked: true }));
+    for (const d of this.drivewaySpots(mobile ? 40 : 90)) list.push(this.addCar(pick(), d.x, d.z, d.heading, paint(), { parked: true }));
     for (const e of extra) list.push(this.addCar(e.type, e.x, e.z, e.heading, e.paint, { parked: true, ...e.opts }));
     // per type één set gebundelde meshes
     this.batches = {};
@@ -386,7 +386,7 @@ export class Vehicles {
     }
     if (hit && Math.abs(car.speed) > 2) {
       car.speed *= 0.55;
-      if (Math.abs(car.speed) > 8) this.g.shake = 0.4;
+      if (Math.abs(car.speed) > 8) { this.g.shake = 0.4; this.g.sfx?.play('crash'); }
     }
     car.x = x; car.z = z;
     this.placeCar(car);

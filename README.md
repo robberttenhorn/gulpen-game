@@ -17,7 +17,7 @@ Open daarna de link die Vite toont (meestal http://localhost:5173).
   E om te praten of in en uit te stappen, F voor fiets of skateboard, spatie als handrem, M voor de kaart.
 - Mobiel: joystick links, slepen op de rechterhelft om te kijken, knoppen rechtsonder. Tik op de minikaart voor de grote kaart.
 
-**Vervoer**: lopen (ongeveer 15 km/u, rennen 23 km/u), skateboard (34 km/u), fiets (45 km/u) en auto's (tot 120 km/u).
+**Vervoer**: lopen (ongeveer 15 km/u, rennen 23 km/u), skateboard (34 km/u), fiets (45 km/u, na het afstellen bij Jef Abels sneller) en auto's (tot 120 km/u). De fiets heb je altijd bij je: druk op de knop Fiets (of F).
 Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart).
 Water kun je niet in. Er rijdt verkeer over het echte wegennet en er lopen dorpsbewoners rond.
 
@@ -27,7 +27,7 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 
 | Klus | Waar |
 | --- | --- |
-| Lekke band: je fiets laten maken | Jef Abels Bikes, Rijksweg 113 |
+| Fiets afstellen: daarna fiets je sneller | Jef Abels Bikes, Rijksweg 113 |
 | Frikandel speciaal: alleen contant, dus eerst muntjes zoeken | Friture An + Piet, Rijksweg 60B |
 | Bezorgen voor Salma: drie bestellingen op tijd (beloning: Broodje Gulpen) | Grillroom Pizzeria Salma, Rijksweg 60A |
 | Friet bij Zheng: kies je saus | Cafetaria Zheng, Looierstraat 103 |
@@ -45,6 +45,14 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Nacht van Gulpen (alleen 's avonds): wandelen langs vijf stempelposten | Bij de Markt |
 | Plat kalle: opa overhoort je in het Gulpens | Benkske bij de Markt |
 | Kroegentocht op de Hubertusmarkt: vier cafés, vier verhalen en een live interview met De Razende Reporter | Markt, De Kroon, De Zwarte Ruiter, Neubourg en De Poort |
+| De Gezellerie-borrelplank: kaas en worst bij Meertens, brood bij Paulissen | Donny's Gezellerie, Kapelaan Pendersplein 8 |
+| Karretjes-trein: losgeslagen winkelwagentjes terugbrengen | PLUS supermarkt, Passage 1 |
+| Vlaaien voor na de mis: van de bakkerij naar de koffietafel in de kerk, zonder te botsen | Bakkerij Paulissen, Rijksweg 54, en de Sint-Petruskerk |
+| Bestelling in het plat: een bestelling in het Gulpens inpakken en bezorgen | De Eetwinkel van het Heuvelland (Meertens), Rijksweg 55 |
+
+Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
+
+**Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
 Voortgang wordt in de browser bewaard.
 
