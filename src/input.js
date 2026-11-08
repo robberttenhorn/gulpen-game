@@ -56,8 +56,11 @@ export class Input {
     let joyId = null;
     const setJoy = (e) => {
       const r = joy.getBoundingClientRect();
-      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
       const max = r.width / 2;
+      // verborgen joystick (tijdens een gesprek of minispel) heeft breedte 0: dan niets doen,
+      // anders geeft delen door nul een ongeldig getal (NaN) en wordt het hele beeld zwart
+      if (!(max > 1)) { this.joy = null; return; }
+      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
       const d = Math.hypot(dx, dy);
       if (d > max) { dx = (dx / d) * max; dy = (dy / d) * max; }
       knob.style.transform = `translate(${dx}px, ${dy}px)`;
@@ -79,6 +82,10 @@ export class Input {
   // Voor voertuigen: joystick met dode zone en zachte curve (kleine uitslag = klein beetje sturen),
   // toetsen lopen geleidelijk op en veren terug bij loslaten.
   updateDrive(dt, kx, ky) {
+    // nooit met een ongeldig getal verder: dat blijft anders voor altijd hangen
+    if (!Number.isFinite(this.drive.x)) this.drive.x = 0;
+    if (!Number.isFinite(this.drive.y)) this.drive.y = 0;
+    if (this.joy && !(Number.isFinite(this.joy.x) && Number.isFinite(this.joy.y))) this.joy = null;
     const shape = (v, dead, pow) => { const a = Math.abs(v); if (a < dead) return 0; return Math.sign(v) * Math.pow((a - dead) / (1 - dead), pow); };
     if (this.joy) {
       const tx = shape(this.joy.x, 0.14, 1.7), ty = shape(this.joy.y, 0.16, 1.3);
@@ -106,7 +113,7 @@ export class Input {
     if (this.joy) { x = this.joy.x; y = this.joy.y; }
     const len = Math.hypot(x, y);
     if (len > 1) { x /= len; y /= len; }
-    this.move.x = x; this.move.y = y;
+    this.move.x = Number.isFinite(x) ? x : 0; this.move.y = Number.isFinite(y) ? y : 0;
     this.sprint = k.has('ShiftLeft') || k.has('ShiftRight') || (this.joy && Math.hypot(this.joy.x, this.joy.y) > 0.95);
   }
 

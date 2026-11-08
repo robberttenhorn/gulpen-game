@@ -1345,7 +1345,15 @@ class Game {
       statsError('nan-speler', this.missions?.active?.id || this.lastDone || '');
       Object.assign(p, this.lastGood, { speed: 0, y: this.world.groundAt(this.lastGood.x, this.lastGood.z) });
     }
-    if (!ok(this.camYaw)) { statsError('nan-camyaw'); this.camYaw = p.heading + Math.PI; }
+    // invoer en auto ook controleren (een ongeldige joystickwaarde was de bron van het zwarte beeld)
+    const d = this.input.drive;
+    if (!ok(d.x) || !ok(d.y)) { statsError('nan-invoer'); d.x = 0; d.y = 0; this.input.joy = null; }
+    if (this.car && (!ok(this.car.heading) || !ok(this.car.speed) || !ok(this.car.x) || !ok(this.car.z) || !ok(this.car.steer))) {
+      statsError('nan-auto', this.lastDone || '');
+      Object.assign(this.car, { heading: ok(this.car.heading) ? this.car.heading : 0, speed: 0, steer: 0 });
+      if (!ok(this.car.x) || !ok(this.car.z)) { this.car.x = p.x; this.car.z = p.z; }
+    }
+    if (!ok(this.camYaw)) { statsError('nan-camyaw'); this.camYaw = ok(p.heading) ? p.heading + Math.PI : 0; }
     if (!ok(this.camPitch)) this.camPitch = 0.17;
     const c = this.camera.position;
     if (!ok(c.x) || !ok(c.y) || !ok(c.z)) { statsError('nan-camera', this.missions?.active?.id || this.lastDone || ''); try { this.updateCamera(0, true); } catch { /* negeren */ } }
