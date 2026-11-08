@@ -5,6 +5,8 @@ import { startHedge, startGnomes, startBBQ, startBarrow } from './skills3.js';
 import { makeKruiwagen, makeSchep } from './props.js';
 import { startCurls } from './fitness.js';
 import { buildRenovation, startTiles } from './verbouwing.js';
+import { setupPloegen, startPloegen } from './ploegen.js';
+export { setupPloegen };
 
 const G = (text, nl) => ({ text, nl });
 
@@ -162,13 +164,37 @@ export function westItems(n) {
     { id: 'bbq', npc: n.bbqjongen, title: 'Burendag-BBQ', place: 'Aardaker 43', desc: 'De barbecuemeester is zoek. Draai de burgers op tijd om en serveer de hele straat.' },
     { id: 'biceps', npc: n.pt, title: 'Biceps pompen', place: 'Anytime Fitness, hoek Looierstraat', desc: 'Zaterdag naar Mosaqua. Pomp je biceps op in de sportschool, zodat je niet uitgelachen wordt op de glijbaan.' },
     { id: 'tegels', npc: n.verbouwer, title: 'Badkamer betegelen', place: 'Oude Akerweg 43', desc: 'Het halve huis ligt open en de tegelzetter is weg. Leg de badkamertegels in het juiste patroon, binnen de tijd.' },
+    { id: 'ploegen', npc: n.akkerbouwer, title: 'Ploegen op de Gulperberg', place: 'Akker op de Gulperberg', desc: 'Ploeg met de tractor een akker om, in zes banen die zo recht mogelijk zijn.' },
     { id: 'grond', npc: n.krullebol, title: 'Grond sjouwen', place: 'Groeneweg 65', desc: 'Help de krullebol zijn voortuin op te hogen: rij drie kruiwagens grond van de straat naar zijn tuin, zonder te morsen.' },
   ].filter((x) => x.npc);
 }
 
-export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond', pt: 'biceps', verbouwer: 'tegels' };
+export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond', pt: 'biceps', verbouwer: 'tegels', akkerbouwer: 'ploegen' };
 
 export const westHandlers = {
+  // ------------------------------------------------------------ Gulperberg: ploegen met de tractor
+  async akkerbouwer(npc, N, ui, g) {
+    const a = await ui.dialog(N, [
+      G('Enne? Kom je kijken of je wat kunt leren?', 'En? Kom je kijken of je wat kunt leren?'),
+      'Deze akker moet vandaag nog omgeploegd worden, maar mijn knecht is aangefietst naar de kermis.',
+      'Zes banen, zo recht als een liniaal. Volg de witte lijn, keer op de kopakker en ploeg terug. Krom ploegen is voor beginners uit de stad.',
+    ], ['Ik kruip op de tractor', 'Ik heb geen trekkerrijbewijs']);
+    if (a !== 0) { await ui.dialog(N, ['Trekkerrijbewijs? Hier op de berg rijden de kinderen al tractor voordat ze kunnen fietsen.']); return; }
+    this.setActive('ploegen', 'Ploegen op de Gulperberg', 'Rij met de tractor over de witte lijn. Aan het eind keren en de volgende baan terug. Zes banen, zo recht mogelijk, binnen de tijd.', '');
+    const r = await startPloegen(g, this.field, { limit: 170 });
+    if (!r || this.active?.id !== 'ploegen') return;
+    if (r.ok) {
+      await ui.dialog(N, [
+        r.straight >= 90 ? `${r.straight} procent recht! Doa velt mig de boks van aaf. Zo recht heeft mijn vader nooit geploegd.` : `${r.straight} procent recht. Hier en daar een bochtje, maar de aardappels groeien er niet minder om.`,
+        G('Zo, de akker ligt er mooi bij. Ik ben afgewerkt voor vandaag. Haije!', 'Zo, de akker ligt er mooi bij. Ik ben klaar met werken voor vandaag. Doei!'),
+      ]);
+      this.complete('ploegen', 'Ploegkampioen van de Gulperberg!', { v: r.straight, unit: '% recht', high: true });
+    } else {
+      await ui.dialog(N, [r.late ? 'De tijd is om en de akker ligt er half bij. Zo komen de aardappels nooit in de grond. Nog een keer?' : `Maar ${r.straight} procent recht? Het lijkt wel een slingerpad. Nog een keer, en dan rustig langs de lijn.`]);
+      this.fail(r.late ? 'Niet op tijd geploegd.' : 'Te krom geploegd.');
+    }
+  },
+
   // ------------------------------------------------------------ Oude Akerweg 43: badkamer betegelen
   async verbouwer(npc, N, ui, g) {
     const a = await ui.dialog(N, [

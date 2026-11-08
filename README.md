@@ -64,11 +64,12 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Burendag-BBQ: burgers op tijd omdraaien en opdienen, niet te veel verbranden | Aardaker 43 (bloemenwijk) |
 | Biceps pompen: in de sportschool curlen tot je Mosaqua-klaar bent (ingedrukt houden, bovenin aanspannen tot de ring vol is, dan loslaten) | Anytime Fitness, hoek Looierstraat en Nieuwstraat |
 | Badkamer betegelen: het halve huis ligt open en de tegelzetter is aangefietst; leg de tegels volgens het voorbeeld binnen de tijd | Oude Akerweg 43 |
+| Ploegen op de Gulperberg: met de tractor zes banen zo recht mogelijk omploegen, keren op de kopakker | Akker op de Gulperberg |
 | Grond sjouwen: de voortuin van de krullebol ophogen met drie kruiwagens grond van de straat, zonder te rennen of te scherp de bocht om te gaan | Groeneweg 65 |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
-**Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer ochtend als je de ambtsketen van de Nachtburgemeester hebt teruggebracht, zodra beide nachtmissies (De Nachtburgemeester en Nacht van Gulpen) klaar zijn, als je een nachtmissie stopt of die mislukt, met nog een pilsje, en anders uiterlijk na 5 minuten. Nooit midden in een missie of gesprek. Bij elke start van de game is het 11 uur 's ochtends.
+**Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer dag zodra je een andere missie begint, als je een nachtmissie haalt, stopt of die mislukt, met nog een pilsje, en anders na 2 minuten zonder missie. Bij elke start van de game is het 11 uur 's ochtends.
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 

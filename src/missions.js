@@ -10,7 +10,7 @@ import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } 
 import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
 import { statsMissions } from './stats.js';
 import { inviteFinale } from './finale.js';
-import { setupWest, setupGroeneweg, setupFitness, setupVerbouwing, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
+import { setupWest, setupGroeneweg, setupFitness, setupVerbouwing, setupPloegen, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
@@ -247,6 +247,7 @@ export class Missions {
     setupGroeneweg(this, g, add);
     setupFitness(this, g, add);
     setupVerbouwing(this, g, add);
+    setupPloegen(this, g, add);
     Object.assign(this.extra, westHandlers);
 
     Object.values(this.npcs).forEach((n) => { n.active = true; });
@@ -316,6 +317,8 @@ export class Missions {
   }
 
   setActive(id, title, desc, progress = '') {
+    // een gewone missie start in het donker: eerst weer dag (niet bij de nachtmissies, het pilsje of de finale)
+    if (this.g.night > 0.5 && !['nacht', 'nachtvangulpen', 'pils', 'finale'].includes(id) && !this.g.dawning) this.g.dawn();
     // tijd meten vanaf de start van de missie (opnieuw zetten tijdens dezelfde missie telt niet)
     if (this.runStart?.id !== id) this.runStart = { id, t: performance.now() };
     this.active = { id, title, desc, progress };
@@ -330,7 +333,7 @@ export class Missions {
   complete(id, toast, score = null) {
     this.done.add(id);
     this.g.lastDone = id; // voor foutmeldingen: welke missie net klaar was
-    if (id === 'nacht') this.g.morningAsap = true; // ambtsketen terug: weer ochtend
+    if (id === 'nacht' || id === 'nachtvangulpen') this.g.morningAsap = true; // nachtmissie gehaald: weer ochtend
     const rec = id === 'finale' ? null : this.record(id, score);
     this.runStart = null;
     if (rec === 'record') toast = `${toast || 'Missie geslaagd!'} Nieuw record: ${this.bestLabel(id)}!`;

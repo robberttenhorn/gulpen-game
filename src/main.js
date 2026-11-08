@@ -315,8 +315,8 @@ class Game {
     this.missions?.refresh();
   }
 
-  // Nacht duurt niet eindeloos: het wordt weer ochtend zodra beide nachtmissies klaar zijn, als je een
-  // nachtmissie stopt (of die mislukt), en anders uiterlijk na 5 minuten. Nooit midden in een missie of gesprek.
+  // Nacht duurt niet eindeloos: het wordt weer dag als je een andere missie begint, als je een nachtmissie
+  // haalt, stopt of die mislukt, en anders na 2 minuten zonder missie. Nooit midden in een missie of gesprek.
   updateDayNight() {
     if (!(this.night > 0.5)) { this.nightSince = null; this.morningAsap = false; return; }
     const m = this.missions;
@@ -326,14 +326,14 @@ class Game {
       if (m.active?.id !== 'finale') {
         const todo = [['nacht', 'De Nachtburgemeester'], ['nachtvangulpen', 'Nacht van Gulpen']].filter(([id]) => !m.done.has(id)).map(([, t]) => t);
         setTimeout(() => this.ui.toast(todo.length
-          ? `Het is avond: tijd voor ${todo.join(' en ')}. Uiterlijk over 5 minuten wordt het weer ochtend (een pilsje bij De Zwarte Ruiter kan ook).`
+          ? `Het is avond: tijd voor ${todo.join(' en ')}. Over 2 minuten wordt het weer dag, of zodra je een andere missie begint.`
           : 'Het is avond. Even genieten van het donker, zo komt de zon weer op.', 5200), 600);
       }
     }
     if (m.active || this.ui.dialogOpen || this.interior || this.minigame || this.bigmap?.open) return;
     const elapsed = this.time - this.nightSince;
     const bothDone = m.done.has('nacht') && m.done.has('nachtvangulpen');
-    if (this.morningAsap || elapsed > 300 || (bothDone && elapsed > 25)) this.dawn();
+    if (this.morningAsap || elapsed > 120 || (bothDone && elapsed > 25)) this.dawn();
   }
 
   async dawn() {
