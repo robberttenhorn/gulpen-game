@@ -19,7 +19,7 @@ const OUT = path.resolve('public/data');
 const ORIGIN = { x: 190531, y: 314058 };
 
 // Speelgebied (het dorp) en een groter gebied voor de heuvels aan de horizon.
-const CORE = { minX: 189900, minY: 313300, maxX: 191600, maxY: 314700, res: 2 };
+const CORE = { minX: 189350, minY: 313300, maxX: 191600, maxY: 314750, res: 2 }; // west: de bloemenwijk (Akelei, Bosrank, Aardaker, Bolderik...)
 const WIDE = { minX: 186500, minY: 309800, maxX: 195000, maxY: 318300, res: 20 };
 
 const POIS = [
