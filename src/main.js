@@ -1267,7 +1267,7 @@ class Game {
   tick() {
     const dt = Math.min(0.05, this.clock.getDelta());
     this.time += dt;
-    this.input.update();
+    this.input.update(dt);
     if (this.bigmap.open) { this.render(); return; }
     if (this.mode === 'car') this.updateCar(dt);
     else this.updatePlayer(dt);
@@ -1311,8 +1311,8 @@ class Game {
   updateCar(dt) {
     const car = this.car, inp = this.input;
     const busy = this.ui.dialogOpen;
-    const throttle = busy ? 0 : -inp.move.y;
-    const steer = busy ? 0 : inp.move.x;
+    const throttle = busy ? 0 : -inp.drive.y;
+    const steer = busy ? 0 : inp.drive.x;
     this.cars.drive(car, dt, throttle, steer, inp.keys.has('Space'));
     this.sfx.engineUpdate(car.speed, throttle);
     const p = this.player;
@@ -1339,16 +1339,27 @@ class Game {
     if (this.keg) maxSpeed = SPEED.keg;
     if (this.fragile) maxSpeed = Math.min(maxSpeed, SPEED.walk); // met vlaaien ren je niet
     // op de fiets en het skateboard gaat de joystick niet half: altijd volle snelheid
-    const want = mag > 0.05 ? maxSpeed * (this.mode === 'walk' ? Math.min(1, mag * 1.2) : 1) : 0;
-    const accel = this.mode === 'walk' ? 12 : this.mode === 'bike' ? 4 : 3.5;
-    const decel = this.mode === 'walk' ? 14 : 3;
-    p.speed += (want - p.speed) * Math.min(1, (want > p.speed ? accel : decel) * dt);
-    // na een paar pilsjes loop je niet meer helemaal recht
-    if (this.drunk && mag > 0.05) p.heading += Math.sin(this.time * 1.7) * 0.012 * this.drunk;
-    if (mag > 0.05) {
-      let diff = Math.atan2(dx, dz) - p.heading;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      p.heading += diff * Math.min(1, (this.mode === 'walk' ? 12 : 5) * dt);
+    if (this.mode === 'walk') {
+      const want = mag > 0.05 ? maxSpeed * Math.min(1, mag * 1.2) : 0;
+      p.speed += (want - p.speed) * Math.min(1, (want > p.speed ? 12 : 14) * dt);
+      // na een paar pilsjes loop je niet meer helemaal recht
+      if (this.drunk && mag > 0.05) p.heading += Math.sin(this.time * 1.7) * 0.012 * this.drunk;
+      if (mag > 0.05) {
+        let diff = Math.atan2(dx, dz) - p.heading;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        p.heading += diff * Math.min(1, 12 * dt);
+      }
+    } else {
+      // fiets en skateboard sturen zoals een voertuig: vooruit = trappen, links/rechts = sturen.
+      // Zo stuurt de camera niet meer mee en slinger je niet meer heen en weer.
+      const throttle = busy ? 0 : -inp.drive.y, steer = busy ? 0 : inp.drive.x;
+      const want = throttle > 0 ? maxSpeed * throttle : 0;
+      const rate = throttle < -0.2 ? 7 : want > p.speed ? (this.mode === 'bike' ? 3 : 2.6) : 1.6; // achteruit = remmen
+      p.speed += (want - p.speed) * Math.min(1, rate * dt);
+      const k = Math.min(1, p.speed / Math.max(1, maxSpeed));
+      const turn = p.speed < 0.6 ? 1.4 : 2.5 - k * 1.2; // langzaam = scherp, hard = rustig
+      p.heading -= steer * turn * dt;
+      if (this.drunk) p.heading += Math.sin(this.time * 1.7) * 0.012 * this.drunk;
     }
     if (this.interior) {
       // binnen: muren en meubels, vlakke vloer

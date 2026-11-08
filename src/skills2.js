@@ -444,7 +444,8 @@ export function startStamp(g, title = 'Stempelen') {
     const v = pos();
     $('.st-stamp').style.transform = `translate(${v * 100}%, ${Math.sin(t * 7) * 4}px)`;
     $('.st-box').classList.toggle('hot', v > 0.44 && v < 0.58);
-    if (pressed(g)) result = { v, ok: v > 0.44 && v < 0.58, perfect: v > 0.48 && v < 0.54 };
+    const pr = pressed(g);
+    if (pr && t > 0.4) result = { v, ok: v > 0.44 && v < 0.58, perfect: v > 0.48 && v < 0.54 }; // tik van het gesprek niet meetellen
   }, () => { ui.close(); g.player.lockedFor = false; }, { v: () => pos(), label: 'Stempel!' });
 }
 

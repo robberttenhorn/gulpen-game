@@ -64,6 +64,8 @@ Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
+**Besturing**: fiets, skateboard en auto sturen zoals een voertuig: vooruit is gas (of trappen), achteruit is remmen, links en rechts is sturen. Met toetsen lopen gas en sturen geleidelijk op; de joystick heeft een dode zone in het midden en stuurt bij een kleine uitslag maar een klein beetje.
+
 **Auto kapen**: ga voor of naast een rijdende auto staan, dan stopt hij en toetert hij. Bij het portier kun je de chauffeur eruit trekken (knop **Kapen** of E) en zelf verder rijden. De chauffeur valt op straat en rent scheldend weg.
 
 Voortgang wordt in de browser bewaard. Een missie kun je altijd stoppen met de knop **Stoppen** op de opdrachtkaart of in het gesprekvenster (tik nogmaals om te bevestigen), of met Esc.

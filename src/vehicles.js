@@ -22,7 +22,7 @@ const TYPES = {
     body: [[0, 0.36], [0.02, 1.9], [3.7, 1.95], [4.4, 1.15], [4.92, 1.0], [4.95, 0.36]],
   },
   sport: {
-    L: 4.4, W: 1.88, wheelR: 0.33, wheelbase: 2.6, belt: 0.92, pillars: [], vmax: 42,
+    L: 4.4, W: 1.88, wheelR: 0.33, wheelbase: 2.6, belt: 0.92, pillars: [], vmax: 36,
     body: [[0, 0.3], [0.04, 0.88], [0.6, 0.98], [1.4, 1.2], [2.55, 1.22], [3.3, 0.86], [4.35, 0.68], [4.4, 0.3]],
   },
   tractor: { L: 4.0, W: 2.2, wheelR: 0.75, wheelbase: 2.3, vmax: 11, custom: 'tractor' },
@@ -343,10 +343,11 @@ export class Vehicles {
     const w = this.world;
     const surface = w.classAt(car.x, car.z);
     const onRoad = ['rijbaan', 'klinkers', 'parkeer', 'erf', 'verhard_open', 'verhard_gesloten', 'brug', 'fietspad', 'voetpad', 'berm', 'oever', 'onverhard'].includes(surface);
-    const top = car.t.vmax ?? 33;
+    const top = car.t.vmax ?? 27; // ongeveer 100 km/u: genoeg voor een dorp
     // naast de weg (gras, akker) iets langzamer, maar nooit ineens: geleidelijk afremmen
     const vmax = onRoad || car.type === 'tractor' ? top : Math.min(top, 20);
-    const accel = throttle > 0 ? (car.speed < 0 ? 16 : 7.5) : throttle < 0 ? (car.speed > 0 ? 16 : 5) : 0;
+    // optrekken wordt rustiger naarmate je harder gaat
+    const accel = throttle > 0 ? (car.speed < 0 ? 16 : 6.5 * (1 - 0.55 * Math.min(1, car.speed / top))) : throttle < 0 ? (car.speed > 0 ? 14 : 4.5) : 0;
     car.speed += throttle * accel * dt;
     if (!throttle) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), (onRoad ? 2.2 : 6) * dt);
     if (handbrake) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 10 * dt);
@@ -354,8 +355,9 @@ export class Vehicles {
     if (car.speed > vmax) car.speed -= (car.speed - vmax) * Math.min(1, dt * 1.2);
     car.speed = THREE.MathUtils.clamp(car.speed, -8, top);
 
-    const maxSteer = THREE.MathUtils.lerp(0.62, 0.12, Math.min(1, Math.abs(car.speed) / 30));
-    car.steer += (steerIn * maxSteer - car.steer) * Math.min(1, dt * 6);
+    // minder stuuruitslag op snelheid, en het stuur draait geleidelijk (geen schokken)
+    const maxSteer = THREE.MathUtils.lerp(0.58, 0.075, Math.min(1, Math.abs(car.speed) / 26));
+    car.steer += (steerIn * maxSteer - car.steer) * Math.min(1, dt * (steerIn ? 3.2 : 5));
     const yawRate = (car.speed * Math.tan(car.steer)) / car.t.wheelbase;
     car.heading -= yawRate * dt * (handbrake ? 1.6 : 1);
 

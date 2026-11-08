@@ -255,3 +255,6 @@ export const moreHandlers = {
   },
 };
 void makeCharacter;
+
+// voor automatische tests: minigames los kunnen starten met ?dev in de adresbalk
+if (typeof location !== 'undefined' && location.search.includes('dev')) window.__mini = { startMice, startTuutjes, startBommetje, startGyros, startStamp, startDoors };

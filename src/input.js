@@ -3,6 +3,7 @@ export class Input {
   constructor(canvas) {
     this.keys = new Set();
     this.move = { x: 0, y: 0 };
+    this.drive = { x: 0, y: 0 }; // rustig gedoseerde besturing voor fiets, skateboard en auto
     this.lookDelta = { x: 0, y: 0 };
     this.actionPressed = false;
     this.vehiclePressed = false;
@@ -75,13 +76,33 @@ export class Input {
     document.getElementById('btn-vehicle').addEventListener('pointerdown', (e) => { e.preventDefault(); this.vehiclePressed = true; });
   }
 
-  update() {
+  // Voor voertuigen: joystick met dode zone en zachte curve (kleine uitslag = klein beetje sturen),
+  // toetsen lopen geleidelijk op en veren terug bij loslaten.
+  updateDrive(dt, kx, ky) {
+    const shape = (v, dead, pow) => { const a = Math.abs(v); if (a < dead) return 0; return Math.sign(v) * Math.pow((a - dead) / (1 - dead), pow); };
+    if (this.joy) {
+      const tx = shape(this.joy.x, 0.14, 1.7), ty = shape(this.joy.y, 0.16, 1.3);
+      this.drive.x += (tx - this.drive.x) * Math.min(1, dt * 10);
+      this.drive.y += (ty - this.drive.y) * Math.min(1, dt * 10);
+      return;
+    }
+    const ramp = (cur, target, up, down) => {
+      if (target === 0) return Math.abs(cur) < down * dt ? 0 : cur - Math.sign(cur) * down * dt;
+      if (Math.sign(cur) !== Math.sign(target) && cur !== 0) return cur + Math.sign(target) * down * dt; // snel omkeren
+      return Math.max(-1, Math.min(1, cur + Math.sign(target) * up * dt));
+    };
+    this.drive.x = ramp(this.drive.x, kx, 2.4, 6);
+    this.drive.y = ramp(this.drive.y, ky, 2.8, 5);
+  }
+
+  update(dt = 0.016) {
     let x = 0, y = 0;
     const k = this.keys;
     if (k.has('KeyW') || k.has('ArrowUp') || k.has('KeyZ')) y -= 1;
     if (k.has('KeyS') || k.has('ArrowDown')) y += 1;
     if (k.has('KeyA') || k.has('ArrowLeft') || k.has('KeyQ')) x -= 1;
     if (k.has('KeyD') || k.has('ArrowRight')) x += 1;
+    this.updateDrive(dt, x, y);
     if (this.joy) { x = this.joy.x; y = this.joy.y; }
     const len = Math.hypot(x, y);
     if (len > 1) { x /= len; y /= len; }
