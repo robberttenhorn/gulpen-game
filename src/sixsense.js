@@ -103,16 +103,24 @@ export class SixSense {
       }
       return { i, x, z, place };
     }).filter(Boolean);
-    for (const s of spots) {
-      if (this.state.found.includes(s.i)) continue;
+    this.spots = spots;
+    this.spawnFlyers();
+    g.updaters.add((dt) => this.update(dt));
+    // alle drie al gevonden maar de bus nog niet gehad (bijv. na herladen): bus komt alsnog
+    if (this.state.found.length >= 3) setTimeout(() => this.callBus(), 4000);
+  }
+
+  // flyers neerleggen die nog niet gevonden zijn
+  spawnFlyers() {
+    const g = this.g, w = g.world;
+    for (const s of this.spots) {
+      if (this.state.found.includes(s.i) || this.flyers.some((f) => f.i === s.i)) continue;
       const m = makeFlyer();
       m.position.set(s.x, w.groundAt(s.x, s.z), s.z);
       g.scene.add(m);
-      this.flyers.push({ ...s, m });
+      // ligt hij precies waar je staat (na de bus), dan pas oppakken als je eerst even wegloopt
+      this.flyers.push({ ...s, m, armed: Math.hypot(g.player.x - s.x, g.player.z - s.z) > 8 });
     }
-    g.updaters.add((dt) => this.update(dt));
-    // alle drie al gevonden maar de bus nog niet gehad (bijv. na herladen): bus komt alsnog
-    if (this.state.found.length >= 3 && !this.state.done) setTimeout(() => this.callBus(), 6000);
   }
 
   // voor de kaart
@@ -126,7 +134,9 @@ export class SixSense {
       f.m.userData.card.rotation.y += dt * 1.6;
       f.m.userData.card.position.y = 0.55 + Math.sin(g.time * 2.5 + f.i) * 0.08;
       f.m.userData.glow.material.opacity = 0.35 + Math.sin(g.time * 4) * 0.2;
-      if (!g.ui.dialogOpen && !g.interior && Math.hypot(p.x - f.x, p.z - f.z) < (g.mode === 'car' ? 3.5 : 1.8)) this.pickUp(f);
+      const d = Math.hypot(p.x - f.x, p.z - f.z);
+      if (!f.armed) { if (d > 8) f.armed = true; continue; }
+      if (!g.ui.dialogOpen && !g.interior && d < (g.mode === 'car' ? 3.5 : 1.8)) this.pickUp(f);
     }
     this.updateBus(dt);
   }
@@ -141,7 +151,7 @@ export class SixSense {
     g.sfx?.play('coin');
     this.showCard(CODES[f.i], n);
     g.updateMarkers();
-    if (n >= 3 && !this.state.done) setTimeout(() => this.callBus(), 3500);
+    if (n >= 3) setTimeout(() => this.callBus(), 1200); // de bus is er binnen een paar seconden
   }
 
   // flyer even groot in beeld
@@ -169,9 +179,9 @@ export class SixSense {
       while (acc < len && path[i + dir]) { acc += Math.hypot(path[i + dir][0] - path[i][0], path[i + dir][1] - path[i][1]); i += dir; pts.push(path[i]); }
       return { pts, acc };
     };
-    let back = walk(bi, -1, 45);
+    let back = walk(bi, -1, 26);
     let dir = 1;
-    if (back.acc < 25) { back = walk(bi, 1, 45); dir = -1; }
+    if (back.acc < 14) { back = walk(bi, 1, 26); dir = -1; }
     const inPts = back.pts.slice().reverse();
     inPts.push([st.x, st.z]);
     const onward = walk(bi, dir, 14).pts;
@@ -180,12 +190,12 @@ export class SixSense {
 
   callBus() {
     const g = this.g;
-    if (this.bus || this.state.done) return;
+    if (this.bus) return;
     const r = this.routeNear(g.player.x, g.player.z);
     if (!r) return;
     const bus = makeSixBus();
     g.scene.add(bus);
-    this.bus = { m: bus, route: r.inPts, s: 0, phase: 'aanrijden', t: 0, onward: r.onward, speed: 9 };
+    this.bus = { m: bus, route: r.inPts, s: 0, phase: 'aanrijden', t: 0, onward: r.onward, speed: 12 };
     this.placeOnRoute(this.bus, 0);
     g.ui.toast('Wat is dat? Een zwarte bus met een grote roze 6 komt eraan...', 3200);
     g.sfx?.play('honk');
@@ -254,28 +264,61 @@ export class SixSense {
   board() {
     const g = this.g, b = this.bus;
     if (!b || b.phase !== 'wachten') return;
+    if (g.minigame) { g.ui.toast('Rond eerst je missie af.', 1800); return; }
     g.extraInteract = null;
-    b.phase = 'hoekje'; b.s = 0;
-    b.route = [[b.m.position.x, b.m.position.z], ...b.onward];
-    b.speed = 4;
     g.setMode?.('walk'); // eerst: setMode maakt je poppetje weer zichtbaar
     g.player.lockedFor = true;
     g.player.speed = 0;
     g.player.group.visible = false;
     g.sfx?.play('door');
-    // camera aan de overkant van de straat, kijkt naar de bus
-    const followCam = () => {
-      if (!this.bus || this.bus.phase === 'klaar') return;
-      const m = this.bus.m;
-      const side = new THREE.Vector3(-7, 2.6, 2.5).applyEuler(m.rotation).add(m.position);
-      g.pov = { pos: side, look: m.position.clone().add(new THREE.Vector3(0, 1.3, 0)) };
-      requestAnimationFrame(followCam);
+    // tijdens de hele scène geen knoppen: alleen kijken
+    document.body.classList.add('cutscene');
+    g.ui.prompt(null); g.ui.setActionLabel(null);
+    this.sceneMini = { stop: () => this.unboard(), update: () => {}, actionLabel: null, debug: { label: null } };
+    g.minigame = this.sceneMini;
+    // meteen schommelen, de bus blijft staan
+    b.phase = 'schommelen'; b.t = 0;
+    g.pov = { pos: this.sceneCamera(b.m), look: b.m.position.clone().add(new THREE.Vector3(0, 1.2, 0.3)), snap: true };
+  }
+
+  // camera van buiten die de hele bus in beeld heeft, ook op een smal (staand) telefoonscherm
+  sceneCamera(m) {
+    const g = this.g, w = g.world;
+    const vfov = THREE.MathUtils.degToRad(g.camera.fov), asp = innerWidth / innerHeight;
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * asp);
+    const half = 4.0; // halve breedte die in beeld moet (bus schuin van voren gezien, met wat ruimte)
+    let dist = THREE.MathUtils.clamp(half / Math.tan(hfov / 2), 7, 20);
+    const c = m.position;
+    const trees = w.objects?.trees || [];
+    // bomen tussen camera en bus tellen (een stam midden in beeld is erg storend)
+    const treesInWay = (px, pz) => {
+      let n = 0;
+      const dx = px - c.x, dz = pz - c.z, L2 = dx * dx + dz * dz || 1;
+      for (const [tx, tz] of trees) {
+        if (Math.abs(tx - c.x) > dist + 3 || Math.abs(tz - c.z) > dist + 3) continue;
+        const t = ((tx - c.x) * dx + (tz - c.z) * dz) / L2;
+        if (t < 0.15 || t > 1.05) continue;
+        if (Math.hypot(tx - (c.x + dx * t), tz - (c.z + dz * t)) < 2.2) n++;
+      }
+      return n;
     };
-    followCam();
+    let best = null;
+    for (const side of [1, -1]) {
+      for (const fwd of [0.57, 0.25, 0.85, -0.3]) {
+        const dir = new THREE.Vector3(side * Math.sqrt(1 - fwd * fwd), 0, fwd).applyAxisAngle(new THREE.Vector3(0, 1, 0), m.rotation.y);
+        const px = c.x + dir.x * dist, pz = c.z + dir.z * dist, py = c.y + 2.2 + dist * 0.12;
+        const free = w.occlusion(c.x, c.y + 1.5, c.z, px, py, pz);
+        const score = free * 2 - treesInWay(c.x + dir.x * dist * free, c.z + dir.z * dist * free) * 0.8 - Math.abs(fwd - 0.57) * 0.3;
+        if (!best || score > best.score) best = { score, free, dir };
+      }
+    }
+    if (best.free < 1) dist = Math.max(5, dist * best.free * 0.92); // niet door een gevel heen kijken
+    return new THREE.Vector3(c.x + best.dir.x * dist, c.y + 2.2 + dist * 0.12, c.z + best.dir.z * dist);
   }
 
   unboard() {
     const g = this.g, b = this.bus;
+    if (!b || b.phase === 'klaar' || b.phase === 'wegrijden') return;
     b.phase = 'klaar';
     const ud = b.m.userData;
     ud.body.rotation.set(0, 0, 0); ud.body.position.y = 0;
@@ -287,20 +330,23 @@ export class SixSense {
     g.player.group.visible = true;
     g.player.lockedFor = false;
     g.pov = null;
+    if (g.minigame === this.sceneMini) g.minigame = null;
+    document.body.classList.remove('cutscene');
     g.camYaw = g.player.heading + Math.PI;
     g.updateCamera(0, true);
     g.sfx?.play('door');
     g.ui.toast('Vijf seconden. Een persoonlijk record. Alles netjes betaald met korting.', 3600);
     this.state.done = true;
+    this.state.times = (this.state.times || 0) + 1;
+    // en meteen weer weg
+    const r = this.routeNear(b.m.position.x, b.m.position.z);
+    b.route = [[b.m.position.x, b.m.position.z], ...(r ? r.onward.slice(1).concat(this.extend(r)) : [[b.m.position.x + 40, b.m.position.z]])];
+    b.s = 0; b.speed = 11; b.phase = 'wegrijden';
+    g.sfx?.play('honk');
+    // de flyers liggen er daarna weer: je kunt het opnieuw doen
+    this.state.found = [];
     save(this.state);
-    // en weg is de bus
-    setTimeout(() => {
-      if (!this.bus) return;
-      const r = this.routeNear(this.bus.m.position.x, this.bus.m.position.z);
-      this.bus.route = [[this.bus.m.position.x, this.bus.m.position.z], ...(r ? r.onward.slice(1).concat(this.extend(r)) : [[this.bus.m.position.x + 40, this.bus.m.position.z]])];
-      this.bus.s = 0; this.bus.speed = 11; this.bus.phase = 'wegrijden';
-      g.sfx?.play('honk');
-    }, 1200);
+    setTimeout(() => { this.spawnFlyers(); g.updateMarkers(); }, 4000);
   }
 
   // een stuk verder weg over dezelfde straat, zodat de bus uit beeld rijdt

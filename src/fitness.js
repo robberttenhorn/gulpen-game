@@ -57,6 +57,52 @@ function dumbbell(len = 0.3, r = 0.06, color = 0x222222) {
   return g;
 }
 
+// Gevelframe aan de Looierstraat-kant van het pand, vlak bij de hoek met de Nieuwstraat.
+// Zoekt het pand op het adres, de hoek die het dichtst bij de kruising ligt, en de gevel langs de Looierstraat.
+export function frameLooierCorner(fac, [ax, az]) {
+  const w = fac.world;
+  const pts = (name) => { const out = []; for (const [n, l] of w.roads) if (n === name) for (let i = 0; i < l.length; i += 2) out.push([l[i], l[i + 1]]); return out; };
+  const looier = pts('Looierstraat'), nieuw = pts('Nieuwstraat');
+  if (!looier.length || !nieuw.length) return null;
+  // kruising: het punt van de Looierstraat dat het dichtst bij de Nieuwstraat ligt
+  let J = null, jd = Infinity;
+  for (const p of looier) for (const q of nieuw) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d < jd) { jd = d; J = p; } }
+  let fp = null;
+  for (const i of w.nearbyFootprints(ax, az)) { const f = w.footprints[i]; if (!f.extra && pointIn(ax, az, f.ring)) fp = f; }
+  if (!fp) return null;
+  const r = fp.ring, n = r.length;
+  let ci = 0, cd = Infinity;
+  r.forEach(([x, z], i) => { const d = Math.hypot(x - J[0], z - J[1]); if (d < cd) { cd = d; ci = i; } });
+  const nearL = (x, z) => { let b = Infinity; for (const p of looier) b = Math.min(b, Math.hypot(p[0] - x, p[1] - z)); return b; };
+  // langs de ring lopen vanaf de hoek, de kant op die het dichtst bij de Looierstraat blijft
+  let bestSide = null;
+  for (const dir of [1, -1]) {
+    let len = 0, i = ci, sumD = 0, k = 0;
+    while (len < 12 && k < n) { const j = (i + dir + n) % n; len += Math.hypot(r[j][0] - r[i][0], r[j][1] - r[i][1]); sumD += nearL(r[j][0], r[j][1]); i = j; k++; }
+    const score = sumD / Math.max(1, k);
+    if (!bestSide || score < bestSide.score) bestSide = { end: i, score };
+  }
+  const [bx, bz] = r[ci], [ex, ez] = r[bestSide.end];
+  const L = Math.hypot(ex - bx, ez - bz) || 1;
+  let ux = (ex - bx) / L, uz = (ez - bz) / L;
+  let nx = uz, nz = -ux;
+  const mx = (bx + ex) / 2, mz = (bz + ez) / 2;
+  if (pointIn(mx + nx * 0.8, mz + nz * 0.8, r)) { nx = -nx; nz = -nz; }
+  // midden van de pui een paar meter van de hoek af
+  const t = Math.min(L / 2, 4.6);
+  const cx = bx + ux * t, cz = bz + uz * t;
+  const fux = -nz, fuz = nx;
+  return { x: cx, z: cz, y: w.heightAt(cx + nx * 1.5, cz + nz * 1.5), ux: fux, uz: fuz, nx, nz, len: Math.min(9, 2 * t + 0.6), yaw: Math.atan2(nx, nz) };
+}
+function pointIn(x, z, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, zi] = ring[i], [xj, zj] = ring[j];
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
 // Bouwt de pui op het gevelframe f. Geeft een object met tick(dt, game) terug.
 export function buildFitnessFront(fac, f) {
   const w = fac.world;

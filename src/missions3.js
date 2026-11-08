@@ -4,9 +4,14 @@ import * as THREE from 'three';
 import { startHedge, startGnomes, startBBQ, startBarrow } from './skills3.js';
 import { makeKruiwagen, makeSchep } from './props.js';
 import { startCurls } from './fitness.js';
+import { buildRenovation, startTiles } from './verbouwing.js';
+
+const G = (text, nl) => ({ text, nl });
 
 // Aardaker 43 (PDOK Locatieserver, RD 189534.701 314005.2) in spelcoördinaten
 const AARDAKER_43 = [189534.701 - 190531, -(314005.2 - 314058)];
+// Oude Akerweg 43 (PDOK Locatieserver, RD 191102.875 314218.601)
+const OUDE_AKERWEG_43 = [191102.875 - 190531, -(314218.601 - 314058)];
 // Groeneweg 65 (PDOK Locatieserver, RD 190419.491 314258.471)
 const GROENEWEG_65 = [190419.491 - 190531, -(314258.471 - 314058)];
 
@@ -142,27 +147,62 @@ export function setupFitness(m, g, add) {
   add('pt', 'Personal trainer', [x, z], { shirt: 0x5b2a86, pants: 0x111111, hair: 0x2b1d14, sleeves: 'short', shoes: 0xffffff });
 }
 
+// Oude Akerweg 43: grote verbouwing, blonde jongen voor de deur
+export function setupVerbouwing(m, g, add) {
+  const site = buildRenovation(g, OUDE_AKERWEG_43);
+  if (!site) return;
+  const [x, z] = g.world.resolve(...site.npcSpot, 0.5);
+  add('verbouwer', 'Jongen van de verbouwing', [x, z], { shirt: 0x90a4ae, pants: 0x37474f, hair: 0xe6c770, jacket: 0xff6f00, shoes: 0x5d4037 });
+}
+
 export function westItems(n) {
   return [
     { id: 'heg', npc: n.heggenman, title: 'De strakste heg van de Heggerank', place: 'Heggerank', desc: 'De jury van de Mooiste Voortuin komt eraan. Knip de heg kaarsrecht langs de lijn.' },
     { id: 'kabouters', npc: n.kabouter, title: 'Kabouters ontvoerd', place: 'Akelei', desc: 'Vijf tuinkabouters zijn verstopt in de bloemenwijk. Zoek ze met de warm-koudmeter.' },
     { id: 'bbq', npc: n.bbqjongen, title: 'Burendag-BBQ', place: 'Aardaker 43', desc: 'De barbecuemeester is zoek. Draai de burgers op tijd om en serveer de hele straat.' },
-    { id: 'biceps', npc: n.pt, title: 'Biceps pompen', place: 'Anytime Fitness, Nieuwstraat 8', desc: 'Zaterdag naar Mosaqua. Pomp je biceps op in de sportschool, zodat je niet uitgelachen wordt op de glijbaan.' },
+    { id: 'biceps', npc: n.pt, title: 'Biceps pompen', place: 'Anytime Fitness, hoek Looierstraat', desc: 'Zaterdag naar Mosaqua. Pomp je biceps op in de sportschool, zodat je niet uitgelachen wordt op de glijbaan.' },
+    { id: 'tegels', npc: n.verbouwer, title: 'Badkamer betegelen', place: 'Oude Akerweg 43', desc: 'Het halve huis ligt open en de tegelzetter is weg. Leg de badkamertegels in het juiste patroon, binnen de tijd.' },
     { id: 'grond', npc: n.krullebol, title: 'Grond sjouwen', place: 'Groeneweg 65', desc: 'Help de krullebol zijn voortuin op te hogen: rij drie kruiwagens grond van de straat naar zijn tuin, zonder te morsen.' },
   ].filter((x) => x.npc);
 }
 
-export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond', pt: 'biceps' };
+export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond', pt: 'biceps', verbouwer: 'tegels' };
 
 export const westHandlers = {
+  // ------------------------------------------------------------ Oude Akerweg 43: badkamer betegelen
+  async verbouwer(npc, N, ui, g) {
+    const a = await ui.dialog(N, [
+      G('Ouwieje keal wat mot ich doan', 'Oh jee jongen, wat moet ik doen?'),
+      'We zijn het hele huis aan het verbouwen. Het halve huis ligt open, de keuken staat in de tuin en de wc ligt in de container.',
+      G('En de tegelzetter? Die is gisteren aangefietst en nooit meer teruggekomen.', 'En de tegelzetter? Die is gisteren weggegaan en nooit meer teruggekomen.'),
+      'Morgen komt mijn vriendin kijken. Als de badkamer dan nog kaal is... Kun je me uithelpen? De tegels liggen klaar, het voorbeeld hangt aan de muur.',
+    ], ['Ik pak de tegellijm', 'Ik ben geen tegelzetter']);
+    if (a !== 0) { await ui.dialog(N, [G('Wablief? Iedereen kan tegels leggen. Zegt mijn vader. Die heeft het ook nooit gedaan.', 'Wat zeg je? Iedereen kan tegels leggen. Zegt mijn vader. Die heeft het ook nooit gedaan.')]); return; }
+    this.setActive('tegels', 'Badkamer betegelen', 'Leg de tegels volgens het voorbeeld: tik op een vak waar de bovenste tegel van de stapel hoort. Een verkeerd vak breekt de tegel en kost 3 seconden.', '');
+    const r = await startTiles(g, { limit: 75 });
+    if (!r || this.active?.id !== 'tegels') return;
+    if (r.ok) {
+      await ui.dialog(N, [
+        G(r.errors ? `Doa velt mig de boks van aaf! Op ${r.errors === 1 ? 'één gebroken tegel' : `${r.errors} gebroken tegels`} na helemaal perfect.` : 'Doa velt mig de boks van aaf! Geen enkele tegel gebroken.', r.errors ? 'Daar sta ik van te kijken! Op een paar gebroken tegels na helemaal perfect.' : 'Daar sta ik van te kijken! Geen enkele tegel gebroken.'),
+        'Mijn vriendin gaat denken dat ik het zelf heb gedaan. Dat laten we gewoon zo, toch?',
+        G('Zo, ik ben afgewerkt voor vandaag. Haije!', 'Zo, ik ben klaar met werken voor vandaag. Doei!'),
+      ]);
+      g.fx?.confetti(g.player.x, g.world.groundAt(g.player.x, g.player.z) + 2.2, g.player.z, 120);
+      this.complete('tegels', 'Badkamer betegeld!');
+    } else {
+      await ui.dialog(N, [G('Te laat... De helft ligt er, de rest ligt in scherven. Mijn vriendin gaat zó zeiveren. Nog een keer?', 'Te laat... De helft ligt er, de rest ligt in scherven. Mijn vriendin gaat zó zeuren. Nog een keer?')]);
+      this.fail('Badkamer niet op tijd klaar.');
+    }
+  },
+
   // ------------------------------------------------------------ Anytime Fitness: biceps pompen
   async pt(npc, N, ui, g) {
     const a = await ui.dialog(N, [
-      'Hé jij! Ik hoorde dat je zaterdag naar Mosaqua gaat. Met die armpjes? Op de glijbaan lachen ze je uit.',
+      G('Hé jij! Ik hoorde dat je zaterdag naar Mosaqua gaat. Met die armpjes? Bij het roetsjen lachen ze je uit.', 'Hé jij! Ik hoorde dat je zaterdag naar Mosaqua gaat. Met die armpjes? Op de glijbaan lachen ze je uit.'),
       'We gaan je biceps oppompen. Ingedrukt houden om te curlen, bovenin aanspannen tot de ring vol is, en dan pas loslaten.',
       'Niet te vroeg loslaten en niet te lang blijven hangen, anders verzuurt je arm. Klaar voor de pomp?',
     ], ['Pompen maar!', 'Ik heb al spierballen']);
-    if (a !== 0) { await ui.dialog(N, ['Spierballen? Dat zijn botten met een beetje vel eromheen. Kom terug als je durft.']); return; }
+    if (a !== 0) { await ui.dialog(N, [G('Niet zeiveren. Spierballen? Dat zijn botten met een beetje vel eromheen. Kom terug als je durft.', 'Niet zeuren. Spierballen? Dat zijn botten met een beetje vel eromheen. Kom terug als je durft.')]); return; }
     this.setActive('biceps', 'Biceps pompen', 'Loop naar de paarse mat bij de spiegel en pak de dumbbells. Pomp je biceps naar 100 procent: Mosaqua-klaar!', '');
     const room = g.interiors.room('fitness');
     let go;
@@ -239,9 +279,9 @@ export const westHandlers = {
     const a = await ui.dialog(N, [
       'Morgen komt de jury van de Mooiste Voortuin van de Bloemenwijk. Ik woon aan de Heggerank. Dan móét je de mooiste heg hebben, toch?',
       'Mijn buurman heeft de zijne met een laserlijn geknipt. Een laserlijn! Ik heb alleen deze schaar en een trillende hand.',
-      'Kun jij me helpen? Eén strak lijntje, meer vraag ik niet.',
+      G('Kun jij me uithelpen? Eén strak lijntje, meer vraag ik niet.', 'Kun jij me helpen? Eén strak lijntje, meer vraag ik niet.'),
     ], ['Geef die schaar maar', 'Ik hou van wilde tuinen']);
-    if (a !== 0) { await ui.dialog(N, ['Wilde tuinen. Ja. Dat zeggen mensen die nooit snoeien. Je bent gewoon lui, jong.']); return; }
+    if (a !== 0) { await ui.dialog(N, [G('Wilde tuinen. Ja. Dat zeggen mensen met een tuin vol drek. Je bent gewoon lui, jong.', 'Wilde tuinen. Ja. Dat zeggen mensen met een tuin vol onkruid. Je bent gewoon lui, jong.')]); return; }
     this.setActive('heg', 'De strakste heg van de Heggerank', 'Hou de heggenschaar op de witte lijn. Minstens 70 procent netjes in 24 seconden.', '');
     const r = await startHedge(g, { time: 24, need: 0.7 });
     if (!r || this.active?.id !== 'heg') return;
@@ -262,7 +302,7 @@ export const westHandlers = {
   // ------------------------------------------------------------ kabouterjacht
   async kabouter(npc, N, ui, g) {
     const a = await ui.dialog(N, [
-      'Mijn tuinkabouters zijn weg! Alle vijf! Henk, Sjra, Mia, Jo en Kleine Jean-Pierre.',
+      G('Mijn tuinkabouters zijn weg! Alle vijf! Henk, Sjra, Mia, Jo en Kleine Jean-Pierre, mijn sjattepoemelke.', 'Mijn tuinkabouters zijn weg! Alle vijf! Henk, Sjra, Mia, Jo en Kleine Jean-Pierre, mijn schatje.'),
       'Er lag een briefje: "Wij zijn op wereldreis." Wereldreis! Ze hebben niet eens een paspoort. Ik denk dat ze gewoon ergens in de wijk staan.',
       'Kijk maar naar die meter: hoe warmer, hoe dichterbij. Binnen drie minuten, voordat het donker wordt en ze echt gaan wandelen.',
     ], ['Ik vind ze!', 'Kabouters? Ik ben te oud voor sprookjes']);
@@ -306,7 +346,7 @@ export const westHandlers = {
       g.fx?.confetti(g.player.x, g.world.groundAt(g.player.x, g.player.z) + 2, g.player.z, 120);
       this.complete('bbq', 'Barbecuemeester van de bloemenwijk!');
     } else {
-      await ui.dialog(N, ['Het ruikt hier naar een afgebrande frituur. De buren bestellen nu pizza. Volgend jaar beter!']);
+      await ui.dialog(N, [G('Het ruikt hier naar een afgebrande frituur. Gooi die zwarte burgers maar in de dreksbak, de buren bestellen nu pizza. Volgend jaar beter!', 'Het ruikt hier naar een afgebrande frituur. Gooi die zwarte burgers maar in de vuilnisbak, de buren bestellen nu pizza. Volgend jaar beter!')]);
       this.fail('Te veel verbrand of te traag.');
     }
   },
