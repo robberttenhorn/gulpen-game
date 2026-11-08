@@ -446,11 +446,17 @@ export class Facades {
     const parasolMat = new THREE.MeshStandardMaterial({ color: 0xf3ead7, roughness: 0.9, side: THREE.DoubleSide });
     const chairMat = std(0x2b2b2b, { metalness: 0.4 });
     const tableMat = std(0x6d4c33);
+    // nooit op de rijbaan, het fietspad of een parkeervak: alleen op stoep of plein
+    const bad = new Set(['rijbaan', 'fietspad', 'parkeer']);
+    const free = (x, z) => !w.insideBuilding(x, z) && !w.blocked(x, z) && !bad.has(w.classAt(x, z));
     for (let i = 0; i < n; i++) {
       const along = (i - (n - 1) / 2) * 2.6;
-      const out = 3.2 + (i % 2) * 2.2;
-      const x = f.x + f.ux * along + f.nx * out, z = f.z + f.uz * along + f.nz * out;
-      if (w.insideBuilding(x, z) || w.blocked(x, z)) continue;
+      let x = 0, z = 0, ok = false;
+      for (let out = 1.7 + (i % 2) * 2.2; out >= 1.5 && !ok; out -= 0.3) {
+        x = f.x + f.ux * along + f.nx * out; z = f.z + f.uz * along + f.nz * out;
+        ok = free(x, z) && free(x + f.nx * 1.15, z + f.nz * 1.15) && free(x + f.ux * 1.1, z + f.uz * 1.1) && free(x - f.ux * 1.1, z - f.uz * 1.1);
+      }
+      if (!ok) continue;
       const g = new THREE.Group();
       g.position.set(x, w.groundAt(x, z), z);
       const top = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 16), tableMat);

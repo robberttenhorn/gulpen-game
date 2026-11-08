@@ -355,8 +355,8 @@
       ]
     },
     {
-      "id": "voncken",
-      "name": "Bakkerij Voncken",
+      "id": "pijls",
+      "name": "Bakkerij Pijls",
       "address": "Rijksweg 57",
       "x": 190738.597,
       "y": 314113.53,
@@ -449,6 +449,78 @@
         -67.0,
         16.0
       ]
+    },
+    {
+      "id": "athene",
+      "name": "Grieks Restaurant Athene",
+      "address": "Rijksweg 31",
+      "x": 190643.558,
+      "y": 314059.166,
+      "pos": [
+        112.55799999998999,
+        -1.1660000000265427
+      ],
+      "shop": true
+    },
+    {
+      "id": "plankeukens",
+      "name": "Plan Keukens",
+      "address": "Rijksweg 21",
+      "x": 190564.118,
+      "y": 314019.806,
+      "pos": [
+        33.11799999998766,
+        38.194000000017695
+      ],
+      "shop": true
+    },
+    {
+      "id": "pannekoekenmolen",
+      "name": "De Pannekoekenmolen",
+      "address": "Molenweg 2A",
+      "x": 190369.248,
+      "y": 313667.69,
+      "pos": [
+        -161.75200000000768,
+        390.3099999999977
+      ],
+      "shop": true
+    },
+    {
+      "id": "mosaqua",
+      "name": "Mosaqua",
+      "address": "Landsraderweg 11",
+      "x": 190401.358,
+      "y": 313520.682,
+      "pos": [
+        -129.64199999999255,
+        537.3180000000284
+      ],
+      "shop": true
+    },
+    {
+      "id": "gemeentehuis",
+      "name": "Gemeentehuis Gulpen-Wittem",
+      "address": "Willem Vliegenstraat 12",
+      "x": 190323.202,
+      "y": 314076.821,
+      "pos": [
+        -207.79800000000978,
+        -18.820999999996275
+      ],
+      "shop": true
+    },
+    {
+      "id": "joodsmonument",
+      "name": "Joods monument",
+      "address": "Beversbergweg",
+      "x": 188914.8,
+      "y": 314574.6,
+      "pos": [
+        -1616.2000000000116,
+        -516.5999999999767
+      ],
+      "memorial": true
     }
   ],
   "generated": "2026-11-07T12:44:43.919Z",

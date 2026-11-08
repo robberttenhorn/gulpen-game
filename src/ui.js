@@ -34,7 +34,7 @@ export class UI {
     const set = (c) => {
       card.classList.toggle('collapsed', c);
       btn.setAttribute('aria-expanded', String(!c));
-      btn.setAttribute('aria-label', c ? 'Opdracht uitklappen' : 'Opdracht inklappen');
+      btn.setAttribute('aria-label', c ? 'Missie uitklappen' : 'Missie inklappen');
       try { localStorage.setItem('gulpe-quest-collapsed', c ? '1' : '0'); } catch (e) { /* geen opslag */ }
     };
     let start = false;
@@ -410,6 +410,12 @@ export class BigMap {
     this.cx = it.x; this.cz = it.z;
     this.renderList();
     this.draw();
+    // de lijst springt naar de gekozen missie, zodat je ziet wat welk punt is
+    const el = $('bigmap-list').querySelector('.bm-item.sel');
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.add('flash');
+    }
   }
 
   renderList() {

@@ -19,7 +19,12 @@ export const SHOPS = {
   top1toys: { sign: 'Top1Toys', sub: 'speelgoed', bg: '#ffd400', fg: '#d6001c', type: 'speelgoed' },
   euronics: { sign: 'Euronics', sub: 'elektronica · witgoed', bg: '#0b3c8c', fg: '#ffffff', type: 'elektro' },
   da: { sign: 'DA Drogisterij & Parfumerie', sub: '', bg: '#ffffff', fg: '#c8102e', type: 'drogist' },
-  voncken: { sign: 'Bakkerij Voncken', sub: 'ambachtelijk brood en vlaai', bg: '#5a2e14', fg: '#f6e7c8', awning: ['#5a2e14', '#f6e7c8'], type: 'bakker' },
+  pijls: { sign: 'Bakkerij Pijls', sub: 'brood · vlaai · banket', bg: '#5a2e14', fg: '#f6e7c8', awning: ['#5a2e14', '#f6e7c8'], type: 'bakker' },
+  athene: { sign: 'Grieks Restaurant Athene', sub: 'gyros · souvlaki · ouzo', bg: '#0d47a1', fg: '#ffffff', awning: ['#0d47a1', '#ffffff'], type: 'grieks' },
+  plankeukens: { sign: 'Plan Keukens', sub: 'keukens op maat', bg: '#263238', fg: '#ffffff', type: 'keukens' },
+  pannekoekenmolen: { sign: 'De Pannekoekenmolen', sub: 'pannenkoeken', bg: '#8d5524', fg: '#fff3d6', awning: ['#c62828', '#fff3d6'], type: 'pannenkoek' },
+  mosaqua: { sign: 'Mosaqua', sub: 'subtropisch zwemparadijs', bg: '#0288d1', fg: '#ffffff', type: 'zwembad' },
+  gemeentehuis: { sign: 'Gemeentehuis Gulpen-Wittem', sub: '', bg: '#f5f1e6', fg: '#1b2430', type: 'gemeente' },
   decorette: { sign: 'Decorette', sub: 'verf · behang · raamdecoratie', bg: '#ef7d00', fg: '#ffffff', type: 'wonen' },
   vvv: { sign: 'VVV · Visit Zuid-Limburg', sub: 'informatie · wandelkaarten · streekproducten', bg: '#0a5aa8', fg: '#ffffff', type: 'vvv' },
   ilgusto: { sign: 'Il Gusto', sub: 'ristorante · pizzeria', bg: '#1b4d2b', fg: '#ffffff', awning: ['#1b4d2b', '#ffffff', '#c62828', '#ffffff'], type: 'restaurant' },
@@ -49,6 +54,7 @@ export function buildShops(fac, pois) {
   }
   for (const id of Object.keys(frames)) shopFacade(fac, frames[id], SHOPS[id]);
   if (pois.tankstation) buildTankstation(fac, pois.tankstation.pos);
+  if (pois.joodsmonument) buildMonument(fac, pois.joodsmonument.pos);
   if (pois.busstation) buildBusstation(fac, pois.busstation.pos);
 }
 
@@ -112,6 +118,14 @@ function shopFacade(fac, f, s) {
       break;
     }
     case 'drogist': {
+      // ouderwetse condoomautomaat aan de gevel, naast de etalage
+      const auto = new THREE.Group();
+      auto.add(mesh(new THREE.BoxGeometry(0.55, 0.85, 0.22), std(0xb71c1c, { roughness: 0.4, metalness: 0.2 }), 0, 0, 0.11));
+      auto.add(mesh(new THREE.PlaneGeometry(0.42, 0.3), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1f5, emissiveIntensity: 0.2 }), 0, 0.2, 0.225));
+      for (const x of [-0.12, 0.12]) { const k = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), std(0xcfd8dc, { metalness: 0.8 }), x, -0.2, 0.25); k.rotation.x = Math.PI / 2; auto.add(k); }
+      auto.position.set(-w / 2 - 0.55, 1.35, 0);
+      add(auto);
+      fac.frames.automaat = { ...f, x: f.x - f.ux * (w / 2 + 0.55), z: f.z - f.uz * (w / 2 + 0.55) };
       const cols = [0xf8bbd0, 0xb3e5fc, 0xffffff, 0xffe082, 0xc5e1a5];
       for (let r = 0; r < 2; r++) {
         add(mesh(new THREE.BoxGeometry(winW - 0.2, 0.03, 0.25), std(0xffffff), wx, 0.95 + r * 0.6, 0.2));
@@ -161,6 +175,49 @@ function shopFacade(fac, f, s) {
       fac.terrace(f, 2);
       break;
     }
+    case 'grieks': {
+      // witte zuiltjes naast de deur en een terrasje
+      for (const x of [w / 2 + 0.25, -w / 2 - 0.25]) add(mesh(new THREE.CylinderGeometry(0.14, 0.16, 2.6, 12), std(0xf5f5f5), x, 1.3, 0.2));
+      fac.terrace(f, 2);
+      break;
+    }
+    case 'keukens': {
+      // keukenblok in de etalage: kastjes, werkblad en een kraan
+      add(mesh(new THREE.BoxGeometry(winW - 0.3, 0.75, 0.45), std(0xeceff1), wx, 1.05, -0.05));
+      add(mesh(new THREE.BoxGeometry(winW - 0.25, 0.04, 0.5), std(0x37474f), wx, 1.44, -0.05));
+      add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8), std(0xb0bec5, { metalness: 0.9 }), wx + 0.3, 1.6, -0.15));
+      break;
+    }
+    case 'pannenkoek': {
+      // grote pannenkoek als uithangbord
+      const pk = mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.06, 24), std(0xe0a64a, { roughness: 0.9 }), -w / 2 + 0.5, 2.6, 0.55);
+      pk.rotation.x = Math.PI / 2;
+      add(pk);
+      add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.5), std(0x333333), -w / 2 + 0.5, 3.1, 0.3));
+      break;
+    }
+    case 'zwembad': {
+      // glijbaanbuis langs de gevel en een reddingsboei
+      const tube = std(0xffb300, { roughness: 0.4 });
+      for (let i = 0; i < 9; i++) {
+        const a = i * 0.7;
+        const seg = mesh(new THREE.TorusGeometry(0.5, 0.18, 8, 12, 0.8), tube, w / 2 + 1.6 + Math.cos(a) * 1.2, 4.6 - i * 0.48, 1.2 + Math.sin(a) * 1.2);
+        seg.rotation.set(Math.PI / 2, 0, a);
+        add(seg);
+      }
+      const ring = mesh(new THREE.TorusGeometry(0.3, 0.08, 8, 20), std(0xe53935), -w / 2 + 0.5, 1.6, 0.12);
+      add(ring);
+      break;
+    }
+    case 'gemeente': {
+      // twee vlaggenmasten met de Nederlandse vlag
+      for (const x of [-w / 2 - 1.2, w / 2 + 1.2]) {
+        add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 7, 8), std(0xeeeeee, { metalness: 0.5 }), x, 3.5, 1.2));
+        const cols = [0xae1c28, 0xffffff, 0x21468b];
+        cols.forEach((c, k) => add(mesh(new THREE.BoxGeometry(1.2, 0.27, 0.02), std(c, { side: THREE.DoubleSide }), x + 0.62, 6.6 - k * 0.27, 1.2)));
+      }
+      break;
+    }
     case 'ijs': {
       // groot ijshoorntje naast de deur
       const cone = mesh(new THREE.ConeGeometry(0.22, 0.6, 16), std(0xd9a066), w / 2 + 0.3, 0.9, 0.45);
@@ -185,53 +242,62 @@ function buildTankstation(fac, [x, z]) {
   if (!f) return;
   fac.frames.tankstation = f;
   const w = fac.world;
-  // midden van de overkapping: een stukje voor de gevel
-  let out = 7;
-  for (; out > 4; out -= 0.5) if (!w.insideBuilding(f.x + f.nx * out, f.z + f.nz * out)) break;
+  // Compacte overkapping (9 x 4,5 m) aan de eigen kant van de weg, tegen de gevel aan:
+  // alleen boven stoep, parkeerstrook of verharding, nooit boven rijbaan, fietspad of een ander pand.
+  const L = 9, D = 4.5;
+  const forbidden = (px, pz) => {
+    const cl = w.classAt(px, pz);
+    return w.insideBuilding(px, pz) || w.blocked(px, pz) || cl === 'rijbaan' || cl === 'fietspad';
+  };
+  let best = null, bs = Infinity;
+  for (let a = -40; a <= 40; a += 1) for (let o = 0.6 + D / 2; o <= 9; o += 0.5) {
+    let good = true;
+    for (let i = -L / 2; i <= L / 2 + 0.01 && good; i += 1.5) for (let k = -D / 2; k <= D / 2 + 0.01 && good; k += 0.75) {
+      const px = f.x + f.ux * (a + i) + f.nx * (o + k), pz = f.z + f.uz * (a + i) + f.nz * (o + k);
+      if (forbidden(px, pz)) good = false;
+    }
+    if (!good) continue;
+    const sc = Math.abs(a) + o * 0.5; // zo dicht mogelijk bij het adres en tegen de gevel
+    if (sc < bs) { bs = sc; best = { a, o }; }
+  }
+  if (!best) return; // geen plek: dan liever geen overkapping dan eentje op de weg
+  const cx = f.x + f.ux * best.a + f.nx * best.o, cz = f.z + f.uz * best.a + f.nz * best.o;
   const g = new THREE.Group();
-  const cx = f.x + f.nx * out, cz = f.z + f.nz * out;
   g.position.set(cx, w.heightAt(cx, cz), cz);
-  g.rotation.y = f.yaw;
+  g.rotation.y = f.yaw; // lokale x = langs de gevel, lokale z = van de gevel af
   fac.scene.add(g);
   const white = std(0xf5f5f5, { roughness: 0.5 });
   const red = new THREE.MeshStandardMaterial({ color: 0xc62828, emissive: 0xc62828, emissiveIntensity: 0.15 });
-  // dak
-  g.add(mesh(new THREE.BoxGeometry(10, 0.5, 6.5), white, 0, 5.0, 0));
-  g.add(mesh(new THREE.BoxGeometry(10.05, 0.25, 6.55), red, 0, 4.85, 0));
-  // lampen onder het dak
+  g.add(mesh(new THREE.BoxGeometry(L, 0.45, D), white, 0, 4.6, 0));
+  g.add(mesh(new THREE.BoxGeometry(L + 0.05, 0.25, D + 0.05), red, 0, 4.45, 0));
   const lamp = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4d6, emissiveIntensity: 0.9 });
-  for (const lx of [-3, 0, 3]) for (const lz of [-1.8, 1.8]) g.add(mesh(new THREE.BoxGeometry(0.8, 0.04, 0.3), lamp, lx, 4.72, lz));
-  // pilaren en pompeilanden
-  for (const px of [-3.2, 3.2]) {
-    g.add(mesh(new THREE.BoxGeometry(0.35, 4.8, 0.35), white, px, 2.4, 0));
-    g.add(mesh(new THREE.BoxGeometry(1.0, 0.2, 3.6), std(0x9e9e9e), px, 0.1, 0));
-    for (const pz of [-0.9, 0.9]) {
-      const pump = new THREE.Group();
-      pump.add(mesh(new THREE.BoxGeometry(0.6, 1.6, 0.45), white, 0, 0.9, 0));
-      pump.add(mesh(new THREE.BoxGeometry(0.62, 0.3, 0.47), red, 0, 1.55, 0));
-      pump.add(mesh(new THREE.PlaneGeometry(0.4, 0.25), new THREE.MeshStandardMaterial({ color: 0x0b1a2a, emissive: 0x4fc3f7, emissiveIntensity: 0.6 }), 0, 1.15, 0.231));
-      pump.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 6), std(0x111111), 0.33, 0.9, 0));
-      pump.position.set(px, 0.2, pz);
-      g.add(pump);
+  for (const lx of [-2.8, 0, 2.8]) g.add(mesh(new THREE.BoxGeometry(0.8, 0.04, 0.3), lamp, lx, 4.32, 0));
+  // één pompeiland in de lengte, twee pompen
+  g.add(mesh(new THREE.BoxGeometry(4.2, 0.2, 0.9), std(0x9e9e9e), 0, 0.1, 0));
+  for (const px of [-3.6, 3.6]) g.add(mesh(new THREE.BoxGeometry(0.3, 4.4, 0.3), white, px, 2.2, 0));
+  for (const px of [-1.1, 1.1]) {
+    const pump = new THREE.Group();
+    pump.add(mesh(new THREE.BoxGeometry(0.45, 1.6, 0.6), white, 0, 0.9, 0));
+    pump.add(mesh(new THREE.BoxGeometry(0.47, 0.3, 0.62), red, 0, 1.55, 0));
+    for (const sz of [-1, 1]) {
+      const scr = mesh(new THREE.PlaneGeometry(0.3, 0.22), new THREE.MeshStandardMaterial({ color: 0x0b1a2a, emissive: 0x4fc3f7, emissiveIntensity: 0.6 }), 0, 1.15, sz * 0.305);
+      if (sz < 0) scr.rotation.y = Math.PI;
+      pump.add(scr);
     }
-    // botsvak voor het pompeiland
-    const corners = [[-0.55, -1.85], [0.55, -1.85], [0.55, 1.85], [-0.55, 1.85]].map(([a, b]) => {
-      const lx = px + a, lz = b;
-      const c = Math.cos(f.yaw), s = Math.sin(f.yaw);
-      return [cx + lx * c + lz * s, cz - lx * s + lz * c];
-    });
-    w.addObstacle(corners);
+    pump.position.set(px, 0.2, 0);
+    g.add(pump);
   }
-  // prijsbord-paal aan de straatkant
+  const c = Math.cos(f.yaw), sn = Math.sin(f.yaw);
+  const toW = (lx, lz) => [cx + lx * c + lz * sn, cz - lx * sn + lz * c];
+  w.addObstacle([[-2.1, -0.45], [2.1, -0.45], [2.1, 0.45], [-2.1, 0.45]].map(([lx, lz]) => toW(lx, lz)));
+  // prijsbord op een paal aan het eind van de overkapping, op de stoep
   const pylon = new THREE.Group();
-  pylon.add(mesh(new THREE.BoxGeometry(1.4, 4.4, 0.35), white, 0, 2.2, 0));
-  pylon.add(mesh(new THREE.BoxGeometry(1.42, 0.9, 0.37), red, 0, 3.9, 0));
-  const face = fac.sign(pylon, 'Tankstation', { w: 1.3, h: 0.8, y: 3.9, z: 0.14, bg: '#c62828', fg: '#ffffff', font: '800 150px "Baloo 2", sans-serif' });
-  void face;
-  const prices = fac.sign(pylon, 'Euro 95 · Diesel', { w: 1.2, h: 1.4, y: 2.4, z: 0.14, bg: '#111111', fg: '#ffd54f', font: '700 90px Inter, sans-serif' });
-  void prices;
-  pylon.position.set(5.8, 0, 3.6);
+  pylon.add(mesh(new THREE.BoxGeometry(0.15, 3.0, 0.15), std(0x9aa0a6, { metalness: 0.6 }), 0, 1.5, 0));
+  fac.sign(pylon, 'Tankstation', { w: 1.3, h: 0.5, y: 3.1, z: 0.09, bg: '#c62828', fg: '#ffffff', font: '800 140px "Baloo 2", sans-serif' });
+  fac.sign(pylon, 'Euro 95 · Diesel', { w: 1.2, h: 0.5, y: 2.45, z: 0.09, bg: '#111111', fg: '#ffd54f', font: '700 90px Inter, sans-serif' });
+  pylon.position.set(L / 2 + 0.6, 0, -D / 2 + 0.6);
   g.add(pylon);
+  fac.frames.tankstation = { ...f, x: cx - f.nx * best.o, z: cz - f.nz * best.o };
 }
 
 // Busstation: twee abri's langs de busbaan, een haltepaal en een geparkeerde bus.
@@ -289,4 +355,21 @@ function buildBusstation(fac, [x, z]) {
   const c = Math.cos(yaw), s = Math.sin(yaw);
   w.addObstacle([[-1.3, -6], [1.3, -6], [1.3, 6], [-1.3, 6]].map(([lx, lz]) => [bx + lx * c + lz * s, bz - lx * s + lz * c]));
   fac.frames.busstation = { x: bx, z: bz, y: w.heightAt(bx, bz), nx: perp[0], nz: perp[1], ux: dir.x, uz: dir.y, len: 12, yaw };
+}
+
+// Joods monument aan de Beversbergweg: ingetogen, zonder missie. Het echte ontwerp is niet nagemaakt:
+// een eenvoudige stenen gedenksteen met een paar steentjes erop, zoals dat bij Joodse gedenkplekken gebruikelijk is.
+function buildMonument(fac, [x, z]) {
+  const w = fac.world;
+  const g = new THREE.Group();
+  g.position.set(x, w.heightAt(x, z) + 0.35, z); // buiten het dorp is de ondergrond grover: iets optillen
+  const stone = std(0x8d8f91, { roughness: 0.95 });
+  g.add(mesh(new THREE.BoxGeometry(2.6, 1.0, 1.6), stone, 0, -0.45, 0)); // sokkel tot in de grond
+  g.add(mesh(new THREE.BoxGeometry(2.4, 0.25, 1.4), stone, 0, 0.12, 0));
+  g.add(mesh(new THREE.BoxGeometry(1.4, 1.6, 0.4), stone, 0, 1.05, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.9, 0.5, 0.02), std(0x3e3a36, { metalness: 0.4 }), 0, 1.2, 0.21));
+  for (let i = 0; i < 7; i++) g.add(mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.03, 8, 6), std(0xbdb6a8), -0.55 + i * 0.18, 1.88, (Math.random() - 0.5) * 0.2));
+  g.rotation.y = Math.random() * 6.28;
+  fac.scene.add(g);
+  w.addObstacle([[x - 1.2, z - 0.7], [x + 1.2, z - 0.7], [x + 1.2, z + 0.7], [x - 1.2, z + 0.7]]);
 }

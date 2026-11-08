@@ -142,7 +142,7 @@ class Game {
     await this.ui.dialog('Gulpen, zaterdag', [
       { text: 'Welkom in Gullepe!', nl: 'Welkom in Gulpen!' },
       'Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto.',
-      'Overal zijn klussen te doen. Tik op de minikaart rechtsboven om ze allemaal te zien, en kies zelf waar je begint.',
+      'Overal zijn missies te doen. Tik op de minikaart rechtsboven om ze allemaal te zien, en kies zelf waar je begint.',
     ]);
   }
 
@@ -517,8 +517,8 @@ class Game {
     for (const p of this.world.meta.pois) {
       if (p.id === 'ringweg' || p.id === 'volvo' || p.cafe) continue;
       // winkels: klein bordje dat pas dichtbij verschijnt, zodat de Rijksweg niet vol bordjes staat
-      const label = makeLabel(p.name, { small: !!p.shop });
-      label.userData.near = !!p.shop;
+      const label = makeLabel(p.name, { small: !!(p.shop || p.memorial) });
+      label.userData.near = !!(p.shop || p.memorial);
       const f = this.facades.frames[p.id];
       let x, z, y;
       if (f) {
@@ -526,7 +526,7 @@ class Game {
         y = f.y + (p.shop ? 4.6 : 6.2);
       } else {
         [x, z] = p.pos;
-        y = this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 11);
+        y = this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : p.memorial ? 3.2 : 11);
       }
       label.position.set(x, y, z);
       label.material.depthTest = false; // altijd volledig leesbaar

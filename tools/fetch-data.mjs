@@ -55,7 +55,7 @@ const POIS = [
   { id: 'top1toys', name: "Top1Toys", address: 'Rijksweg 43', x: 190683.918, y: 314084.47, shop: true },
   { id: 'euronics', name: "Euronics", address: 'Rijksweg 44', x: 190677.126, y: 314021.385, shop: true },
   { id: 'da', name: "DA Drogisterij & Parfumerie", address: 'Rijksweg 53', x: 190719.218, y: 314102.458, shop: true },
-  { id: 'voncken', name: "Bakkerij Voncken", address: 'Rijksweg 57', x: 190738.597, y: 314113.53, shop: true },
+  { id: 'pijls', name: "Bakkerij Pijls", address: 'Rijksweg 57', x: 190738.597, y: 314113.53, shop: true },
   { id: 'decorette', name: "Decorette", address: 'Rijksweg 64', x: 190818.874, y: 314129.474, shop: true },
   { id: 'tankstation', name: "Tankstation", address: 'Rijksweg 70', x: 190852.616, y: 314149.385, shop: true },
   { id: 'busstation', name: "Busstation Gulpen", address: 'Rijksweg (busbaan)', x: 190776.7, y: 314078.3, shop: true },
@@ -63,6 +63,13 @@ const POIS = [
   { id: 'ilgusto', name: "Il Gusto", address: 'Dorpsstraat 26', x: 190526.629, y: 314098.848, shop: true },
   { id: 'mezzaluna', name: "IJssalon Mezzaluna", address: 'Dorpsstraat 30', x: 190550.148, y: 314047.158, shop: true },
   { id: 'bormans', name: "Slagerij Bormans", address: 'Rosstraat 9', x: 190464.0, y: 314042.0, shop: true },
+  { id: 'athene', name: "Grieks Restaurant Athene", address: 'Rijksweg 31', x: 190643.558, y: 314059.166, shop: true },
+  { id: 'plankeukens', name: "Plan Keukens", address: 'Rijksweg 21', x: 190564.118, y: 314019.806, shop: true },
+  { id: 'pannekoekenmolen', name: "De Pannekoekenmolen", address: 'Molenweg 2A', x: 190369.248, y: 313667.69, shop: true },
+  { id: 'mosaqua', name: "Mosaqua", address: 'Landsraderweg 11', x: 190401.358, y: 313520.682, shop: true },
+  { id: 'gemeentehuis', name: "Gemeentehuis Gulpen-Wittem", address: 'Willem Vliegenstraat 12', x: 190323.202, y: 314076.821, shop: true },
+  // Joods monument aan de Beversbergweg: herdenkingsmonument volgens de BGT (buiten het gedetailleerde dorpsgebied)
+  { id: 'joodsmonument', name: "Joods monument", address: 'Beversbergweg', x: 188914.8, y: 314574.6, memorial: true },
   // grijze Volvo XC40 op de oprit (staat niet op de kaart)
   { id: 'volvo', name: 'Ringweg 38', address: 'Ringweg 38', x: 190985.6, y: 314375.8 },
 ];

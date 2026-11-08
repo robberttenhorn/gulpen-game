@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { makeCharacter, makeKeg } from './character.js';
 import { runTikTok, ORDERS, formatViews } from './tiktok.js';
 import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } from './skills.js';
+import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
@@ -199,6 +200,10 @@ export class Missions {
     cam.marker.visible = false;
     this.cameraman = cam;
 
+    // nieuwe missies (missions2.js)
+    setupMore(this, g, add);
+    Object.assign(this.extra, moreHandlers);
+
     Object.values(this.npcs).forEach((n) => { n.active = true; });
     this.refresh();
   }
@@ -234,7 +239,7 @@ export class Missions {
       { id: 'vissen', npc: n.visser, title: 'Vissen in de Gulp', place: 'Oever van de Gulp', desc: 'Vang drie vissen. Tik pas als de dobber onder gaat.' },
       { id: 'polonaise', npc: n.carnaval, title: 'Polonaise door Gulpe', place: 'Markt', desc: 'Verzamel feestgangers voor de Vastelaovesfinale op de Markt.' },
       { id: 'nachtvangulpen', npc: n.organisator, title: 'Nacht van Gulpen', place: 'Bij de Markt (alleen \'s avonds)', desc: 'Een proefrondje wandelen langs de stempelposten.', nightOnly: true },
-    ].filter((m) => m.npc);
+    ].filter((m) => m.npc).concat(moreItems(n));
     for (const m of items) m.state = this.active?.id === m.id ? 'actief' : this.done.has(m.id) && !m.repeat ? 'klaar' : 'open';
     void g;
     return items;
@@ -251,7 +256,7 @@ export class Missions {
       g.ui.setQuest(this.active.title, this.active.desc, this.active.progress || '');
     } else {
       const open = this.list().filter((m) => m.state === 'open' && (!m.nightOnly || night)).length;
-      g.ui.setQuest('Vrij rondlopen', `Er staan ${open} klussen open. Tik op de kaart om ze te zien, of loop naar een gele markering.`, `${this.done.size} ${this.done.size === 1 ? 'klus' : 'klussen'} gedaan`);
+      g.ui.setQuest('Vrij rondlopen', `Er staan ${open} missies open. Tik op de kaart om ze te zien, of loop naar een gele markering.`, `${this.done.size} ${this.done.size === 1 ? 'missie' : 'missies'} gedaan`);
     }
     g.updateMarkers();
   }
@@ -272,7 +277,7 @@ export class Missions {
     this.active?.cleanup?.();
     this.active = null;
     this.g.setTarget(null);
-    this.g.ui.toast(toast || 'Klus geklaard!', 3000);
+    this.g.ui.toast(toast || 'Missie geslaagd!', 3000);
     this.g.sfx?.play('success');
     this.g.celebrate();
     this.refresh();
@@ -300,7 +305,7 @@ export class Missions {
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
-      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', stagiair: 'tiktok', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'geit', klant: 'inparkeren', schutter: 'vogelschieten', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', koster: 'armenfonds', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager' };
+      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', stagiair: 'tiktok', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'geit', klant: 'inparkeren', schutter: 'vogelschieten', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', koster: 'armenfonds', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager', ...MORE_MISSION_OF };
       const key = Object.keys(n).find((k) => n[k] === npc);
       const mid = missionOf[key];
       const deliverKeg = key === 'waard' && this.active?.id === 'vat';
@@ -345,7 +350,7 @@ export class Missions {
     document.body.classList.remove('live');
     document.getElementById('live-badge').hidden = true;
     g.npcs.forEach((n) => { n.lookAtPlayer = false; });
-    g.ui.toast('Klus gestopt', 1800);
+    g.ui.toast('Missie gestopt', 1800);
     this.refresh();
   }
 
