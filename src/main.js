@@ -16,6 +16,7 @@ import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { statsStart, statsPageview, statsError } from './stats.js';
 import { SixSense } from './sixsense.js';
+import { startPenalty as startPenaltyGame } from './penalty.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
@@ -940,102 +941,7 @@ class Game {
 
   // Penalty's nemen bij FC Gulpen. Geeft het aantal goals terug.
   startPenalty() {
-    return new Promise((resolve) => {
-      const f = this.facades;
-      if (!f.pitch) { resolve(0); return; }
-      if (this.mode === 'car') this.exitCar();
-      this.setMode('walk');
-      const { L } = f.pitch;
-      const goalZ = L / 2;
-      const [spotX, spotZ] = f.pitchToWorld(0, goalZ - 11);
-      const [gx, gz] = f.pitchToWorld(0, goalZ);
-      const dirX = gx - spotX, dirZ = gz - spotZ;
-      const heading = Math.atan2(dirX, dirZ);
-      const right = [Math.cos(heading), -Math.sin(heading)];
-      const toWorld = (lateral, along) => [spotX + Math.sin(heading) * along + right[0] * -lateral, spotZ + Math.cos(heading) * along + right[1] * -lateral];
-      const baseY = this.world.heightAt(gx, gz);
-
-      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, flatShading: true }));
-      ball.castShadow = true;
-      this.scene.add(ball);
-      const keeper = makeCharacter({ shirt: 0x43a047, pants: 0x111111, hair: 0x222222 });
-      this.scene.add(keeper);
-      const aim = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.26, 24), new THREE.MeshBasicMaterial({ color: 0xff5252, side: THREE.DoubleSide, depthTest: false }));
-      aim.renderOrder = 20;
-      this.scene.add(aim);
-
-      let shots = 0, goals = 0, phase = 'aim', t = 0, shot = null;
-      const reset = () => {
-        const [bx, bz] = toWorld(0, 0);
-        ball.position.set(bx, this.world.heightAt(bx, bz) + 0.11, bz);
-        const [kx, kz] = toWorld(0, 10.6);
-        keeper.position.set(kx, baseY, kz);
-        keeper.rotation.set(0, heading + Math.PI, 0);
-        const [px, pz] = toWorld(0, -1.4);
-        this.player.x = px; this.player.z = pz; this.player.heading = heading;
-        this.camYaw = heading + Math.PI;
-        this.camPitch = 0.12;
-        phase = 'aim';
-        t = Math.random() * 3;
-        aim.visible = true;
-      };
-      reset();
-      this.ui.setActionLabel('Schiet');
-      this.penalty = {
-        stop: () => {
-          this.scene.remove(ball, keeper, aim);
-          this.penalty = null;
-          this.player.lockedFor = false;
-        },
-        update: (dt) => {
-          t += dt;
-          this.player.lockedFor = true;
-          if (phase === 'aim') {
-            const ax = Math.sin(t * 1.9) * 3.5;
-            const ay = 0.25 + (Math.sin(t * 2.7 + 1) * 0.5 + 0.5) * 2.05;
-            const [wx, wz] = toWorld(ax, 11);
-            aim.position.set(wx, baseY + ay, wz);
-            aim.lookAt(this.camera.position);
-            keeper.userData.animate(dt, 0, 'idle');
-            if (this.input.consumeAction() || this.input.spacePressed) {
-              this.input.spacePressed = false;
-              const dive = [-2.6, -1.2, 0, 1.2, 2.6][Math.floor(Math.random() * 5)];
-              shot = { ax, ay, dive, t: 0 };
-              this.sfx.play('kick');
-              phase = 'fly';
-              aim.visible = false;
-              this.player.speed = 3;
-            }
-          } else if (phase === 'fly') {
-            shot.t += dt / 0.6;
-            const k = Math.min(1, shot.t);
-            const [sx2, sz2] = toWorld(0, 0);
-            const [ex, ez] = toWorld(shot.ax, 11);
-            ball.position.set(sx2 + (ex - sx2) * k, this.world.heightAt(sx2, sz2) + 0.11 + (baseY + shot.ay - this.world.heightAt(sx2, sz2) - 0.11) * k + Math.sin(k * Math.PI) * 0.4, sz2 + (ez - sz2) * k);
-            const kd = Math.min(1, shot.t * 1.6);
-            const [kx, kz] = toWorld(shot.dive * kd, 10.6);
-            keeper.position.set(kx, baseY + Math.sin(kd * Math.PI) * 0.35, kz);
-            keeper.rotation.z = -Math.sign(shot.dive) * kd * 1.2;
-            if (k >= 1) {
-              shots++;
-              const reach = Math.abs(shot.ax - shot.dive) < 1.25 && shot.ay < 2.1;
-              const post = Math.abs(shot.ax) > 3.45;
-              if (post) this.ui.toast('Paal!', 1200);
-              else if (reach) this.ui.toast('Gestopt!', 1200);
-              else { goals++; this.ui.toast('GOAL!', 1200); this.sfx.play('cheer'); this.fx.confetti(ball.position.x, ball.position.y + 0.5, ball.position.z, 90); }
-              this.missions.progress(`${goals} goals uit ${shots} van de 5`);
-              phase = 'wait'; t = 0;
-            }
-          } else if (phase === 'wait' && t > 1.4) {
-            keeper.rotation.z = 0;
-            if (shots >= 5) {
-              this.penalty.stop();
-              resolve(goals);
-            } else reset();
-          }
-        },
-      };
-    });
+    return startPenaltyGame(this);
   }
 
   // Vissen in de Gulp: tik op het juiste moment als de dobber onder gaat.
@@ -1717,8 +1623,10 @@ class Game {
       this.camera.up.set(0, 1, 0);
       this.camera.lookAt(this.povLook);
       // een beetje handheld, en een schok bij een klap of plons
-      this.camera.rotateZ(Math.sin(this.time * 1.7) * 0.008);
-      this.camera.rotateX(Math.sin(this.time * 2.3) * 0.006);
+      if (!this.pov.steady) {
+        this.camera.rotateZ(Math.sin(this.time * 1.7) * 0.008);
+        this.camera.rotateX(Math.sin(this.time * 2.3) * 0.006);
+      }
       if (this.pov.shake > 0) {
         const s = this.pov.shake;
         this.camera.rotateX((Math.random() - 0.5) * 0.06 * s);

@@ -548,3 +548,21 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 /* tussenscène (SixSense-bus): geen knoppen, alleen kijken */
 body.cutscene #touch-ui, body.cutscene #joystick, body.cutscene #btn-action, body.cutscene #btn-vehicle, body.cutscene #prompt,
 body.cutscene #minimap-wrap, body.cutscene #mission-tally, body.cutscene #street-sign, body.cutscene #quest-card, body.cutscene #btn-sound, body.cutscene #race-timer { display: none !important; }
+
+/* penalty's: scorebord en krachtbalk */
+.pen-board { display: inline-flex; gap: 6px; }
+.pen-board i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.85); box-shadow: 0 1px 3px rgba(0,0,0,.5); display: inline-block; }
+.pen-board i.goal { background: #43a047; border-color: #c8e6c9; }
+.pen-board i.miss { background: #e53935; border-color: #ffcdd2; }
+.pen-power { position: absolute; right: 18px; top: 50%; width: 26px; height: 44%; transform: translateY(-50%); border: 2px solid rgba(255,255,255,.9); border-radius: 14px; background: rgba(0,0,0,.35); overflow: hidden; opacity: .35; transition: opacity .15s; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.pen-power.on { opacity: 1; }
+.pen-power .pen-zone { position: absolute; left: 0; right: 0; background: rgba(67,160,71,.35); border-top: 2px solid #a5d6a7; border-bottom: 2px solid #a5d6a7; }
+.pen-power .pen-fill { position: absolute; left: 3px; right: 3px; bottom: 3px; border-radius: 10px; background: #fdd835; }
+.pen-power span { position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); font: 700 10px Inter, sans-serif; letter-spacing: .08em; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+.pen-power { overflow: visible; }
+.pen-power .pen-fill, .pen-power .pen-zone { max-height: calc(100% - 6px); }
+body.penalty-on #speedo, body.penalty-on #joystick, body.penalty-on #minimap-wrap, body.penalty-on #street-sign, body.penalty-on #quest-card, body.penalty-on #prompt, body.penalty-on #btn-vehicle { display: none !important; }
+
+/* slotfeest: knop om het feest af te sluiten */
+.finale-bar { position: absolute; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); pointer-events: auto; z-index: 5; }
+.finale-bar button { font: 700 17px 'Baloo 2', Inter, sans-serif; padding: 10px 22px; border: 0; border-radius: 999px; color: #fff; background: linear-gradient(90deg, #e91e63, #ff9800); box-shadow: 0 4px 14px rgba(0,0,0,.45); cursor: pointer; }

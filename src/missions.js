@@ -642,13 +642,14 @@ export class Missions {
     async trainer(npc, N, ui, g) {
       const a = await ui.dialog(N, [
         'Hé! Wij zoeken nog een penaltyspecialist voor het eerste elftal.',
-        'Vijf penalty\'s. Scoor er minstens drie en je mag zaterdag meedoen. Klaar?',
+        'Vijf penalty\'s tegen onze keeper. Scoor er minstens drie en je mag zaterdag meedoen.',
+        'Eerst zet je het mikpunt vast, dan kies je de kracht. Groen is goed, te hard en hij ligt in de Gulp. En pas op: onze keeper leest je als een boek. Klaar?',
       ], ['Ik ben er klaar voor', 'Een andere keer']);
       if (a !== 0) return;
-      this.setActive('penalty', 'Penalty\'s bij FC Gulpen', g.input.isTouch ? 'Tik op "Schiet" als het mikpunt goed staat.' : 'Druk op E of spatie als het mikpunt goed staat.', '0 / 5');
+      this.setActive('penalty', 'Penalty\'s bij FC Gulpen', g.input.isTouch ? 'Tik om het mikpunt vast te zetten, en nog eens om te schieten als de krachtbalk in het groen staat.' : 'Druk op E of spatie om het mikpunt vast te zetten, en nog eens om te schieten als de krachtbalk in het groen staat.', '0 / 5');
       const goals = await g.startPenalty();
       if (goals >= 3) {
-        await ui.dialog(N, [`${goals} van de 5! Jij staat zaterdag in de basis.`]);
+        await ui.dialog(N, [goals === 5 ? 'Vijf van de vijf! Onze keeper zit in de kleedkamer te huilen. Jij bent aanvoerder.' : `${goals} van de 5! Jij staat zaterdag in de basis.`]);
         this.complete('penalty', 'Penaltyspecialist van FC Gulpen!', { v: goals, unit: 'van de 5', high: true });
       } else {
         await ui.dialog(N, [`${goals} van de 5... Dat moet beter. Kom maar terug als je getraind hebt.`]);
@@ -764,12 +765,12 @@ export class Missions {
     async schutter(npc, N, ui, g) {
       const a = await ui.dialog(N, [
         'Goedendag! Vandaag is het koningsschieten bij de schutterij. Wie het laatste stuk van de vogel eraf schiet, is schutterskoning.',
-        'Eerst de kop, de vleugels en de staart, dan pas de romp. Je hebt twaalf schoten. Durf je het aan?',
+        'Eerst de kop, de vleugels en de staart, dan pas de romp. Je hebt veertien schoten. Durf je het aan?',
       ], ['Geef mij de buks', 'Ik kijk wel toe']);
       if (a !== 0) return;
       if (g.mode === 'car') g.exitCar();
       g.setMode('walk');
-      this.setActive('vogelschieten', 'Vogelschieten', 'Richt op de vogel en schiet de vijf stukken er een voor een af. Eerst kop, vleugels en staart.', '0 / 5 stukken');
+      this.setActive('vogelschieten', 'Vogelschieten', 'Richt op de vogel en schiet de vijf stukken er een voor een af. Eerst kop, vleugels en staart, de romp als laatste.', '0 / 5 stukken');
       const r = await startVogelschieten(g, this.polePos || [npc.pos.x + 15, npc.pos.z]);
       if (!r || this.active?.id !== 'vogelschieten') return;
       if (r.king) {

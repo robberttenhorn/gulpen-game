@@ -18,6 +18,36 @@ const OUDE_AKERWEG_43 = [191102.875 - 190531, -(314218.601 - 314058)];
 const GROENEWEG_65 = [190419.491 - 190531, -(314258.471 - 314058)];
 
 // punt halverwege een straat, een paar meter opzij (in de voortuin of op de stoep)
+// Willekeurige plekjes in voortuinen (naast de straat) tussen 20 en 75 m van (x, z), minstens 16 m uit elkaar.
+function gnomeSpotsNear(g, x, z, n = 5, rMin = 20, rMax = 75) {
+  const w = g.world;
+  const cands = [];
+  for (const [, ax, az, bx, bz] of w.segments) {
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 1) continue;
+    const dx = (bx - ax) / len, dz = (bz - az) / len;
+    for (let t = 2; t < len - 1; t += 6) {
+      const sx = ax + dx * t, sz = az + dz * t;
+      const d = Math.hypot(sx - x, sz - z);
+      if (d < rMin - 5 || d > rMax + 5) continue;
+      for (const side of [4, -4]) {
+        const px = sx - dz * side, pz = sz + dx * side;
+        const pd = Math.hypot(px - x, pz - z);
+        if (pd < rMin || pd > rMax || w.insideBuilding(px, pz)) continue;
+        const [qx, qz] = w.resolve(px, pz, 0.6);
+        if (Math.hypot(qx - px, qz - pz) > 1.5 || w.insideBuilding(qx, qz)) continue;
+        cands.push([qx, qz]);
+      }
+    }
+  }
+  const out = [];
+  for (let tries = 0; tries < 400 && cands.length && out.length < n; tries++) {
+    const c = cands[Math.floor(Math.random() * cands.length)];
+    if (out.every((o) => Math.hypot(o[0] - c[0], o[1] - c[1]) >= 16)) out.push(c);
+  }
+  return out;
+}
+
 function streetSpot(g, name, at = 0.5, side = 3.2) {
   const path = g.world.streetPath(name);
   if (!path || path.length < 2) return null;
@@ -333,10 +363,13 @@ export const westHandlers = {
       'Kijk maar naar die meter: hoe warmer, hoe dichterbij. Binnen drie minuten, voordat het donker wordt en ze echt gaan wandelen.',
     ], ['Ik vind ze!', 'Kabouters? Ik ben te oud voor sprookjes']);
     if (a !== 0) { await ui.dialog(N, ['Te oud? Kleine Jean-Pierre is zestig. Hij staat nog elke dag buiten. Jij kunt een voorbeeld aan hem nemen.']); return; }
-    const pool = (this.gnomeSpots || []).slice();
-    // kies vijf verschillende plekken
-    const spots = [];
-    while (pool.length && spots.length < 5) spots.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    // vijf verstopplekken in de voortuinen rond de kabouterman, niet te ver weg
+    let spots = gnomeSpotsNear(g, npc.pos.x, npc.pos.z, 5);
+    if (spots.length < 5) {
+      const pool = (this.gnomeSpots || []).slice();
+      spots = [];
+      while (pool.length && spots.length < 5) spots.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
     if (spots.length < 3) { await ui.dialog(N, ['Hm, ik zie ze nergens. Kom later nog eens terug.']); return; }
     this.setActive('kabouters', 'Kabouters ontvoerd', 'Loop, fiets of skate door de bloemenwijk. De meter zegt warm of koud. Loop tegen een kabouter aan om hem te pakken.', `0 / ${spots.length} kabouters`);
     const r = await startGnomes(g, spots, { limit: 180 });
@@ -378,4 +411,4 @@ export const westHandlers = {
   },
 };
 
-if (typeof location !== 'undefined' && location.search.includes('dev')) window.__mini3 = { startHedge, startGnomes, startBBQ };
+if (typeof location !== 'undefined' && location.search.includes('dev')) window.__mini3 = { startHedge, startGnomes, startBBQ, gnomeSpotsNear };

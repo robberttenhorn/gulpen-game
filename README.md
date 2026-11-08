@@ -36,13 +36,13 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Ringweg Race: skatewedstrijd | Ringweg |
 | Vers van 't vat: een vat naar de Zwarte Ruiter brengen | Gulpener Bierbrouwerij, Rijksweg 16 |
 | Pilsje: eerst vallende glazen pils vangen met het dienblad, daarna wordt het avond (of weer ochtend) | Herberg De Zwarte Ruiter, Markt 4 |
-| Penalty's: scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
+| Penalty's: eerst richten, dan de kracht timen; de keeper leert je patroon. Scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
 | Een schimmig zaakje: een pakketje snel bezorgen | Mariabeeld, top van de Gulperberg |
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
 | Gulperberg op!: fietswedstrijd tegen de wielrenner, wie het eerst bij het Mariabeeld is | Voet van de Gulperberg |
 | De ontsnapte geit: ren de zigzaggende geit achterna en tik hem drie keer aan | Boerenland aan de rand van het dorp |
 | Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
-| Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
+| Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten, de romp als laatste (14 schoten) | Bij het sportpark (de schutter is verzonnen) |
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
 | Op tijd voor de optocht: haal het gevolg van Prins Carnaval op, want hij moet klumpkes sjmiete (snoepjes gooien); aan het eind gooit hij een paar handenvol snoep | Markt |
 | Nacht van Gulpen (alleen 's avonds): wandelen langs drie stempelposten | Bij de Markt |
@@ -60,7 +60,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | De deurtjes van de Gulperberg Deluxe: tijdens een demo openspringende keukendeurtjes dichtklappen voordat ze eraf vallen | Plan Keukens, Rijksweg 21 |
 | Het matras van Gulpen: langs de loketten van het gemeentehuis, van het kastje naar de muur | Gemeentehuis Gulpen-Wittem, Willem Vliegenstraat 12 |
 | De strakste heg van de Heggerank: de heggenschaar op de lijn houden voor de jury van de Mooiste Voortuin | Heggerank (bloemenwijk) |
-| Kabouters ontvoerd: vijf tuinkabouters zoeken met een warm-koudmeter | Akelei en de straten eromheen (bloemenwijk) |
+| Kabouters ontvoerd: vijf tuinkabouters zoeken met een warm-koudmeter (steeds andere voortuinen, binnen zo'n 75 m) | Akelei en de straten eromheen (bloemenwijk) |
 | Burendag-BBQ: burgers op tijd omdraaien en opdienen, niet te veel verbranden | Aardaker 43 (bloemenwijk) |
 | Biceps pompen: in de sportschool curlen tot je Mosaqua-klaar bent (ingedrukt houden, bovenin aanspannen tot de ring vol is, dan loslaten) | Anytime Fitness, hoek Looierstraat en Nieuwstraat |
 | Badkamer betegelen: het halve huis ligt open en de tegelzetter is aangefietst; leg de tegels volgens het voorbeeld binnen de tijd | Oude Akerweg 43 |
@@ -109,7 +109,7 @@ Op drie plekken (bij het busstation, bij het tankstation en verderop in de Dorps
 
 ## Alle missies af
 
-Na de laatste missie nodigt de waard van De Zwarte Ruiter je uit op de Markt. Daar staan alle personen uit de missies, de waard houdt een toespraak (je wordt Ereburger van Gullepe) en daarna volgen vuurwerk, muziek en een polonaise achter jou aan.
+Na de laatste missie nodigt de waard van De Zwarte Ruiter je uit op de Markt. Daar staan alle personen uit de missies, de waard houdt een toespraak (je wordt Ereburger van Gullepe) en daarna volgen vuurwerk, muziek, slingers met gekleurde lampjes en een polonaise achter jou aan. Het feest duurt zo lang je wilt: met de knop Feest afsluiten rond je het af.
 
 Elke missie onthoudt je beste prestatie, zichtbaar in de lijst op de grote kaart. Meestal is dat de tijd van start tot finish; bij de heg, het bommetje, TikTok, de penalty's en het grond sjouwen is het de score. Verbeter je die, dan meldt het spel een nieuw record.
 
