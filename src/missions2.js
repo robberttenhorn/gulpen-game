@@ -186,6 +186,7 @@ export const moreHandlers = {
   async portier(npc, N, ui, g) {
     const a = await ui.dialog(N, [
       'Ziet u dat matras? Dat ligt hier al drie weken. Niemand weet wie het is, niemand weet van wie het is.',
+      'En kijk eens hoe vies hij is. Het lijkt wel alsof heel het dorp erop heeft geslapen. Ik zou er nog niet met handschoenen aankomen.',
       'De gemeenteraad heeft er al twee vergaderingen over gehad. Uitkomst: een werkgroep. De werkgroep vergadert volgend jaar.',
       G('Wilt u binnen even uitzoeken welk loket erover gaat? Ze sturen u wel van het kastje naar de muur. Het is al tien op twaalf, dus binnen twee minuten, voor de lunchpauze.', 'Wilt u binnen even uitzoeken welk loket erover gaat? Ze sturen u wel van het kastje naar de muur. Het is al tien over twaalf, dus binnen twee minuten, voor de lunchpauze.'),
     ], ['Ik regel het', 'Ik heb ook een leven']);

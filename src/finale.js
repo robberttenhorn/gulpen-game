@@ -70,7 +70,7 @@ async function startFinale(m, g, markt) {
   g.player.lockedFor = false;
   g.sfx?.startMusic();
   clones.forEach((c) => { c.joined = true; });
-  g.fx.confetti(g.player.x, w.groundAt(g.player.x, g.player.z) + 3, g.player.z, 220);
+  g.fx.confetti(g.player.x, w.groundAt(g.player.x, g.player.z) + 3, g.player.z, 220, true);
   m.progress('Loop met de polonaise over de Markt en kijk naar het vuurwerk');
   await new Promise((resolve) => {
     let t = 0, next = 0.3;

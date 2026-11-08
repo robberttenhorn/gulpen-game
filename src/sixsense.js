@@ -95,10 +95,16 @@ export class SixSense {
     const spots = [
       ['busstation', 'Bij het busstation'],
       ['tankstation', 'Bij het tankstation'],
-      ['markt', 'Op de Markt'],
+      ['dorpsstraat', 'In de Dorpsstraat'],
     ].map(([id, place], i) => {
       let x, z;
-      if (id === 'markt') [x, z] = w.spotNear(20, 0);
+      if (id === 'dorpsstraat') {
+        // een stuk verderop in de Dorpsstraat, niet meteen in beeld bij de start
+        const path = w.streetPath('Dorpsstraat');
+        const [sx, sz] = g.startPos || [5, 25];
+        const pick = path?.length ? path.reduce((a, q) => (Math.abs(Math.hypot(q[0] - sx, q[1] - sz) - 95) < Math.abs(Math.hypot(a[0] - sx, a[1] - sz) - 95) ? q : a)) : null;
+        [x, z] = pick ? w.spotNear(pick[0] + 4, pick[1] + 4) : w.spotNear(20, 0);
+      }
       else { const p = poi(id); if (!p) return null; [x, z] = w.spotNear(...p.pos); }
       // een paar meter opzij, niet in een pand of het water
       for (const [dx, dz] of [[3, 2], [-3, 2], [2, -3], [0, 0]]) {

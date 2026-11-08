@@ -326,9 +326,11 @@ export function startGoat(g, center, { radius = 45, tags = 3, limit = 75 } = {})
 // Steeds een nieuw geel vak, soms met auto's ernaast. Een krasje telt alleen bij een echte botsing
 // (met vaart), en kost dan tijd in plaats van dat de missie meteen mislukt.
 // Geeft { parked, need, bumps } terug.
-export async function startParking(g, near, { need = 5, limit = 120 } = {}) {
+export async function startParking(g, near, { need = 5, limit = 120, lot: lotId = null } = {}) {
   const w = g.world, cars = g.cars;
+  // alleen vakken op de parkeerplaats van de missie (als die bekend is)
   const lot = w.parkingSpots
+    .filter((s) => lotId == null || s.lot === lotId)
     .map((s) => ({ ...s, d: Math.hypot(s.x - near[0], s.z - near[1]) }))
     .filter((s) => s.d < 90)
     .sort((a, b) => a.d - b.d);
@@ -337,9 +339,18 @@ export async function startParking(g, near, { need = 5, limit = 120 } = {}) {
   const free = lot.filter((s) => !occupied(s.x, s.z));
   if (free.length < 3) return { none: true };
   // auto voor de speler aan de rand van de parkeerplaats
-  const st = w.nearestStreet(free[0].x, free[0].z);
-  const [cx, cz] = w.resolve(st ? st.x : free[0].x + 12, st ? st.z : free[0].z + 12, 1.4);
-  const car = cars.addCar('hatch', cx, cz, Math.atan2(free[0].x - cx, free[0].z - cz), 0x2e7d32);
+  // je begint op de parkeerplaats zelf: in een vrij vak vlak bij de klant (dat vak telt niet als doel)
+  let cx, cz, ch;
+  if (lotId != null) {
+    const start = free[0];
+    free.splice(0, 1);
+    [cx, cz] = [start.x, start.z]; ch = start.heading;
+  } else {
+    const st = w.nearestStreet(free[0].x, free[0].z);
+    [cx, cz] = w.resolve(st ? st.x : free[0].x + 12, st ? st.z : free[0].z + 12, 1.4);
+    ch = Math.atan2(free[0].x - cx, free[0].z - cz);
+  }
+  const car = cars.addCar('hatch', cx, cz, ch, 0x2e7d32);
   car.mission = true;
   if (g.mode === 'car') g.exitCar();
   g.enterCar(car);

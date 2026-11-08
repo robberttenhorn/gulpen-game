@@ -68,7 +68,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
-**Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer ochtend zodra beide nachtmissies (De Nachtburgemeester en Nacht van Gulpen) klaar zijn, als je een nachtmissie stopt of die mislukt, met nog een pilsje, en anders uiterlijk na 5 minuten. Nooit midden in een missie of gesprek. Bij elke start van de game is het 11 uur 's ochtends.
+**Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer ochtend als je de ambtsketen van de Nachtburgemeester hebt teruggebracht, zodra beide nachtmissies (De Nachtburgemeester en Nacht van Gulpen) klaar zijn, als je een nachtmissie stopt of die mislukt, met nog een pilsje, en anders uiterlijk na 5 minuten. Nooit midden in een missie of gesprek. Bij elke start van de game is het 11 uur 's ochtends.
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
@@ -104,7 +104,7 @@ Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `nod
 
 ## Verborgen: de SixSense-flyers
 
-Op drie plekken (bij het busstation, bij het tankstation en op de Markt) ligt een flyer met een kortingscode voor SixSense; ze staan als roze 6 op de kaart. Heb je ze alle drie, dan komt er een zwarte bus met een grote roze 6 voorrijden. Instappen, en de bus staat meteen vijf seconden te schommelen en te piepen (je ziet hem helemaal, van buiten, zonder knoppen in beeld). Daarna stap je vanzelf weer uit en rijdt de bus weg. De flyers liggen er daarna weer, zodat je het opnieuw kunt doen. De kortingscodes zijn verzonnen.
+Op drie plekken (bij het busstation, bij het tankstation en verderop in de Dorpsstraat) ligt een flyer met een kortingscode voor SixSense; ze staan als roze 6 op de kaart. Heb je ze alle drie, dan komt er een zwarte bus met een grote roze 6 voorrijden. Instappen, en de bus staat meteen vijf seconden te schommelen en te piepen (je ziet hem helemaal, van buiten, zonder knoppen in beeld). Daarna stap je vanzelf weer uit en rijdt de bus weg. De flyers liggen er daarna weer, zodat je het opnieuw kunt doen. De kortingscodes zijn verzonnen.
 
 ## Alle missies af
 

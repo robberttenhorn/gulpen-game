@@ -162,8 +162,10 @@ export class World {
     const classes = this.ground.classes;
     const spots = [];
     const rand = rng(4040);
+    let lot = -1;
     for (const [cls, rings] of this.ground.polys) {
       if (classes[cls] !== 'parkeer') continue;
+      lot++; // elk parkeervlak een eigen nummer, zodat een missie op één parkeerplaats kan blijven
       const r = rings[0];
       // langste zijde bepaalt de richting
       let best = 0, ang = 0;
@@ -190,7 +192,7 @@ export class World {
           if (!pointInRing(x, z, ring)) continue;
           if (!pointInRing(x + px * 2.2, z + pz * 2.2, ring) || !pointInRing(x - px * 2.2, z - pz * 2.2, ring)) continue;
           if (this.insideBuilding(x, z)) continue;
-          spots.push({ x, z, heading: Math.atan2(px, pz) + (rand() < 0.5 ? Math.PI : 0), r: rand() });
+          spots.push({ x, z, heading: Math.atan2(px, pz) + (rand() < 0.5 ? Math.PI : 0), r: rand(), lot });
         }
       }
     }

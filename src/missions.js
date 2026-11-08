@@ -166,9 +166,21 @@ export class Missions {
     if (sp('plus')) add('plus', 'Bedrijfsleider PLUS', sp('plus', 3), { shirt: 0x1b6e3a, pants: 0x263238, hair: 0x5d4037, apron: 0x1b6e3a });
     // klant met boodschappen op de parkeerplaats van de PLUS (inparkeren)
     {
-      const pp = poi('plus').pos;
-      const near = (g.world.parkingSpots || []).map((q) => [q, Math.hypot(q.x - pp[0], q.z - pp[1])]).filter(([, d]) => d < 90).sort((x, y) => x[1] - y[1])[0];
-      const spot = near ? g.world.resolve(near[0].x + 3, near[0].z + 3, 0.5) : g.world.spotNear(pp[0] + 10, pp[1] + 10);
+      // de parkeerplaats van de PLUS: het parkeervlak met genoeg vakken dat het dichtst bij de winkel ligt
+      const f = g.facades.frames.plus;
+      const pp = f ? [f.x + f.nx * 3, f.z + f.nz * 3] : poi('plus').pos;
+      const lots = new Map();
+      for (const q of g.world.parkingSpots || []) { if (!lots.has(q.lot)) lots.set(q.lot, []); lots.get(q.lot).push(q); }
+      let best = null;
+      for (const [id, qs] of lots) {
+        if (qs.length < 6) continue;
+        const d = Math.min(...qs.map((q) => Math.hypot(q.x - pp[0], q.z - pp[1])));
+        if (d < 120 && (!best || d < best.d)) best = { id, qs, d };
+      }
+      this.plusLot = best?.id ?? null;
+      // de klant staat op de parkeerplaats zelf, bij het vak dat het dichtst bij de winkel ligt
+      const edge = best ? best.qs.reduce((a, q) => (Math.hypot(q.x - pp[0], q.z - pp[1]) < Math.hypot(a.x - pp[0], a.z - pp[1]) ? q : a)) : null;
+      const spot = edge ? g.world.resolve(edge.x + Math.cos(edge.heading) * 2.6, edge.z - Math.sin(edge.heading) * 2.6, 0.5) : g.world.spotNear(pp[0] + 10, pp[1] + 10);
       add('klant', 'Klant met boodschappen', spot, { shirt: 0x8e24aa, pants: 0x37474f, hair: 0x9e9e9e, female: true, hairStyle: 'bun', glasses: true, coat: 0x5d4037 });
     }
     // schutter bij het sportpark (vogelschieten); de vogelpaal staat op een open plek in de buurt
@@ -318,6 +330,7 @@ export class Missions {
   complete(id, toast, score = null) {
     this.done.add(id);
     this.g.lastDone = id; // voor foutmeldingen: welke missie net klaar was
+    if (id === 'nacht') this.g.morningAsap = true; // ambtsketen terug: weer ochtend
     const rec = id === 'finale' ? null : this.record(id, score);
     this.runStart = null;
     if (rec === 'record') toast = `${toast || 'Missie geslaagd!'} Nieuw record: ${this.bestLabel(id)}!`;
@@ -725,7 +738,7 @@ export class Missions {
       ], ['Geef de sleutels maar', 'Ik heb geen rijbewijs']);
       if (a !== 0) return;
       this.setActive('inparkeren', 'Inparkeren bij de PLUS', 'Rij de groene auto in het gele vak en sta even stil. Vijf vakken in twee minuten. Botsen kost 5 seconden.', 'Ingeparkeerd: 0 / 5');
-      const r = await startParking(g, [npc.pos.x, npc.pos.z]);
+      const r = await startParking(g, [npc.pos.x, npc.pos.z], { lot: this.plusLot });
       if (!r || this.active?.id !== 'inparkeren') return;
       if (r.none) { await ui.dialog(N, ['Hm, alles staat vol. Kom straks maar terug.']); this.abort(); return; }
       if (r.ok) {

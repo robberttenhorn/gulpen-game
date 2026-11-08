@@ -204,14 +204,7 @@ function shopFacade(fac, f, s) {
       break;
     }
     case 'zwembad': {
-      // glijbaanbuis langs de gevel en een reddingsboei
-      const tube = std(0xffb300, { roughness: 0.4 });
-      for (let i = 0; i < 9; i++) {
-        const a = i * 0.7;
-        const seg = mesh(new THREE.TorusGeometry(0.5, 0.18, 8, 12, 0.8), tube, w / 2 + 1.6 + Math.cos(a) * 1.2, 4.6 - i * 0.48, 1.2 + Math.sin(a) * 1.2);
-        seg.rotation.set(Math.PI / 2, 0, a);
-        add(seg);
-      }
+      // reddingsboei aan de gevel (de gele glijbaanbuis buiten is weggehaald: die zag er vreemd uit)
       const ring = mesh(new THREE.TorusGeometry(0.3, 0.08, 8, 20), std(0xe53935), -w / 2 + 0.5, 1.6, 0.12);
       add(ring);
       break;

@@ -181,7 +181,11 @@ export function startBommetje(g, room) {
   const start = L(room.board.x, 1.32, room.board.z), end = L(room.boardEnd.x, room.boardEnd.y, room.boardEnd.z);
   jumper.position.copy(start);
   jumper.rotation.y = Math.PI / 2;
-  g.pov = { pos: L(-1, 3.2, 6), look: L(-1.5, 2.2, -1), snap: false };
+  // staand scherm (telefoon): camera schuin achter het bad, langs de plank kijken, zodat de plank en het water allebei in beeld zijn
+  const portrait = innerWidth < innerHeight;
+  const oldFov = g.camera.fov;
+  if (portrait) { g.camera.fov = 68; g.camera.updateProjectionMatrix(); }
+  g.pov = portrait ? { pos: L(3.2, 4.2, 5.2), look: L(-4.2, 1.4, -1.2), snap: false } : { pos: L(-1, 3.2, 6), look: L(-1.5, 2.2, -1), snap: false };
   const ui = overlay(g, 'Bommetje!', `<div class="bm-judges"></div><div class="tt-task"><div class="tt-step"></div><div class="tt-hint"></div><div class="tt-bar"><div class="tt-zone" style="left:80%;width:20%"></div><div class="tt-perfect" style="left:92%;width:8%"></div><div class="tt-needle"></div></div></div>`,
     g.input.isTouch ? 'Tik voor de sprong, tik nog eens als je hoog in de lucht bent voor een bommetje' : 'E of spatie: springen, en nog eens in de lucht voor een bommetje');
   const $ = (s) => ui.ov.querySelector(s);
@@ -265,7 +269,7 @@ export function startBommetje(g, room) {
       }
     }
     void fx;
-  }, () => { ui.close(); g.scene.remove(jumper); g.player.group.visible = true; g.pov = null; g.player.lockedFor = false; }, { phase: () => phase, power: () => power, get label() { return phase === 'power' ? 'Spring!' : phase === 'air' ? 'Bom!' : null; } });
+  }, () => { ui.close(); g.scene.remove(jumper); g.player.group.visible = true; g.pov = null; g.player.lockedFor = false; if (portrait) { g.camera.fov = oldFov; g.camera.updateProjectionMatrix(); } }, { phase: () => phase, power: () => power, get label() { return phase === 'power' ? 'Spring!' : phase === 'air' ? 'Bom!' : null; } });
 }
 
 // ------------------------------------------------------------ gyros (Athene)
