@@ -35,7 +35,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | In beslag genomen: skateboard ophalen met een overhoring | Sophianum, Landsraderweg 7 |
 | Ringweg Race: skatewedstrijd | Ringweg |
 | Vers van 't vat: een vat naar de Zwarte Ruiter brengen | Gulpener Bierbrouwerij, Rijksweg 16 |
-| Pilsje: eerst vallende fluitjes vangen met het dienblad, daarna wordt het avond (of weer ochtend) | Herberg De Zwarte Ruiter, Markt 4 |
+| Pilsje: eerst vallende glazen pils vangen met het dienblad, daarna wordt het avond (of weer ochtend) | Herberg De Zwarte Ruiter, Markt 4 |
 | Penalty's: scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
 | Een schimmig zaakje: een pakketje snel bezorgen | Mariabeeld, top van de Gulperberg |
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
@@ -44,7 +44,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
 | Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
-| Polonaise door Gulpe: verzamel feestgangers voor de Vastelaovesfinale | Markt |
+| Op tijd voor de optocht: haal het gevolg van Prins Carnaval op, want hij moet klumpkes sjmiete (snoepjes gooien) | Markt |
 | Nacht van Gulpen (alleen 's avonds): wandelen langs drie stempelposten | Bij de Markt |
 | Plat kalle: opa overhoort je in het Gulpens | Benkske bij de Markt |
 | Kroegentocht op de Hubertusmarkt: vier cafés, vier verhalen en een live interview met De Razende Reporter | Markt, De Kroon, De Zwarte Ruiter, Neubourg en De Poort |
@@ -61,7 +61,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Het matras van Gulpen: langs de loketten van het gemeentehuis, van het kastje naar de muur | Gemeentehuis Gulpen-Wittem, Willem Vliegenstraat 12 |
 | De strakste heg van de Heggerank: de heggenschaar op de lijn houden voor de jury van de Mooiste Voortuin | Heggerank (bloemenwijk) |
 | Kabouters ontvoerd: vijf tuinkabouters zoeken met een warm-koudmeter | Akelei en de straten eromheen (bloemenwijk) |
-| Burendag-BBQ: burgers op tijd omdraaien en opdienen, niet te veel verbranden | Schuttersveld (bloemenwijk) |
+| Burendag-BBQ: burgers op tijd omdraaien en opdienen, niet te veel verbranden | Aardaker 43 (bloemenwijk) |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
@@ -113,7 +113,7 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 - **Naam GTA**: "GTA" verwijst naar Grand Theft Auto, een merk van Rockstar Games. Voor een spel onder vrienden is dat een knipoog; bij breder delen of geld vragen is een andere naam verstandiger.
 - **Winkels en bedrijven**: de gevels aan de Rijksweg en in het centrum (onder andere HEMA, Top1Toys, Pearle, DA, Euronics, Decorette, de bakkerijen Pijls en Ortmans, Rousseau Chocolade, IJzerwaren Knubben, Gulpener Bierhuys, VVV, Il Gusto, IJssalon Mezzaluna en Slagerij Bormans) staan op adressen uit online bedrijvengidsen en officiële winkelpagina's. Die gidsen kunnen verouderd zijn: controleer ter plekke of de zaken er nog zitten. De adressen zelf komen uit de PDOK Locatieserver. Het tankstation (Rijksweg 70) en de plek van het busstation (busbaan bij de Rijksweg) komen uit TOP10NL; het tankstation heeft bewust geen merk. Borden, kleuren en etalages zijn verzonnen, zonder echte logo's.
 - **Nieuwe plekken**: De Pannekoekenmolen (Molenweg 2A), Mosaqua (Landsraderweg 11), Grieks Restaurant Athene (Rijksweg 31) en het gemeentehuis (Willem Vliegenstraat 12) staan op adressen uit online gidsen en de gemeentesite; Plan Keukens op Rijksweg 21 en Bakkerij Pijls op Rijksweg 57 zijn opgegeven door de maker. Volgens L1/NOS sluit Mosaqua na 32 jaar; de badmeester verwijst daarnaar.
-- **Bloemenwijk (west)**: het speelgebied loopt nu ook over de wijk met Bolderik, Aardaker, Akelei, Bosrank, Wederik, Sleedoorn, Heggerank, Maretak en Schuttersveld (gebouwen, terrein en straten uit dezelfde open data). De buurman, de mevrouw van de kabouters, de voorzitter van de buurtvereniging en de wedstrijd Mooiste Voortuin zijn verzonnen. De missies zijn gekozen bij de straatnamen, niet bij echte gebeurtenissen.
+- **Bloemenwijk (west)**: het speelgebied loopt nu ook over de wijk met Bolderik, Aardaker, Akelei, Bosrank, Wederik, Sleedoorn, Heggerank, Maretak en Schuttersveld (gebouwen, terrein en straten uit dezelfde open data). De buurman, de mevrouw van de kabouters en de wedstrijd Mooiste Voortuin zijn verzonnen. De plek en het uiterlijk van de jongen bij de BBQ (Aardaker 43, adres via de PDOK Locatieserver) zijn opgegeven door de maker; zijn verhaal is verzonnen. De missies zijn gekozen bij de straatnamen, niet bij echte gebeurtenissen.
 - **Het matras van Gulpen**: volledig verzonnen verhaal. Alle loketmedewerkers, de portier, de stagiair, de zenuwachtige jongen, de bakkersgezel, de kok en de keukenverkoper zijn verzonnen rollen.
 - **Joods monument**: staat op de plek van het herdenkingsmonument aan de Beversbergweg volgens de BGT, ongeveer 400 meter ten westen van het gedetailleerde dorpsgebied. Het echte ontwerp is niet nagemaakt: het is een eenvoudige gedenksteen, zonder missie.
 - **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.

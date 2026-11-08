@@ -7,7 +7,7 @@ const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(new 
 const cyl = (rt, rb, h, m, x = 0, y = 0, z = 0, seg = 16) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m); o.position.set(x, y, z); return o; };
 const shadows = (g) => { g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return g; };
 
-// Een fluitje bier: smal glas, goudgeel bier en een schuimkraag.
+// Een glas pils: smal glas, goudgeel bier en een schuimkraag.
 export function makeFluitje() {
   const g = new THREE.Group();
   const glass = cyl(0.045, 0.036, 0.26, new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, roughness: 0.05, depthWrite: false }), 0, 0.13, 0, 20);
@@ -240,24 +240,43 @@ export class Effects {
     this.bursts = [];
     this.rings = [];
     this.puffs = [];
+    this.initSmoke();
   }
 
   // Rookwolkje (bijv. bij de wielen tijdens hard remmen): groeit, stijgt een beetje en vervaagt.
-  smoke(x, y, z, size = 1) {
-    if (!this.smokeTex) {
-      const c = document.createElement('canvas');
-      c.width = c.height = 64;
-      const g = c.getContext('2d');
-      const grd = g.createRadialGradient(32, 32, 2, 32, 32, 30);
-      grd.addColorStop(0, 'rgba(235,235,235,0.9)'); grd.addColorStop(0.5, 'rgba(210,210,210,0.45)'); grd.addColorStop(1, 'rgba(200,200,200,0)');
-      g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
-      this.smokeTex = new THREE.CanvasTexture(c);
+  // De wolkjes liggen vooraf klaar (textuur, materiaal en shader al bij het laden), zodat het beeld
+  // niet even hapert op het moment dat je voor het eerst hard remt.
+  initSmoke() {
+    if (this.smokePool) return;
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+    grd.addColorStop(0, 'rgba(235,235,235,0.9)'); grd.addColorStop(0.5, 'rgba(210,210,210,0.45)'); grd.addColorStop(1, 'rgba(200,200,200,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+    this.smokeTex = new THREE.CanvasTexture(c);
+    this.smokePool = [];
+    for (let i = 0; i < 80; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, transparent: true, depthWrite: false, opacity: 0 }));
+      s.visible = false;
+      s.frustumCulled = false;
+      this.scene.add(s);
+      this.smokePool.push(s);
     }
-    if (this.puffs.length > 80) { const old = this.puffs.shift(); this.scene.remove(old.s); }
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, transparent: true, depthWrite: false, opacity: 0.75 }));
+    // eentje onzichtbaar (doorzichtig) laten meedraaien, zodat de shader meteen bij het laden gecompileerd wordt
+    this.smokePool[0].visible = true;
+    this.smokePool[0].scale.setScalar(0.001);
+  }
+  smoke(x, y, z, size = 1) {
+    this.initSmoke();
+    let s = this.smokePool.find((q) => !q.userData.busy);
+    if (!s) { const old = this.puffs.shift(); s = old.s; }
+    s.userData.busy = true;
+    s.visible = true;
+    s.material.opacity = 0.75;
+    s.material.rotation = 0;
     s.position.set(x, y, z);
     s.scale.setScalar(0.4 * size);
-    this.scene.add(s);
     this.puffs.push({ s, t: 0, size, vx: (Math.random() - 0.5) * 0.6, vz: (Math.random() - 0.5) * 0.6, rot: (Math.random() - 0.5) * 2 });
   }
 
@@ -318,7 +337,7 @@ export class Effects {
       p.s.material.rotation += p.rot * dt;
       p.s.material.opacity = Math.max(0, 0.75 * (1 - p.t / 1.3));
     }
-    this.puffs = this.puffs.filter((p) => { if (p.t > 1.3) { this.scene.remove(p.s); p.s.material.dispose(); return false; } return true; });
+    this.puffs = this.puffs.filter((p) => { if (p.t > 1.3) { p.s.visible = false; p.s.material.opacity = 0; p.s.userData.busy = false; return false; } return true; });
   }
 }
 

@@ -273,13 +273,14 @@ export function startBommetje(g, room) {
 // Deel 1: plakjes van de draaiende gyros snijden als het goudbruine stuk bij het mes is.
 // Het mes hakt, het plakje vliegt in de pita, het vet spettert. Deel 2: 'Opa!': borden kapotgooien.
 export function startGyros(g, { need = 6, tries = 9 } = {}) {
-  const ui = overlay(g, 'Gyros!', '<canvas class="mini-canvas"></canvas>', g.input.isTouch ? 'Tik als het goudbruine stuk bij het mes is (het mes licht op!)' : 'E, spatie of klik als het goudbruine stuk bij het mes is (het mes licht op!)');
+  const ui = overlay(g, 'Gyros!', '<canvas class="mini-canvas"></canvas>', g.input.isTouch ? 'Tik als het donkere, krokante stuk bij het mes is (het mes licht op!). Het lichte vlees laat je nog grillen.' : 'E, spatie of klik als het donkere, krokante stuk bij het mes is (het mes licht op!). Het lichte vlees laat je nog grillen.');
   const cv = ui.ov.querySelector('canvas');
   const ctx = cv.getContext('2d');
   fitCanvas(cv);
   const parts = new Particles();
   const combo = makeCombo(ui.ov);
-  let phase = 'snijden', t = 0, band = 0.1, speed = 0.55, good = 0, used = 0, plates = 0, chop = 0, spinT = 0, shakeT = 0;
+  const PLATES = 10, PLATE_TIME = 6;
+  let phase = 'snijden', t = 0, band = 0.1, speed = 0.55, good = 0, used = 0, plates = 0, thrown = 0, chop = 0, spinT = 0, shakeT = 0;
   const pita = []; // plakjes in de pita
   const flying = []; // vliegende plakjes en borden
   const draw = () => {
@@ -302,13 +303,16 @@ export function startGyros(g, { need = 6, tries = 9 } = {}) {
       ctx.beginPath(); ctx.moveTo(cx - 10 * u, top); ctx.lineTo(cx + 10 * u, top); ctx.lineTo(cx + 16 * u, bot); ctx.lineTo(cx - 16 * u, bot); ctx.closePath(); ctx.clip();
       for (let i = -2; i < 14; i++) {
         const x = cx - 18 * u + ((i * 3 * u + spinT * 30 * u) % (36 * u + 3 * u));
-        ctx.fillStyle = i % 2 ? '#8b4a22' : '#a35a2a';
+        ctx.fillStyle = i % 2 ? '#e0b08a' : '#d39d76'; // licht vlees: moet nog grillen
         ctx.fillRect(x, top, 3 * u, bot - top);
       }
-      // goudbruine strook die rondgaat
+      // donkere, krokante strook die rondgaat: die snijd je eraf
       const bx = cx - 16 * u + band * 32 * u;
-      ctx.fillStyle = 'rgba(255, 190, 60, 0.9)';
+      ctx.fillStyle = '#5a2c12';
       ctx.fillRect(bx - 3 * u, top, 6 * u, bot - top);
+      ctx.fillStyle = '#3a1a08';
+      for (let k = 0; k < 9; k++) ctx.fillRect(bx - 2.6 * u + ((k * 37) % 5) * u, top + k * (bot - top) / 9 + 1.5 * u, 1.6 * u, 2.2 * u); // korstje
+      ctx.fillStyle = 'rgba(255,170,90,0.35)'; ctx.fillRect(bx - 3 * u, top, 0.8 * u, bot - top); // vetrandje
       ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(cx - 4 * u, top, 2 * u, bot - top); // glans
       ctx.restore();
       // mes: licht op als het goede moment eraan komt, hakt bij een tik
@@ -324,7 +328,7 @@ export function startGyros(g, { need = 6, tries = 9 } = {}) {
       // pita met de plakjes
       ctx.fillStyle = '#f1d9a6'; ctx.beginPath(); ctx.ellipse(cx, 92 * u, 24 * u, 5 * u, 0, 0, 7); ctx.fill();
       ctx.fillStyle = '#e3c27f'; ctx.beginPath(); ctx.ellipse(cx, 93 * u, 24 * u, 3 * u, 0, 0, Math.PI); ctx.fill();
-      pita.forEach((ok, i) => { ctx.fillStyle = ok ? '#b5652e' : '#ffd8d8'; ctx.save(); ctx.translate(cx - 18 * u + (i % 9) * 4.4 * u, 89 * u - Math.floor(i / 9) * 1.5 * u); ctx.rotate((i % 3 - 1) * 0.3); ctx.fillRect(-1.8 * u, -0.8 * u, 3.6 * u, 1.6 * u); ctx.restore(); });
+      pita.forEach((ok, i) => { ctx.fillStyle = ok === true ? '#5a2c12' : ok === 'licht' ? '#e8c0a0' : '#1c1c1c'; ctx.save(); ctx.translate(cx - 18 * u + (i % 9) * 4.4 * u, 89 * u - Math.floor(i / 9) * 1.5 * u); ctx.rotate((i % 3 - 1) * 0.3); ctx.fillRect(-1.8 * u, -0.8 * u, 3.6 * u, 1.6 * u); ctx.restore(); });
     } else {
       // OPA!
       const pulse = 1 + Math.sin(t * 12) * 0.08;
@@ -333,14 +337,24 @@ export function startGyros(g, { need = 6, tries = 9 } = {}) {
       ctx.lineWidth = 1.2 * u; ctx.strokeStyle = '#fff'; ctx.strokeText('OPA!', 0, 0); ctx.fillText('OPA!', 0, 0);
       ctx.restore();
       ctx.fillStyle = '#fff'; ctx.font = `800 ${6 * u}px "Baloo 2", sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText(`${plates} borden kapot`, W / 2, 46 * u);
+      ctx.fillText(`${plates} van de ${PLATES} borden kapot`, W / 2, 46 * u);
       // vloer met scherven
       ctx.fillStyle = '#3e2a1c'; ctx.fillRect(0, 70 * u, W, 30 * u);
+      // de stapel borden die nog over is (links), wordt bij elke tik lager
+      const left = PLATES - thrown;
+      ctx.fillStyle = '#6d4c41'; ctx.fillRect(W * 0.2 - 8 * u, 80 * u, 16 * u, 3 * u);
+      for (let k = 0; k < left; k++) {
+        const y = 79 * u - k * 1.8 * u;
+        ctx.fillStyle = '#fafafa'; ctx.beginPath(); ctx.ellipse(W * 0.2, y, 6 * u, 1.6 * u, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 0.4 * u; ctx.stroke();
+      }
+      ctx.fillStyle = '#fff'; ctx.font = `700 ${3.6 * u}px Inter, sans-serif`;
+      ctx.fillText(left ? `nog ${left}` : 'op!', W * 0.2, 88 * u);
     }
     // vliegende plakjes en borden
     for (const f of flying) {
       ctx.save(); ctx.translate(f.x * W, f.y * H); ctx.rotate(f.r);
-      if (f.kind === 'slice') { ctx.fillStyle = f.ok ? '#b5652e' : '#ffd8d8'; ctx.fillRect(-2 * u, -0.9 * u, 4 * u, 1.8 * u); }
+      if (f.kind === 'slice') { ctx.fillStyle = f.ok === true ? '#5a2c12' : f.ok === 'licht' ? '#e8c0a0' : '#1c1c1c'; ctx.fillRect(-2 * u, -0.9 * u, 4 * u, 1.8 * u); }
       else { ctx.fillStyle = '#fafafa'; ctx.beginPath(); ctx.ellipse(0, 0, 5 * u * f.s, 5 * u * f.s * 0.35, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 0.5 * u; ctx.stroke(); }
       ctx.restore();
     }
@@ -365,26 +379,35 @@ export function startGyros(g, { need = 6, tries = 9 } = {}) {
         const ok = diff < 0.07;
         if (ok) good++;
         chop = 1;
-        flying.push({ kind: 'slice', ok, x: 0.5, y: 0.45, vx: (Math.random() - 0.5) * 0.3, vy: -0.5, r: 0, vr: 9, tx: 0.5 - 0.18 + ((pita.length % 9) * 4.4) / 100 * (H / W) });
+        const kind = ok ? true : band < 0.5 ? 'licht' : 'zwart';
+        flying.push({ kind: 'slice', ok: kind, x: 0.5, y: 0.45, vx: (Math.random() - 0.5) * 0.3, vy: -0.5, r: 0, vr: 9, tx: 0.5 - 0.18 + ((pita.length % 9) * 4.4) / 100 * (H / W) });
         parts.spawn(W / 2, H * 0.45, ok ? 16 : 8, { color: ok ? '#ffcc80' : '#ef9a9a', speed: 260, up: 120, size: 4 * devicePixelRatio, shape: 'circle', life: 0.6 });
         if (ok) { const c = combo.hit(); flash(ui.ov, 'good'); popText(ui.ov, c >= 3 ? `Perfect! x${c}` : 'Perfect!', 50, 30, c >= 3 ? 'gold big' : 'good'); g.sfx?.play('pop'); }
-        else { combo.miss(); flash(ui.ov, 'bad'); shakeT = 0.6; popText(ui.ov, band < 0.5 ? 'Rauw!' : 'Te laat!', 50, 30, 'bad'); g.sfx?.play('splat'); }
+        else { combo.miss(); flash(ui.ov, 'bad'); shakeT = 0.6; popText(ui.ov, band < 0.5 ? 'Nog te licht!' : 'Te laat, aangebrand!', 50, 30, 'bad'); g.sfx?.play('splat'); }
         speed += 0.06;
       }
       ui.score(`🥙 ${good} / ${need} goed  ·  nog ${tries - used} keer`);
       if (good >= need) {
-        phase = 'opa'; t = 0;
-        ui.ov.querySelector('.mini-hint').textContent = 'OPA! Tik zo snel als je kunt om borden kapot te gooien!';
+        phase = 'opa'; t = 0; combo.miss();
+        ui.ov.querySelector('.mini-hint').textContent = `OPA! Je hebt een stapel van ${PLATES} borden. Elke tik gooit er één kapot. Gooi ze allemaal binnen ${PLATE_TIME} seconden!`;
         flash(ui.ov, 'gold'); popText(ui.ov, 'Gyros klaar!', 50, 40, 'gold big');
       } else if (used >= tries) finish({ ok: false, good });
     } else {
-      if (pr) {
-        plates++;
-        flying.push({ kind: 'plate', x: 0.5 + (Math.random() - 0.5) * 0.1, y: 0.95, vx: (Math.random() - 0.5) * 0.9, vy: -1.1 - Math.random() * 0.4, r: 0, vr: (Math.random() - 0.5) * 12, s: 1 });
+      const left = PLATES - thrown;
+      if (pr && left > 0 && t < PLATE_TIME) {
+        thrown++;
+        // het bovenste bord van de stapel vliegt omhoog
+        flying.push({ kind: 'plate', x: 0.2, y: 0.8 - left * 0.018, vx: 0.25 + Math.random() * 0.5, vy: -1.1 - Math.random() * 0.4, r: 0, vr: (Math.random() - 0.5) * 12, s: 1 });
         g.sfx?.play('kick');
       }
-      ui.score(`🍽️ ${plates} borden  ·  nog ${Math.max(0, 5 - t).toFixed(1).replace('.', ',')} s`);
-      if (t >= 5 && !flying.some((f) => f.kind === 'plate')) finish({ ok: true, good, plates });
+      ui.score(`🍽️ ${plates} / ${PLATES} kapot  ·  nog ${Math.max(0, PLATE_TIME - t).toFixed(1).replace('.', ',')} s`);
+      const over = (thrown >= PLATES || t >= PLATE_TIME) && !flying.some((f) => f.kind === 'plate');
+      if (over && !phase.endsWith('klaar')) {
+        phase = 'opa-klaar'; t = 0;
+        popText(ui.ov, plates >= PLATES ? 'Alle borden kapot! OPA!' : `${plates} borden kapot!`, 50, 40, 'gold big');
+        if (plates >= PLATES) g.sfx?.play('cheer');
+      }
+      if (phase === 'opa-klaar' && t > 1.2) finish({ ok: true, good, plates, all: plates >= PLATES });
     }
     // vluchten bijwerken
     for (let i = flying.length - 1; i >= 0; i--) {
@@ -398,7 +421,7 @@ export function startGyros(g, { need = 6, tries = 9 } = {}) {
         if (f.vy > 0 && f.y > 0.78) {
           parts.spawn(f.x * W, f.y * H, 16, { color: '#fafafa', speed: 420, up: 200, size: 7 * devicePixelRatio, shape: 'shard', life: 0.9 });
           parts.spawn(f.x * W, f.y * H, 6, { color: '#1565c0', speed: 300, up: 150, size: 5 * devicePixelRatio, shape: 'shard', life: 0.9 });
-          shakeT = 0.5; g.sfx?.play('crash');
+          shakeT = 0.5; g.sfx?.play('crash'); plates++;
           if (Math.random() < 0.5) popText(ui.ov, ['OPA!', 'KRAK!', 'Kalimera!', 'Nog eentje!'][Math.floor(Math.random() * 4)], f.x * 100, 70, 'gold');
           flying.splice(i, 1);
         }
@@ -406,7 +429,7 @@ export function startGyros(g, { need = 6, tries = 9 } = {}) {
     }
     parts.update(dt);
     draw();
-  }, () => { ui.close(); g.player.lockedFor = false; }, { band: () => band, phase: () => phase, get label() { return phase === 'snijden' ? 'Snijd!' : 'Opa!'; } });
+  }, () => { ui.close(); g.player.lockedFor = false; }, { band: () => band, phase: () => phase, get label() { return phase === 'snijden' ? 'Snijd!' : phase === 'opa' ? 'Gooi!' : null; } });
 }
 
 // ------------------------------------------------------------ stempelen (gemeentehuis)

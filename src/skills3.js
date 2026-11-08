@@ -208,7 +208,7 @@ export function startBBQ(g, { need = 8, maxBurnt = 3, limit = 60 } = {}) {
     }
     parts.update(dt);
     // tekenen: grill met vlammen
-    ctx.fillStyle = '#4e6e3a'; ctx.fillRect(0, 0, W, H); // gras van het Schuttersveld
+    ctx.fillStyle = '#4e6e3a'; ctx.fillRect(0, 0, W, H); // gras in de achtertuin
     ctx.fillStyle = '#263238'; ctx.beginPath(); ctx.ellipse(W / 2, H * 0.5, r * 5.2, r * 3.6, 0, 0, 7); ctx.fill();
     for (let k = 0; k < 9; k++) { const fx = W / 2 + (k - 4) * r * 1.1, fh = (3 + Math.sin(t * 9 + k * 1.7) * 1.4) * u; ctx.fillStyle = `rgba(255,${120 + Math.sin(t * 7 + k) * 50},30,0.55)`; ctx.beginPath(); ctx.ellipse(fx, H * 0.72, r * 0.45, fh, 0, 0, 7); ctx.fill(); }
     ctx.strokeStyle = '#90a4ae'; ctx.lineWidth = 0.6 * u;

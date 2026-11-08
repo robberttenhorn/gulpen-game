@@ -55,6 +55,16 @@ export class UI {
   }
   setProgress(text) { $('quest-progress').textContent = text; }
 
+  // teller linksboven bij vrij rondlopen: hoeveel missies al afgerond (null = verbergen)
+  setTally(done, total) {
+    const el = $('mission-tally');
+    el.hidden = done == null;
+    if (done == null) return;
+    const text = `🏆 ${done} / ${total} missies afgerond`;
+    if (el.textContent !== text) el.textContent = text;
+    el.classList.toggle('all', done >= total);
+  }
+
   setStreet(name) {
     const el = $('street-name');
     if (el.textContent !== name) el.textContent = name;
@@ -337,6 +347,7 @@ export class BigMap {
     this.scale = 1;
     this.cx = 0; this.cz = 0;
     $('minimap-wrap').addEventListener('click', () => this.show());
+    $('mission-tally').addEventListener('click', () => this.show());
     $('bigmap-close').addEventListener('click', () => this.hide());
     addEventListener('keydown', (e) => {
       if (e.code === 'KeyM') this.open ? this.hide() : this.show();

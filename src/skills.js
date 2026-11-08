@@ -1,5 +1,5 @@
 // Korte missies op snelheid, behendigheid en precisie:
-// slalom op de fiets, fluitjes vangen, een ontsnapte geit, inparkeren en vogelschieten.
+// slalom op de fiets, pils vangen, een ontsnapte geit, inparkeren en vogelschieten.
 // Elk spel geeft een Promise terug met de uitslag, of null als de klus gestopt is.
 import * as THREE from 'three';
 import { popText, flash, shake, bump, makeCombo, Particles, fitCanvas } from './minifx.js';
@@ -119,14 +119,14 @@ export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
   }, () => { g.scene.remove(group); g.ui.timer(null); }, { P, gateList, len });
 }
 
-// ------------------------------------------------------------ fluitjes vangen
+// ------------------------------------------------------------ pils vangen
 
-// Vallende fluitjes bier opvangen met een dienblad. Geeft { caught, total } terug.
+// Vallende glazen pils opvangen met een dienblad. Geeft { caught, total } terug.
 // Het blad kantelt mee, gevangen glazen blijven erop staan, gemiste spatten kapot met scherven en bier.
 export function startCatch(g, { total = 16, need = 11 } = {}) {
   const ov = document.createElement('div');
   ov.className = 'mini-overlay';
-  ov.innerHTML = `<div class="mini-head"><b>Fluitjes vangen</b><span class="mini-score"></span><button class="mini-stop" type="button">Stoppen</button></div>
+  ov.innerHTML = `<div class="mini-head"><b>Pils vangen</b><span class="mini-score"></span><button class="mini-stop" type="button">Stoppen</button></div>
     <canvas class="mini-canvas"></canvas>
     <div class="mini-hint">${g.input.isTouch ? 'Sleep je vinger naar links en rechts' : 'Muis, pijltjes of A/D om het dienblad te bewegen'} · vang er minstens ${need}</div>`;
   document.getElementById('hud').prepend(ov);
@@ -167,7 +167,7 @@ export function startCatch(g, { total = 16, need = 11 } = {}) {
     // lampjes die zacht flikkeren
     for (let i = 0; i < 6; i++) { ctx.fillStyle = `rgba(255,200,120,${0.07 + Math.sin(t * 2 + i) * 0.03})`; ctx.beginPath(); ctx.arc(W * (0.1 + i * 0.16), H * 0.12, 6 * u, 0, 7); ctx.fill(); }
     if (barFlash > 0) { ctx.fillStyle = `rgba(255,80,60,${barFlash * 0.35})`; ctx.fillRect(0, H * 0.79, W, H); }
-    // vallende fluitjes met schaduw op de toonbank
+    // vallende glazen pils met schaduw op de toonbank
     for (const gl of glasses) {
       const sx = gl.x * W, sy = H * 0.95, k = Math.min(1, gl.y);
       ctx.fillStyle = `rgba(0,0,0,${0.15 + k * 0.25})`; ctx.beginPath(); ctx.ellipse(sx, sy, (1.5 + k * 2.5) * u, 0.8 * u, 0, 0, 7); ctx.fill();
