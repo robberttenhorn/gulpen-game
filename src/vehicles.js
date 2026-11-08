@@ -375,17 +375,24 @@ export class Vehicles {
       if (Math.abs(rx - cx) > 1e-4 || Math.abs(rz - cz) > 1e-4) { x += rx - cx; z += rz - cz; hit = true; }
     }
     // botsingen met andere auto's
+    // elke auto als drie cirkels langs de lengteas: zo kun je netjes naast een andere auto parkeren
+    const circles = (c, cx, cz) => [-0.33, 0, 0.33].map((k) => [cx + Math.sin(c.heading) * c.t.L * k, cz + Math.cos(c.heading) * c.t.L * k]);
+    car.lastBump = null;
     for (const o of this.cars.concat(this.traffic)) {
       if (o === car) continue;
-      const d = Math.hypot(o.x - x, o.z - z);
-      const min = (o.t.W + car.t.W) * 0.55 + 0.6;
-      if (d < min && d > 0.01) {
-        const push = (min - d) / d;
-        x -= (o.x - x) * push * 0.6; z -= (o.z - z) * push * 0.6;
-        if (!o.ai) { o.x += (o.x - x) * push * 0.4; o.z += (o.z - z) * push * 0.4; this.placeCar(o); }
+      if (Math.hypot(o.x - x, o.z - z) > car.t.L + o.t.L) continue;
+      const rr = (o.t.W + car.t.W) * 0.5 + 0.05;
+      for (const [ax, az] of circles(car, x, z)) for (const [bx, bz] of circles(o, o.x, o.z)) {
+        const d = Math.hypot(ax - bx, az - bz);
+        if (d >= rr || d < 0.001) continue;
+        const push = (rr - d) / d;
+        x += (ax - bx) * push * 0.6; z += (az - bz) * push * 0.6;
+        if (!o.ai && !o.locked) { o.x -= (ax - bx) * push * 0.4; o.z -= (az - bz) * push * 0.4; this.placeCar(o); }
         hit = true;
+        car.lastBump = o;
       }
     }
+    car.bumpSpeed = hit ? Math.abs(car.speed) : 0;
     if (hit && Math.abs(car.speed) > 2) {
       car.speed *= 0.55;
       if (Math.abs(car.speed) > 8) { this.g.shake = 0.4; this.g.sfx?.play('crash'); }
@@ -396,10 +403,10 @@ export class Vehicles {
 
   // ------------------------------------------------------------ verkeer
 
-  spawnTraffic(n) {
+  spawnTraffic(n, rnd = null) {
     const nodes = this.world.roadNodes;
     if (!nodes?.length) return;
-    const rand = rng(99);
+    const rand = rnd || rng(99);
     const withEdges = nodes.map((nd, i) => i).filter((i) => nodes[i].edges.length);
     const typeKeys = ['hatch', 'sedan', 'suv', 'hatch', 'van'];
     for (let k = 0; k < n && withEdges.length; k++) {
@@ -431,6 +438,13 @@ export class Vehicles {
         if (ahead > 0 && ahead < 14 && side < 2.2) target = Math.min(target, Math.max(0, (ahead - 5) * 1.2));
       };
       check(player);
+      // vlak naast of voor de auto staan: hij wacht (en dan kun je de chauffeur eruit trekken)
+      const pd = Math.hypot(player.x - c.x, player.z - c.z);
+      if (pd < 3.6) target = 0;
+      if (pd < 7 && target === 0 && c.speed < 0.5) {
+        c.blockT = (c.blockT || 0) + dt;
+        if (c.blockT > 2.2) { c.blockT = -2.5; this.g.sfx?.play('honk'); }
+      } else c.blockT = 0;
       for (let i = 0; i < this.cars.length; i++) check(this.cars[i]);
       for (let i = 0; i < this.traffic.length; i++) check(this.traffic[i]);
       // bochten langzamer
@@ -455,6 +469,34 @@ export class Vehicles {
       c.heading += dh * Math.min(1, dt * 6);
       this.placeCar(c);
     }
+  }
+
+  // Een auto uit het verkeer halen (kapen): wordt een gewone auto om zelf in te rijden.
+  hijack(c) {
+    this.traffic = this.traffic.filter((x) => x !== c);
+    c.ai = false; c.parked = false; c.speed = 0; c.steer = 0; c.hijacked = true;
+    this.cars.push(c);
+    // het verkeer weer aanvullen, ergens anders in het dorp
+    this.spawnTraffic(1, Math.random);
+    return c;
+  }
+
+  // Waar zit de chauffeur? (links voorin, in wereldcoördinaten)
+  driverDoor(c) {
+    const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
+    const lx = Math.cos(c.heading), lz = -Math.sin(c.heading);
+    return [c.x + fx * 0.3 + lx * (c.t.W * 0.5 + 0.5), c.z + fz * 0.3 + lz * (c.t.W * 0.5 + 0.5)];
+  }
+
+  // stilstaand verkeer vlak bij de speler
+  nearestTraffic(x, z, maxD = 3.4) {
+    let best = null, bd = maxD;
+    for (const c of this.traffic) {
+      if (c.speed > 1.5) continue;
+      const d = Math.hypot(c.x - x, c.z - z) - c.t.W * 0.5;
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best;
   }
 
   setNight(t) {

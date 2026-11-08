@@ -139,11 +139,15 @@ class Game {
     this.clock.getDelta();
     this.renderer.setAnimationLoop(() => this.tick());
 
+    // introductie: scherm gedimd en een duidelijke knop, zodat je weet dat je eerst moet doorklikken
+    document.body.classList.add('intro');
     await this.ui.dialog('Gulpen, zaterdag', [
       { text: 'Welkom in Gullepe!', nl: 'Welkom in Gulpen!' },
-      'Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto.',
+      'Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto. Of trek iemand uit zijn auto, als je durft.',
       'Overal zijn missies te doen. Tik op de minikaart rechtsboven om ze allemaal te zien, en kies zelf waar je begint.',
     ]);
+    document.body.classList.remove('intro');
+    this.ui.toast('Aan de slag!', 1400);
   }
 
   // ------------------------------------------------------------ lucht, licht en nabewerking
@@ -390,6 +394,61 @@ class Game {
     this.camYaw = car.heading + Math.PI;
     if (car.isVolvo && !this.volvoSeen) { this.volvoSeen = true; this.ui.toast('Grijze Volvo XC40', 2000); }
     if (car.isTractor) this.ui.toast('Tractor! Niet zo snel, wel overal doorheen.', 2200);
+  }
+
+  // Auto kapen: chauffeur eruit trekken, die valt op straat en rent scheldend weg.
+  async hijackCar(c) {
+    if (this.keg) { this.ui.toast('Met een vat in je handen? Eerst afleveren!', 2000); return; }
+    if (this.missions?.active?.noVehicles) { this.ui.toast('Niet nu, je moet lopen!', 2000); return; }
+    const p = this.player;
+    const [dx, dz] = this.cars.driverDoor(c);
+    c.speed = 0; c.cruise0 = c.cruise; c.cruise = 0;
+    p.lockedFor = true;
+    p.x = dx; p.z = dz;
+    p.heading = Math.atan2(c.x - dx, c.z - dz);
+    p.pose = 'drink'; // arm vooruit: aan de deur trekken
+    this.sfx.play('door');
+    await wait(450);
+    // chauffeur verschijnt naast de auto en valt om
+    const looks = [[0x8d6e63, 0x37474f, 0x9e9e9e], [0x1565c0, 0x263238, 0x3e2723], [0xad1457, 0x212121, 0xd7b56d, true]];
+    const [shirt, pants, hair, female] = looks[Math.floor(Math.random() * looks.length)];
+    const drv = makeCharacter({ shirt, pants, hair, female: !!female, glasses: Math.random() < 0.4 });
+    const ox = dx + Math.cos(c.heading) * 0.9, oz = dz - Math.sin(c.heading) * 0.9;
+    drv.position.set(ox, this.world.groundAt(ox, oz), oz);
+    drv.rotation.y = c.heading + Math.PI / 2;
+    this.scene.add(drv);
+    this.sfx.play('crash');
+    const shouts = [['Hé! Mijn auto!', null], ['Pliesie!', 'politie'], ['Onnut!', 'viezerik'], ['Dat is een lease-auto!', null], ['Mijn boodschappen liggen achterin!', null]];
+    const [sh, nl] = shouts[Math.floor(Math.random() * shouts.length)];
+    if (nl) this.ui.toastDialect(sh, nl, 1800); else this.ui.toast(sh, 1600);
+    this.fleeing = this.fleeing || [];
+    this.fleeing.push({ m: drv, x: ox, z: oz, h: drv.rotation.y, t: 0 });
+    p.pose = null;
+    p.lockedFor = false;
+    this.cars.hijack(c);
+    this.enterCar(c);
+  }
+
+  // weggeduwde chauffeurs: eerst op de grond, dan wegrennen en verdwijnen
+  updateFleeing(dt) {
+    if (!this.fleeing?.length) return;
+    for (const f of this.fleeing) {
+      f.t += dt;
+      if (f.t < 0.9) {
+        f.m.rotation.x = -Math.min(1.3, f.t * 4); // ligt op de grond
+        f.m.userData.animate(dt, 0, 'idle');
+      } else {
+        f.m.rotation.x = Math.max(0, f.m.rotation.x - dt * 5);
+        const [nx, nz] = this.world.resolve(f.x + Math.sin(f.h) * 5.5 * dt, f.z + Math.cos(f.h) * 5.5 * dt, 0.35);
+        if (Math.hypot(nx - f.x, nz - f.z) < 5.5 * dt * 0.3) f.h += 0.8; // tegen een muur: draaien
+        f.x = nx; f.z = nz;
+        f.m.position.set(f.x, this.world.groundAt(f.x, f.z), f.z);
+        f.m.rotation.y = f.h;
+        f.m.userData.animate(dt, 5.5, 'walk');
+      }
+      if (f.t > 7) this.scene.remove(f.m);
+    }
+    this.fleeing = this.fleeing.filter((f) => f.t <= 7);
   }
 
   exitCar() {
@@ -1215,6 +1274,7 @@ class Game {
     // een fout in een minispel mag nooit de hele game laten vastlopen
     try { this.minigame?.update(dt); } catch (e) { console.error('minispel', e); try { this.minigame?.stop?.(); } catch (e2) { /* negeren */ } this.minigame = null; this.player.lockedFor = false; }
     this.updateFollowers(dt);
+    this.updateFleeing(dt);
     this.updateNpcs(dt);
     this.cars.updateTraffic(dt, this.mode === 'car' ? this.car : this.player);
     this.peds.update(dt, this.player, this.mode === 'car' ? Math.abs(this.car.speed) : this.player.speed);
@@ -1432,12 +1492,16 @@ class Game {
       if (d < nd) { near = n; nd = d; }
     }
     const car = !near ? this.cars.nearestCar(p.x, p.z, 1.8) : null;
+    const jack = !near && !car && this.mode === 'walk' ? this.cars.nearestTraffic(p.x, p.z) : null;
     if (near) {
       // "De monteur" wordt "de monteur", maar een eigennaam als "De Razende Reporter" blijft staan
       const nm = near.name;
       const role = nm.startsWith('De ') && nm[3] === nm[3].toLowerCase();
       this.ui.prompt(`Praat met ${role ? 'de' + nm.slice(2) : nm}`);
       this.ui.setActionLabel('Praat');
+    } else if (jack) {
+      this.ui.prompt('Trek de chauffeur eruit!');
+      this.ui.setActionLabel('Kapen');
     } else if (car) {
       this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : car.isVolvo ? 'Instappen in de Volvo XC40' : car.isGolden ? 'Instappen in de gouden bolide' : 'Instappen');
       this.ui.setActionLabel('Auto');
@@ -1447,6 +1511,7 @@ class Game {
     }
     if (this.input.consumeAction()) {
       if (near) { p.speed = 0; this.missions.talk(near); }
+      else if (jack) this.hijackCar(jack);
       else if (car) this.enterCar(car);
     }
   }

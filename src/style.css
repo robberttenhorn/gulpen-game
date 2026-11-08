@@ -396,3 +396,14 @@ body.touch .mini-overlay.aim .mini-hint { padding-bottom: 140px; }
 .bm-judges span { min-width: 54px; padding: 6px 10px; border-radius: 8px; background: #fff; color: #1b2430; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,.4); animation: bm-pop 0.4s ease-out; }
 @keyframes bm-pop { from { transform: scale(.3) rotate(-10deg); opacity: 0; } }
 .mini-overlay .tt-task { pointer-events: none; }
+
+/* introductie bij het starten: gedimd scherm en een duidelijke 'verder'-knop */
+body.intro #hud::before { content: ''; position: fixed; inset: 0; background: rgba(10, 16, 24, 0.55); pointer-events: none; z-index: 0; }
+body.intro #dialog { z-index: 5; box-shadow: 0 0 0 4px var(--accent), 0 18px 50px rgba(0,0,0,.5); }
+body.intro #dialog-next {
+  display: inline-block; float: right; margin-top: 10px; padding: 8px 16px; border-radius: 99px;
+  background: var(--accent); color: var(--ink); font-weight: 800; font-size: 15px;
+  box-shadow: 0 4px 0 var(--accent-dark); animation: intro-pulse 1.2s ease-in-out infinite;
+}
+@keyframes intro-pulse { 50% { transform: scale(1.06); } }
+body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.intro #joystick { opacity: .35; }

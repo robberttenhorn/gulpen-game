@@ -41,7 +41,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
 | Gulperberg op!: fietstijdrit naar het Mariabeeld | Voet van de Gulperberg |
 | De ontsnapte geit: ren de zigzaggende geit achterna en tik hem drie keer aan | Boerenland aan de rand van het dorp |
-| Inparkeren bij de PLUS: twee keer netjes in het vak tussen andere auto's, zonder te botsen | Parkeerplaats PLUS |
+| Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
 | Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
 | Polonaise door Gulpe: verzamel feestgangers voor de Vastelaovesfinale | Markt |
@@ -63,6 +63,8 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
+
+**Auto kapen**: ga voor of naast een rijdende auto staan, dan stopt hij en toetert hij. Bij het portier kun je de chauffeur eruit trekken (knop **Kapen** of E) en zelf verder rijden. De chauffeur valt op straat en rent scheldend weg.
 
 Voortgang wordt in de browser bewaard. Een missie kun je altijd stoppen met de knop **Stoppen** op de opdrachtkaart of in het gesprekvenster (tik nogmaals om te bevestigen), of met Esc.
 

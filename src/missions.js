@@ -234,7 +234,7 @@ export class Missions {
       { id: 'plat', npc: n.opa, title: 'Plat kalle', place: 'Benkske bij de Markt', desc: 'Opa overhoort je in het Gulpens. Weet jij wat de woorden betekenen?' },
       { id: 'gulperberg', npc: n.wielrenner, title: 'Gulperberg op!', place: 'Voet van de Gulperberg', desc: 'Fiets zo snel mogelijk naar het Mariabeeld op de top.' },
       { id: 'geit', npc: n.boer, title: 'De ontsnapte geit', place: 'Boerenland aan de rand van het dorp', desc: 'De geit van de boer is ontsnapt. Ren hem achterna en tik hem drie keer aan.' },
-      { id: 'inparkeren', npc: n.klant, title: 'Inparkeren bij de PLUS', place: 'Parkeerplaats PLUS', desc: 'Parkeer de auto netjes in het vak tussen twee andere auto\'s, zonder te botsen.' },
+      { id: 'inparkeren', npc: n.klant, title: 'Inparkeren bij de PLUS', place: 'Parkeerplaats PLUS', desc: 'Vijf keer netjes inparkeren in twee minuten. Botsen kost tijd.' },
       { id: 'vogelschieten', npc: n.schutter, title: 'Vogelschieten', place: 'Bij het sportpark', desc: 'Schiet bij de schutterij de houten vogel stukje voor stukje van de paal.' },
       { id: 'vissen', npc: n.visser, title: 'Vissen in de Gulp', place: 'Oever van de Gulp', desc: 'Vang drie vissen. Tik pas als de dobber onder gaat.' },
       { id: 'polonaise', npc: n.carnaval, title: 'Polonaise door Gulpe', place: 'Markt', desc: 'Verzamel feestgangers voor de Vastelaovesfinale op de Markt.' },
@@ -665,19 +665,19 @@ export class Missions {
     async klant(npc, N, ui, g) {
       const a = await ui.dialog(N, [
         'Tjonge, tjonge... Mijn man staat altijd half in het volgende vak. De mensen kijken me erop aan!',
-        'Laat jij eens zien hoe het moet? Twee keer netjes in het vak, en niet tegen de andere auto\'s aan.',
+        'Laat jij eens zien hoe het moet? Vijf keer netjes inparkeren in twee minuten. Een krasje kost tijd, dus rustig aan bij de buren.',
       ], ['Geef de sleutels maar', 'Ik heb geen rijbewijs']);
       if (a !== 0) return;
-      this.setActive('inparkeren', 'Inparkeren bij de PLUS', 'Rij de groene auto in het gele vak en sta stil. Niet tegen de buren aan!', 'Vak 1 / 2');
+      this.setActive('inparkeren', 'Inparkeren bij de PLUS', 'Rij de groene auto in het gele vak en sta even stil. Vijf vakken in twee minuten. Botsen kost 5 seconden.', 'Ingeparkeerd: 0 / 5');
       const r = await startParking(g, [npc.pos.x, npc.pos.z]);
       if (!r || this.active?.id !== 'inparkeren') return;
       if (r.none) { await ui.dialog(N, ['Hm, alles staat vol. Kom straks maar terug.']); this.abort(); return; }
       if (r.ok) {
-        await ui.dialog(N, [r.bumps ? `Twee keer in het vak! Met ${r.bumps === 1 ? 'één klein krasje' : 'een paar krasjes'}, maar dat zeggen we niet tegen mijn man.` : 'Twee keer kaarsrecht in het vak, zonder één kras! Zo moet het.', 'Dank je wel! Hier, een zakje drop voor onderweg.']);
+        await ui.dialog(N, [r.bumps ? `Vijf keer in het vak! Met ${r.bumps === 1 ? 'één klein krasje' : r.bumps + ' krasjes'}, maar dat zeggen we niet tegen mijn man.` : 'Vijf keer kaarsrecht in het vak, zonder één kras! Zo moet het.', 'Dank je wel! Hier, een zakje drop voor onderweg.']);
         this.complete('inparkeren', 'Parkeerkampioen van de PLUS!');
       } else {
-        await ui.dialog(N, [r.late ? 'Zo lang? De ijsjes in mijn tas zijn al gesmolten...' : 'Au! Daar zit een deuk in. Laat mij maar weer rijden.']);
-        this.fail('Niet gelukt met inparkeren.');
+        await ui.dialog(N, [`${r.parked} van de ${r.need}... De ijsjes in mijn tas zijn al gesmolten. Probeer het nog eens!`]);
+        this.fail('Niet genoeg ingeparkeerd.');
       }
     },
 

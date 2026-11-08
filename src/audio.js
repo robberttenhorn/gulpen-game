@@ -93,6 +93,7 @@ export class Sound {
       case 'cricket': for (let i = 0; i < 3; i++) this.tone(4300, 0.04, { vol: 0.015, at: i * 0.06, type: 'square' }); break;
       case 'tally': this.tone(1000, 0.4, { vol: 0.06, type: 'square' }); break;
       case 'camera': this.hiss(0.05, { vol: 0.2, freq: 3000 }); this.hiss(0.05, { vol: 0.15, freq: 2000, at: 0.08 }); break;
+      case 'honk': this.tone(415, 0.22, { type: 'square', vol: 0.09 }); this.tone(349, 0.22, { type: 'square', vol: 0.07 }); this.tone(415, 0.35, { type: 'square', vol: 0.09, at: 0.3 }); this.tone(349, 0.35, { type: 'square', vol: 0.07, at: 0.3 }); break;
       case 'cart': this.hiss(0.2, { vol: 0.08, filter: 'bandpass', freq: 3000, q: 3 }); break;
       default: break;
     }

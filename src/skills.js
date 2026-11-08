@@ -81,6 +81,7 @@ export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
   setTimeout(() => g.minigame && g.ui.toast('Gaan!', 800), 3000);
   return runMini(g, (dt, finish) => {
     const p = g.player;
+    p.lockedFor = false; // het gesprek zet de speler vast; tijdens de slalom moet je juist kunnen fietsen
     const dx = p.x - P(0, 0)[0], dz = p.z - P(0, 0)[1];
     const s = dx * f.ux + dz * f.uz, l = dx * f.nx + dz * f.nz;
     t += dt;
@@ -232,6 +233,7 @@ export function startGoat(g, center, { radius = 45, tags = 3, limit = 75 } = {})
   g.tempMarkers = [marker];
   return runMini(g, (dt, finish) => {
     t += dt; cooldown -= dt;
+    g.player.lockedFor = false; // het gesprek zet de speler vast; je moet de geit achterna kunnen rennen
     if (g.mode !== 'walk') { if (g.mode === 'car') g.exitCar(); g.setMode('walk'); g.ui.toast('Een geit vang je te voet!', 1500); }
     const p = g.player;
     const d = Math.hypot(p.x - gx, p.z - gz);
@@ -275,104 +277,110 @@ export function startGoat(g, center, { radius = 45, tags = 3, limit = 75 } = {})
 
 // ------------------------------------------------------------ inparkeren
 
-// Parkeervak bij de PLUS met twee auto's ernaast. Twee rondes. Geeft { ok, bumps } terug.
-export async function startParking(g, near) {
+// Zo veel mogelijk keer inparkeren op de parkeerplaats bij de PLUS, binnen de tijd.
+// Steeds een nieuw geel vak, soms met auto's ernaast. Een krasje telt alleen bij een echte botsing
+// (met vaart), en kost dan tijd in plaats van dat de missie meteen mislukt.
+// Geeft { parked, need, bumps } terug.
+export async function startParking(g, near, { need = 5, limit = 120 } = {}) {
   const w = g.world, cars = g.cars;
-  const spots = w.parkingSpots
+  const lot = w.parkingSpots
     .map((s) => ({ ...s, d: Math.hypot(s.x - near[0], s.z - near[1]) }))
-    .filter((s) => s.d < 120)
+    .filter((s) => s.d < 90)
     .sort((a, b) => a.d - b.d);
-  const occupied = (x, z, r = 2.0) => cars.cars.concat(cars.traffic).some((c) => Math.hypot(c.x - x, c.z - z) < r);
+  const occupied = (x, z, r = 2.0) => cars.cars.concat(cars.traffic).some((c) => !c.mission && Math.hypot(c.x - x, c.z - z) < r);
   const lat = (s, k) => [s.x + Math.cos(s.heading) * 2.6 * k, s.z - Math.sin(s.heading) * 2.6 * k];
-  const pick = (used) => spots.find((s) => !used.some((u) => Math.hypot(u.x - s.x, u.z - s.z) < 8) && !occupied(s.x, s.z)
-    && [-1, 1].every((k) => { const [x, z] = lat(s, k); return spots.some((q) => Math.hypot(q.x - x, q.z - z) < 0.6); }));
-  const s1 = pick([]);
-  if (!s1) return { ok: false, none: true };
-  const s2 = pick([s1]);
-  // auto voor de speler, een stukje van het vak af op de weg
-  const st = w.nearestStreet(s1.x, s1.z);
-  const [cx, cz] = w.resolve(st ? st.x : s1.x + 12, st ? st.z : s1.z + 12, 1.4);
-  const car = cars.addCar('hatch', cx, cz, Math.atan2(s1.x - cx, s1.z - cz), 0x2e7d32);
+  const free = lot.filter((s) => !occupied(s.x, s.z));
+  if (free.length < 3) return { none: true };
+  // auto voor de speler aan de rand van de parkeerplaats
+  const st = w.nearestStreet(free[0].x, free[0].z);
+  const [cx, cz] = w.resolve(st ? st.x : free[0].x + 12, st ? st.z : free[0].z + 12, 1.4);
+  const car = cars.addCar('hatch', cx, cz, Math.atan2(free[0].x - cx, free[0].z - cz), 0x2e7d32);
   car.mission = true;
   if (g.mode === 'car') g.exitCar();
   g.enterCar(car);
-  const extras = [car];
-  let bumps = 0;
-  const round = (s, n) => new Promise((resolve) => {
-    // buurauto's links en rechts (op slot)
-    const neigh = [-1, 1].map((k) => {
-      const [x, z] = lat(s, k);
-      if (occupied(x, z, 1.6)) return null;
-      const c = cars.addCar(['sedan', 'suv'][(n + k + 2) % 2], x, z, s.heading + (Math.random() < 0.5 ? Math.PI : 0), [0x9e9e9e, 0x1b1b1b, 0x8d1c1c][(n + k + 3) % 3]);
-      c.locked = true;
-      extras.push(c);
-      return c;
-    }).filter(Boolean);
-    // gele belijning van het vak
-    const box = new THREE.Group();
-    const yel = new THREE.MeshBasicMaterial({ color: 0xffd400 });
-    for (const [bw, bd, ox, oz] of [[2.5, 0.12, 0, 2.6], [2.5, 0.12, 0, -2.6], [0.12, 5.3, 1.25, 0], [0.12, 5.3, -1.25, 0]]) {
+  let parked = 0, bumps = 0, t = 0, used = [], spot = null, neigh = [], box = null, beam = null, hold = 0, bumpCd = 0, penalty = 0;
+  const yel = new THREE.MeshBasicMaterial({ color: 0xffd400 });
+  const clearSpot = () => {
+    if (box) g.scene.remove(box);
+    if (beam) g.scene.remove(beam);
+    for (const c of neigh) removeCar(g, c);
+    neigh = []; box = null; beam = null;
+  };
+  const nextSpot = () => {
+    clearSpot();
+    // een vrij vak, niet te dicht bij de auto en niet hetzelfde als net
+    const opts = free.filter((s) => !used.some((u) => Math.hypot(u.x - s.x, u.z - s.z) < 3) && Math.hypot(s.x - car.x, s.z - car.z) > 6 && !occupied(s.x, s.z));
+    spot = opts[Math.floor(Math.random() * Math.min(opts.length, 8))] || free.find((s) => !occupied(s.x, s.z));
+    if (!spot) return false;
+    used.push(spot);
+    // vanaf het tweede vak soms buren links en/of rechts (geparkeerd, op slot)
+    if (parked > 0) for (const k of [-1, 1]) {
+      if (Math.random() < 0.35 + parked * 0.1) {
+        const [x, z] = lat(spot, k);
+        if (occupied(x, z, 1.6) || !lot.some((q) => Math.hypot(q.x - x, q.z - z) < 0.8)) continue;
+        const c = cars.addCar(['sedan', 'suv', 'hatch'][Math.floor(Math.random() * 3)], x, z, spot.heading + (Math.random() < 0.5 ? Math.PI : 0), [0x9e9e9e, 0x1b1b1b, 0x8d1c1c, 0x1e88e5][Math.floor(Math.random() * 4)]);
+        c.x = x; c.z = z; cars.placeCar(c); // niet laten 'ontwijken'
+        c.locked = true;
+        neigh.push(c);
+      }
+    }
+    box = new THREE.Group();
+    for (const [bw, bd, ox, oz] of [[2.4, 0.12, 0, 2.55], [2.4, 0.12, 0, -2.55], [0.12, 5.2, 1.2, 0], [0.12, 5.2, -1.2, 0]]) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(bw, bd), yel);
       m.rotation.x = -Math.PI / 2;
       m.position.set(ox, 0.06, oz);
       box.add(m);
     }
-    box.position.set(s.x, w.groundAt(s.x, s.z), s.z);
-    box.rotation.y = s.heading;
+    box.position.set(spot.x, w.groundAt(spot.x, spot.z), spot.z);
+    box.rotation.y = spot.heading;
     g.scene.add(box);
-    const beam = g.makeBeam(s.x, s.z, 0xffd400);
-    const limit = 50;
-    let t = 0, hold = 0, bumpCd = 0;
-    g.ui.toast(n === 1 ? 'Parkeer in het gele vak!' : 'Nog eentje, krapper!', 1600);
+    beam = g.makeBeam(spot.x, spot.z, 0xffd400);
+    hold = 0;
+    return true;
+  };
+  nextSpot();
+  g.ui.toast('Parkeer in het gele vak!', 1600);
+  return new Promise((resolve) => {
+    const end = (r) => { g.minigame = null; clearSpot(); g.ui.timer(null); resolve(r); };
     g.minigame = {
-      debug: { spot: s, car, round: n },
-      stop: () => { cleanupRound(); resolve(null); },
+      debug: { get spot() { return spot; }, car, get parked() { return parked; } },
+      stop: () => end(null),
       update: (dt) => {
         t += dt; bumpCd -= dt;
-        g.ui.timer(`${Math.max(0, Math.ceil(limit - t))} s`);
-        if (g.car !== car) { g.ui.prompt('Stap weer in de groene auto'); }
-        // in het vak?
-        const dx = car.x - s.x, dz = car.z - s.z;
-        const fx = Math.sin(s.heading), fz = Math.cos(s.heading);
+        const left = limit - t - penalty;
+        g.ui.timer(`${Math.max(0, Math.ceil(left))} s`);
+        if (g.car !== car) g.ui.prompt('Stap weer in de groene auto');
+        // in het vak? (vooruit of achteruit inparkeren mag allebei)
+        const dx = car.x - spot.x, dz = car.z - spot.z;
+        const fx = Math.sin(spot.heading), fz = Math.cos(spot.heading);
         const along = dx * fx + dz * fz, side = dx * fz - dz * fx;
-        let ang = Math.abs(((car.heading - s.heading) % Math.PI + Math.PI) % Math.PI);
+        let ang = Math.abs(((car.heading - spot.heading) % Math.PI + Math.PI) % Math.PI);
         ang = Math.min(ang, Math.PI - ang);
-        const inside = Math.abs(along) < 0.9 && Math.abs(side) < 0.55 && ang < 0.22;
-        if (inside && Math.abs(car.speed) < 0.4) hold += dt; else hold = 0;
-        // botsen met de buurauto's
-        for (const o of neigh) {
-          if (bumpCd > 0) break;
-          const d = Math.hypot(o.x - car.x, o.z - car.z);
-          if (d < (o.t.W + car.t.W) * 0.55 + 0.65) { bumps++; bumpCd = 1.2; g.sfx?.play('crash'); g.ui.toast(bumps >= 3 ? 'Boem! Dat wordt een schadeformulier.' : 'Boem! Krasje...', 1400); }
+        const inside = Math.abs(along) < 1.0 && Math.abs(side) < 0.6 && ang < 0.26;
+        if (inside && Math.abs(car.speed) < 0.5) hold += dt; else hold = 0;
+        // krasje alleen bij een echte botsing met een andere auto, met vaart
+        if (car.lastBump && car.bumpSpeed > 2.2 && bumpCd <= 0) {
+          bumps++; bumpCd = 1.5; penalty += 5;
+          g.ui.toast('Boem! Krasje: 5 seconden eraf', 1300);
         }
-        if (hold > 0.8) { cleanupRound(); resolve({ ok: true, time: t }); }
-        else if (bumps >= 3) { cleanupRound(); resolve({ ok: false, bumps }); }
-        else if (t > limit) { cleanupRound(); resolve({ ok: false, late: true }); }
+        if (hold > 0.6) {
+          parked++;
+          g.sfx?.play('success');
+          g.missions.progress(`Ingeparkeerd: ${parked} / ${need}`);
+          g.ui.toast(parked >= need ? 'Perfect!' : ['Netjes!', 'Kaarsrecht!', 'Die kan zo in de folder!', 'Nog eentje!'][Math.min(3, parked - 1)], 1200);
+          if (parked >= need) { end({ ok: true, parked, need, bumps }); return; }
+          if (!nextSpot()) { end({ ok: parked >= need, parked, need, bumps }); return; }
+        }
+        if (left <= 0) end({ ok: false, late: true, parked, need, bumps });
       },
     };
-    function cleanupRound() {
-      g.minigame = null;
-      g.scene.remove(box, beam);
-      for (const c of neigh) removeCar(g, c);
-      g.ui.timer(null);
-    }
   });
-  const r1 = await round(s1, 1);
-  if (!r1 || !r1.ok || !s2) return finishParking(g, extras, r1 && { ...r1, bumps });
-  g.sfx?.play('success');
-  const r2 = await round(s2, 2);
-  return finishParking(g, extras, r2 && { ...r2, bumps });
 }
 
 function removeCar(g, c) {
   if (g.car === c) g.exitCar();
   if (c.mesh) g.scene.remove(c.mesh);
   g.cars.cars = g.cars.cars.filter((x) => x !== c);
-}
-function finishParking(g, extras, r) {
-  // de missie-auto blijft staan waar hij staat, de rest gaat weg
-  for (const c of extras) if (c.locked) removeCar(g, c);
-  return r;
 }
 
 // ------------------------------------------------------------ vogelschieten
