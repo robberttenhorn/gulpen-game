@@ -6,7 +6,7 @@ const COLORS = { raw: new THREE.Color(0xf3e2a0), gold: new THREE.Color(0xe8a53a)
 const SAUCE = { mayo: [0xfff4cf], curry: [0xb3261e], pinda: [0x7a4a1e] };
 
 export const ORDERS = [
-  { text: 'Patatje oorlog met een frikandel', snack: 'frikandel', sauces: ['mayo', 'pinda'], sauceName: 'oorlog' },
+  { text: 'Frietje oorlog met een frikandel', snack: 'frikandel', sauces: ['mayo', 'pinda'], sauceName: 'oorlog' },
   { text: 'Friet speciaal met een kroket', snack: 'kroket', sauces: ['mayo', 'curry'], sauceName: 'speciaal' },
   { text: 'Friet mayo met een bamischijf', snack: 'bamischijf', sauces: ['mayo'], sauceName: 'mayo' },
 ];
