@@ -68,6 +68,8 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
+**Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer ochtend zodra beide nachtmissies (De Nachtburgemeester en Nacht van Gulpen) klaar zijn, als je een nachtmissie stopt of die mislukt, met nog een pilsje, en anders uiterlijk na 5 minuten. Nooit midden in een missie of gesprek. Bij elke start van de game is het 11 uur 's ochtends.
+
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
 **Besturing**: fiets, skateboard en auto sturen zoals een voertuig: vooruit is gas (of trappen), achteruit is remmen, links en rechts is sturen. Met toetsen lopen gas en sturen geleidelijk op; de joystick heeft een dode zone in het midden en stuurt bij een kleine uitslag maar een klein beetje.
