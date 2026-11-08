@@ -464,7 +464,7 @@ export function startDoors(g, { limit = 35, maxLost = 3 } = {}) {
   let t = 0, next = 1.0, lost = 0, slammed = 0, shakeT = 0, endT = 0, ok = null;
   const layout = () => {
     const W = cv.width, H = cv.height, u = H / 100;
-    const cw = Math.min(W * 0.2, 26 * u), ch = cw * 1.15, gx = W / 2 - cw * 2, gy = 26 * u;
+    const cw = Math.min(W * 0.18, 22 * u), ch = cw, gx = W / 2 - cw * 2, gy = 22 * u;
     return { W, H, u, cw, ch, gx, gy, rect: (d) => ({ x: gx + (d.i % 4) * cw, y: gy + Math.floor(d.i / 4) * (ch + 6 * u), w: cw, h: ch }) };
   };
   const hit = (cx, cy) => {
@@ -496,7 +496,7 @@ export function startDoors(g, { limit = 35, maxLost = 3 } = {}) {
     if (shakeT > 0) ctx.translate((Math.random() - 0.5) * 16 * shakeT, (Math.random() - 0.5) * 16 * shakeT);
     // showroom
     ctx.fillStyle = '#eceff1'; ctx.fillRect(-20, -20, W + 40, H + 40);
-    ctx.fillStyle = '#cfd8dc'; ctx.fillRect(0, H * 0.86, W, H);
+    ctx.fillStyle = '#cfd8dc'; ctx.fillRect(0, H * 0.84, W, H);
     // werkblad, spatwand en afzuigkap
     ctx.fillStyle = '#37474f'; ctx.fillRect(L.gx - 2 * u, L.gy + ch + 1 * u, cw * 4 + 4 * u, 3 * u);
     ctx.fillStyle = '#90a4ae'; ctx.fillRect(L.gx + cw * 1.3, 4 * u, cw * 1.4, 14 * u);
@@ -514,8 +514,12 @@ export function startDoors(g, { limit = 35, maxLost = 3 } = {}) {
       ctx.fillStyle = '#795548'; ctx.fillRect(r.x + 4, r.y + r.h * 0.5, r.w - 8, 3); // plankje
       if (d.lost) {
         // deurtje ligt op de grond
-        ctx.save(); ctx.translate(r.x + r.w / 2, Math.min(H * 0.86, r.y + r.h / 2 + d.fy)); ctx.rotate(d.fr);
+        // deurtje valt naar beneden en ligt plat op de vloer, onder de kastjes
+        const floorY = H * 0.9, y = Math.min(floorY, r.y + r.h / 2 + d.fy), flat = Math.min(1, Math.max(0, (y - r.y) / (floorY - r.y)));
+        ctx.save(); ctx.translate(r.x + r.w / 2 + (d.i % 2 ? 1 : -1) * flat * 6 * u, y); ctx.rotate(d.fr * (1 - flat) + (d.i % 2 ? 0.15 : -0.15) * flat);
+        ctx.scale(1, 1 - flat * 0.8);
         ctx.fillStyle = '#fafafa'; ctx.fillRect(-r.w / 2 + 3, -r.h / 2 + 3, r.w - 6, r.h - 6);
+        ctx.strokeStyle = '#b0bec5'; ctx.strokeRect(-r.w / 2 + 3, -r.h / 2 + 3, r.w - 6, r.h - 6);
         ctx.restore();
         continue;
       }
@@ -532,8 +536,7 @@ export function startDoors(g, { limit = 35, maxLost = 3 } = {}) {
       ctx.fillStyle = '#90a4ae'; ctx.fillRect(w - 10 * (1 - open * 0.8), r.h * 0.42, 4, r.h * 0.16); // greepje
       ctx.restore();
       // nummertje
-      ctx.fillStyle = 'rgba(27,36,48,0.45)'; ctx.font = `700 ${2.6 * u}px Inter, sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText(String(d.i + 1), r.x + r.w / 2, r.y + r.h + 3.6 * u + (d.i < 4 ? 0 : 0));
+      if (!g.input.isTouch) { ctx.fillStyle = 'rgba(27,36,48,0.4)'; ctx.font = `700 ${2.6 * u}px Inter, sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(String(d.i + 1), r.x + 1.6 * u, r.y + 1.4 * u); }
     }
     parts.draw(ctx);
     ctx.restore();
