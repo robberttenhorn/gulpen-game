@@ -226,6 +226,26 @@ export class Effects {
     this.scene = scene;
     this.bursts = [];
     this.rings = [];
+    this.puffs = [];
+  }
+
+  // Rookwolkje (bijv. bij de wielen tijdens hard remmen): groeit, stijgt een beetje en vervaagt.
+  smoke(x, y, z, size = 1) {
+    if (!this.smokeTex) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d');
+      const grd = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+      grd.addColorStop(0, 'rgba(235,235,235,0.9)'); grd.addColorStop(0.5, 'rgba(210,210,210,0.45)'); grd.addColorStop(1, 'rgba(200,200,200,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+      this.smokeTex = new THREE.CanvasTexture(c);
+    }
+    if (this.puffs.length > 80) { const old = this.puffs.shift(); this.scene.remove(old.s); }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, transparent: true, depthWrite: false, opacity: 0.75 }));
+    s.position.set(x, y, z);
+    s.scale.setScalar(0.4 * size);
+    this.scene.add(s);
+    this.puffs.push({ s, t: 0, size, vx: (Math.random() - 0.5) * 0.6, vz: (Math.random() - 0.5) * 0.6, rot: (Math.random() - 0.5) * 2 });
   }
 
   confetti(x, y, z, n = 140) {
@@ -278,6 +298,14 @@ export class Effects {
       r.m.material.opacity = Math.max(0, 0.7 - r.t * 0.8);
     }
     this.rings = this.rings.filter((r) => { if (r.t > 0.9) { this.scene.remove(r.m); return false; } return true; });
+    for (const p of this.puffs) {
+      p.t += dt;
+      p.s.position.x += p.vx * dt; p.s.position.z += p.vz * dt; p.s.position.y += dt * 0.5;
+      p.s.scale.setScalar((0.4 + p.t * 2.2) * p.size);
+      p.s.material.rotation += p.rot * dt;
+      p.s.material.opacity = Math.max(0, 0.75 * (1 - p.t / 1.3));
+    }
+    this.puffs = this.puffs.filter((p) => { if (p.t > 1.3) { this.scene.remove(p.s); p.s.material.dispose(); return false; } return true; });
   }
 }
 
