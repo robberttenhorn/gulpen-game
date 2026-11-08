@@ -333,6 +333,7 @@ export class Missions {
   }
 
   fail(text) {
+    if (['nacht', 'nachtvangulpen'].includes(this.active?.id)) this.g.morningAsap = true; // nachtmissie mislukt: weer ochtend
     this.runStart = null;
     this.active?.cleanup?.();
     this.active = null;
@@ -406,6 +407,7 @@ export class Missions {
 
   abort() {
     const g = this.g;
+    if (['nacht', 'nachtvangulpen'].includes(this.active?.id)) g.morningAsap = true; // nachtmissie gestopt: weer ochtend
     this.runStart = null;
     this.active?.cleanup?.();
     if (g.interior) g.exitInterior();
