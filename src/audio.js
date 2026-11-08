@@ -32,7 +32,7 @@ export class Sound {
   // ------------------------------------------------------------ bouwstenen
 
   tone(freq, dur, { type = 'sine', vol = 0.2, at = 0, slide = null, attack = 0.005, out = null } = {}) {
-    if (!this.ctx) return;
+    if (!this.ctx || !Number.isFinite(freq) || !Number.isFinite(dur) || !Number.isFinite(vol)) return;
     const t = this.ctx.currentTime + at;
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -171,6 +171,9 @@ export class Sound {
   engineUpdate(speed, throttle) {
     const e = this.engine;
     if (!e) return;
+    // een ongeldige snelheid (NaN) laat de browser een fout gooien en de hele game haperen
+    if (!Number.isFinite(speed)) speed = 0;
+    if (!Number.isFinite(throttle)) throttle = 0;
     const base = e.low ? 32 : 45;
     const freq = base + Math.abs(speed) * (e.low ? 3 : 2.6) + (throttle > 0 ? 8 : 0);
     const t = this.ctx.currentTime;
