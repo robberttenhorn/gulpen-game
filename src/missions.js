@@ -441,9 +441,10 @@ export class Missions {
 
   handlers = {
     async monteur(npc, N, ui, g) {
-      if (this.done.has('fiets')) {
-        await ui.dialog(N, ['Rijdt hij lekker? Die Gulperberg vraagt wat van je banden, kom gerust terug als er iets is!']);
-        return;
+      if (this.done.has('fiets') && g.bikeTuned) {
+        // al gedaan: je mag de proefrit gewoon nog eens rijden
+        const again = await ui.dialog(N, ['Rijdt hij lekker? Zin in nog een rondje door de pionnen? Kijken of je je tijd kunt verbeteren.'], ['Nog een proefrit!', 'Nee, ik rij verder']);
+        if (again !== 0) return;
       }
       if (!g.bikeTuned) {
         await ui.dialog(N, [
@@ -535,11 +536,13 @@ export class Missions {
     },
 
     async concierge(npc, N, ui, g) {
-      if (g.vehicles.skate) {
-        await ui.dialog(N, ['Je hebt je skateboard toch al? Niet op het schoolplein hè!']);
-        return;
-      }
-      await ui.dialog(N, [
+      const replay = g.vehicles.skate;
+      if (replay) {
+        // skateboard heb je al, maar de overhoring mag je nog eens doen
+        const again = await ui.dialog(N, ['Je hebt je skateboard toch al? Of kom je nog eens overhoord worden? Goed voor je cijfers.'], ['Overhoor me maar!', 'Nee, dank je']);
+        if (again !== 0) return;
+        this.setActive('skateboard', 'In beslag genomen', 'Beantwoord de vragen van de conciërge goed.', '');
+      } else await ui.dialog(N, [
         G('Neet skate bie de sjoel!', 'Niet skaten bij school!'),
         'Zo, kom je je skateboard ophalen? Op het schoolplein wordt niet geskatet, dat weet je.',
         'Goed, je krijgt hem terug. Maar eerst een overhoring. Je zit tenslotte op het Sophianum!',
@@ -557,9 +560,9 @@ export class Missions {
         }
         await ui.dialog(N, ['Goed zo.']);
       }
-      await ui.dialog(N, ['Netjes, alles goed. Hier is je skateboard. En niet op het schoolplein!']);
-      g.unlockVehicle('skate');
-      this.complete('skateboard', 'Skateboard terug!');
+      await ui.dialog(N, [replay ? 'Netjes, weer alles goed. Jij mag de volgende overhoring zelf maken.' : 'Netjes, alles goed. Hier is je skateboard. En niet op het schoolplein!']);
+      if (!replay) g.unlockVehicle('skate');
+      this.complete('skateboard', replay ? 'Overhoring weer gehaald!' : 'Skateboard terug!');
     },
 
     async skater(npc, N, ui, g) {
@@ -608,7 +611,10 @@ export class Missions {
       const a = await ui.dialog(N, [night ? G('Nog ee glaas beer, braggelear?', 'Nog een glas bier, nachtbraker?') : G('Ee glaas beer op de maat?', 'Een glas bier op de markt?')],
         [night ? 'Nog eentje (tot morgenochtend)' : 'Graag, een pilsje!', 'Nee, dank je']);
       if (a !== 0) return;
-      if (!this.done.has('pils')) {
+      // eerder al geholpen? dan mag je kiezen of je het dienblad nog eens doet
+      let tray = !this.done.has('pils');
+      if (!tray) tray = (await ui.dialog(N, ['Help je me nog eens met het dienblad? Het terras zit weer vol.'], ['Ja, geef dat blad maar', 'Nee, gewoon een pilsje'])) === 0;
+      if (tray) {
         // eerste keer: eerst de waard helpen met een overvol dienblad
         await ui.dialog(N, ['Eerst even helpen, want het terras staat vol en ik heb veel te veel glazen pils op mijn blad...', 'Oei, daar gaan ze! Vang ze op!']);
         this.setActive('pils', 'Pils vangen', 'Vang de vallende glazen pils op met het dienblad.', '');
@@ -692,6 +698,7 @@ export class Missions {
         'Maar ik ben mijn ambtsketen kwijt! Zonder keten neemt niemand me serieus.',
         'Ik had hem nog bij een bruggetje over de Gulp. Wil je helpen zoeken?',
       ]);
+      this.keten.visible = false; // opnieuw spelen: de keten is weer kwijt
       this.setActive('nacht', 'De ambtsketen', 'Zoek de ambtsketen bij een bruggetje over de Gulp.');
       this.spawnChain();
     },

@@ -304,10 +304,14 @@ class Game {
     this.scene.background = night >= 0.97 ? new THREE.Color(0x060b16) : null;
 
     // omgevingsreflecties bijwerken
-    if (this.envRT) this.envRT.dispose();
-    this.envRT = this.pmrem.fromScene(this.envScene, 0, 1, 20000);
-    this.scene.environment = this.envRT.texture;
-    this.scene.environmentIntensity = 0.55 * day + 0.08 * night;
+    // 's Nachts geen reflecties van de lucht: met de zon onder de horizon gaf dat op sommige telefoons
+    // (iPhone) gekleurde spikkels op de grond. Het maanlicht en het hemellicht doen het dan alleen.
+    if (this.envRT) { this.envRT.dispose(); this.envRT = null; }
+    if (night < 0.5) {
+      this.envRT = this.pmrem.fromScene(this.envScene, 0, 1, 20000);
+      this.scene.environment = this.envRT.texture;
+      this.scene.environmentIntensity = 0.55 * day + 0.08 * night;
+    } else this.scene.environment = null;
     this.missions?.refresh();
   }
 
