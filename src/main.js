@@ -87,12 +87,12 @@ class Game {
     this.peds = new Pedestrians(this, isMobile ? 14 : 28);
     this.fx = new Effects(this.scene);
     this.interiors = new Interiors(this);
-    this.setupPoiLabels();
     this.minimap = new Minimap(this.world);
     this.bigmap = new BigMap(this);
     this.bigmap.secret = setupSecret(this.bigmap, this);
     this.missions = new Missions(this);
     this.missions.setup();
+    this.setupPoiLabels(); // na de missies: plekken met een missie krijgen een groot bord
     if (this.missions.done.has('fiets')) this.tuneBike();
     this.updateVehicleButton();
     this.setupPost();
@@ -591,7 +591,7 @@ class Game {
     marker.position.set(0, 3.2, 0);
     marker.scale.y = 1.5;
     group.add(marker);
-    const npc = { name, group, model, marker, pos: group.position, x, z, active: false, enabled: true, heading: 0, lookAtPlayer: false };
+    const npc = { name, group, model, marker, label, pos: group.position, x, z, active: false, enabled: true, heading: 0, lookAtPlayer: false };
     this.npcs.push(npc);
     return npc;
   }
@@ -599,20 +599,25 @@ class Game {
   // Naambordjes boven de plekken: vóór de gevel, zodat ze niet half in het pand verdwijnen.
   setupPoiLabels() {
     this.poiLabels = [];
-    for (const p of this.world.meta.pois) {
-      if (p.id === 'ringweg' || p.id === 'volvo' || p.cafe) continue;
-      // winkels: klein bordje dat pas dichtbij verschijnt, zodat de Rijksweg niet vol bordjes staat
-      const label = makeLabel(p.name, { small: !!(p.shop || p.memorial) });
-      label.userData.near = !!(p.shop || p.memorial);
+    const spots = this.world.meta.pois.filter((p) => !(p.id === 'ringweg' || p.id === 'volvo' || p.cafe)).map((p) => {
       const f = this.facades.frames[p.id];
-      let x, z, y;
-      if (f) {
-        x = f.x + f.nx * 1.6; z = f.z + f.nz * 1.6;
-        y = f.y + (p.shop ? 4.6 : 6.2);
-      } else {
-        [x, z] = p.pos;
-        y = this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : p.memorial ? 3.2 : 11);
-      }
+      return { p, f, x: f ? f.x + f.nx * 1.6 : p.pos[0], z: f ? f.z + f.nz * 1.6 : p.pos[1] };
+    });
+    // alleen plekken die als missieplek in de missielijst staan krijgen een groot bord
+    const heads = this.missions.list().map((m) => m.place.split(',')[0].trim().toLowerCase());
+    const missionSpots = new Set(spots.filter(({ p }) => {
+      const nm = p.name.toLowerCase();
+      return heads.some((h) => h.length > 3 && (nm.includes(h) || h.includes(nm)));
+    }));
+    for (const sp of spots) {
+      const { p, f, x, z } = sp;
+      let y;
+      // winkels en plekken zonder missie krijgen een klein bordje dat pas dichtbij verschijnt
+      const big = missionSpots.has(sp) && !p.memorial;
+      const label = makeLabel(p.name, { small: !big });
+      label.userData.near = !big;
+      if (f) y = f.y + (big ? 6.2 : 4.6);
+      else y = this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : !big ? 3.2 : 11);
       label.position.set(x, y, z);
       label.material.depthTest = false; // altijd volledig leesbaar
       this.scene.add(label);
@@ -620,14 +625,25 @@ class Game {
     }
   }
 
-  // bordjes van ver weg vervagen, zodat het scherm niet vol staat
+  // bordjes van ver weg vervagen, zodat het scherm niet vol staat:
+  // grote borden (plekken met een missie) vanaf ~60 m, kleine bordjes en namen van personen pas van dichtbij
   updateLabels() {
-    const c = this.camera.position;
+    const c = this.camera.position, pl = this.player;
     for (const l of this.poiLabels || []) {
       const d = c.distanceTo(l.position);
-      const o = l.userData.near ? 1 - THREE.MathUtils.smoothstep(d, 25, 55) : 1 - THREE.MathUtils.smoothstep(d, 90, 170);
+      // grote borden ook weg als je er vlak voor staat (dan zie je de gevel zelf, en het bord vult anders je scherm)
+      const dp = Math.hypot(l.position.x - pl.x, l.position.z - pl.z);
+      const o = l.userData.near ? 1 - THREE.MathUtils.smoothstep(d, 10, 22) : THREE.MathUtils.smoothstep(dp, 12, 20) * (1 - THREE.MathUtils.smoothstep(d, 28, 48));
       l.material.opacity = o;
       l.visible = o > 0.02;
+    }
+    const p = this.player;
+    for (const n of this.npcs) {
+      if (!n.label) continue;
+      const d = Math.hypot(n.pos.x - p.x, n.pos.z - p.z);
+      const o = 1 - THREE.MathUtils.smoothstep(d, 9, 15);
+      n.label.material.opacity = o;
+      n.label.visible = o > 0.02;
     }
   }
 
