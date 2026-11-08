@@ -542,3 +542,6 @@ export class Interiors {
     for (const p of room.people) p.m.userData.animate(dt, 0, p.pose);
   }
 }
+
+// voor uitbreidingen (interiors2.js)
+export { Room, std, tiles, planks };

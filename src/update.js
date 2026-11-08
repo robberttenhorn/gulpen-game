@@ -21,7 +21,7 @@ export function startUpdateCheck() {
     const b = document.createElement('button');
     b.id = 'update-bar';
     b.type = 'button';
-    b.innerHTML = '<b>Er is een nieuwe versie van GTA Gullepe!</b><span>Tik om te vernieuwen. Je klussen blijven bewaard.</span>';
+    b.innerHTML = '<b>Er is een nieuwe versie van GTA Gullepe!</b><span>Tik om te vernieuwen. Je missies blijven bewaard.</span>';
     b.addEventListener('click', () => location.reload());
     document.body.appendChild(b);
   };

@@ -21,11 +21,11 @@ Open daarna de link die Vite toont (meestal http://localhost:5173).
 Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart).
 Water kun je niet in. Er rijdt verkeer over het echte wegennet en er lopen dorpsbewoners rond.
 
-## Klussen
+## Missies
 
-Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart zie je ze allemaal, met hun status.
+Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart zie je ze allemaal, met hun status.
 
-| Klus | Waar |
+| Missie | Waar |
 | --- | --- |
 | Proefrit bij Jef Abels: fiets afstellen en een slalom tussen de pionnen rijden (binnen 30 s) | Jef Abels Bikes, Rijksweg 113 |
 | Viraal met een frietje: in de cafetaria een POV-filmpje opnemen voor TikTok (friet bakken, snack frituren, schudden, saus, trucje) | Cafetaria Zheng (de stagiair is verzonnen) |
@@ -53,12 +53,18 @@ Alle klussen staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Vlaaien voor na de mis: van de bakkerij naar de koffietafel in de kerk, zonder te botsen | Bakkerij Paulissen, Rijksweg 54, en de Sint-Petruskerk |
 | Bestelling in het plat: een bestelling in het Gulpens inpakken en bezorgen | De Eetwinkel van het Heuvelland (Meertens), Rijksweg 55 |
 | Het verdwenen armenfonds: speurtocht naar de sporen van deken Haffmans, met een gouden sportwagen | Sint-Petruskerk |
+| Muizen in de bakkerij: vang zes muizen voordat de keuring komt | Bakkerij Pijls, Rijksweg 57 |
+| Tuutjes trekken: condooms uit de automaat halen zonder dat het halve dorp het ziet | Condoomautomaat naast de DA, Rijksweg 53 |
+| Het grootste bommetje: drie sprongen, de jury geeft punten | Mosaqua, Landsraderweg 11 |
+| Gyros en Opa!: gyros snijden op het juiste moment, daarna borden kapotgooien | Grieks Restaurant Athene, Rijksweg 31 |
+| Afdingen op een keuken: een keuken van bijna 25.000 euro onder de 11.000 praten | Plan Keukens, Rijksweg 21 |
+| Het matras van Gulpen: langs de loketten van het gemeentehuis, van het kastje naar de muur | Gemeentehuis Gulpen-Wittem, Willem Vliegenstraat 12 |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
-Voortgang wordt in de browser bewaard. Een klus kun je altijd stoppen met de knop **Stoppen** op de opdrachtkaart of in het gesprekvenster (tik nogmaals om te bevestigen), of met Esc.
+Voortgang wordt in de browser bewaard. Een missie kun je altijd stoppen met de knop **Stoppen** op de opdrachtkaart of in het gesprekvenster (tik nogmaals om te bevestigen), of met Esc.
 
 ## Data
 
@@ -98,7 +104,10 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 - **Dialect**: de dorpsbewoners spreken af en toe Gulpens, met een Nederlandse vertaling eronder (aan en uit te zetten in de dialoog). Alle Gulpense woorden komen uit de [woordenlijst Gulpens op mijnwoordenboek.nl](https://www.mijnwoordenboek.nl/dialect/Gulpens), die door bezoekers is samengesteld en geen officiële bron is. De zinnetjes zijn met die woorden gemaakt en moeten door een echte Gulpenaar worden nagelopen.
 - **Echte personen**: bewust weggelaten. De mensen in de zaken zijn verzonnen rollen ("de monteur", "de waard"). De nachtburgemeester is verzonnen.
 - **Naam GTA**: "GTA" verwijst naar Grand Theft Auto, een merk van Rockstar Games. Voor een spel onder vrienden is dat een knipoog; bij breder delen of geld vragen is een andere naam verstandiger.
-- **Winkels en bedrijven**: de gevels aan de Rijksweg en in het centrum (onder andere HEMA, Top1Toys, Pearle, DA, Euronics, Decorette, de bakkerijen Voncken en Ortmans, Rousseau Chocolade, IJzerwaren Knubben, Gulpener Bierhuys, VVV, Il Gusto, IJssalon Mezzaluna en Slagerij Bormans) staan op adressen uit online bedrijvengidsen en officiële winkelpagina's. Die gidsen kunnen verouderd zijn: controleer ter plekke of de zaken er nog zitten. De adressen zelf komen uit de PDOK Locatieserver. Het tankstation (Rijksweg 70) en de plek van het busstation (busbaan bij de Rijksweg) komen uit TOP10NL; het tankstation heeft bewust geen merk. Borden, kleuren en etalages zijn verzonnen, zonder echte logo's.
+- **Winkels en bedrijven**: de gevels aan de Rijksweg en in het centrum (onder andere HEMA, Top1Toys, Pearle, DA, Euronics, Decorette, de bakkerijen Pijls en Ortmans, Rousseau Chocolade, IJzerwaren Knubben, Gulpener Bierhuys, VVV, Il Gusto, IJssalon Mezzaluna en Slagerij Bormans) staan op adressen uit online bedrijvengidsen en officiële winkelpagina's. Die gidsen kunnen verouderd zijn: controleer ter plekke of de zaken er nog zitten. De adressen zelf komen uit de PDOK Locatieserver. Het tankstation (Rijksweg 70) en de plek van het busstation (busbaan bij de Rijksweg) komen uit TOP10NL; het tankstation heeft bewust geen merk. Borden, kleuren en etalages zijn verzonnen, zonder echte logo's.
+- **Nieuwe plekken**: De Pannekoekenmolen (Molenweg 2A), Mosaqua (Landsraderweg 11), Grieks Restaurant Athene (Rijksweg 31) en het gemeentehuis (Willem Vliegenstraat 12) staan op adressen uit online gidsen en de gemeentesite; Plan Keukens op Rijksweg 21 en Bakkerij Pijls op Rijksweg 57 zijn opgegeven door de maker. Volgens L1/NOS sluit Mosaqua na 32 jaar; de badmeester verwijst daarnaar.
+- **Het matras van Gulpen**: volledig verzonnen verhaal. Alle loketmedewerkers, de portier, de stagiair, de zenuwachtige jongen, de bakkersgezel, de kok en de keukenverkoper zijn verzonnen rollen.
+- **Joods monument**: staat op de plek van het herdenkingsmonument aan de Beversbergweg volgens de BGT, ongeveer een kilometer ten westen van het gedetailleerde dorpsgebied. Het echte ontwerp is niet nagemaakt: het is een eenvoudige gedenksteen, zonder missie.
 - **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
 - **Mariabeeld**: de plek komt uit de BGT (een monument op 157 m, de top van de Gulperberg). Het beeld zelf is een gestileerde benadering, niet het echte ontwerp.
 - **Hubertusmarkt**: de weetjes (sinds 1544, Hubertusmis in de Sint-Petruskerk, paardenzegening bij het gemeentehuis, zo'n 150 kramen met onder andere gerookte paling) komen uit aankondigingen van de 482e editie in 2026. De Razende Reporter is een verzonnen figuur. De cafés zijn echte zaken rond de Markt; hun gevels en de stamgasten zijn verzonnen.

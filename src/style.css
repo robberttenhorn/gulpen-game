@@ -365,3 +365,34 @@ body.touch .mini-overlay.aim .mini-hint { padding-bottom: 140px; }
 .crosshair::before, .crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
 .crosshair::before { left: 50%; top: -10px; bottom: -10px; width: 2px; margin-left: -1px; }
 .crosshair::after { top: 50%; left: -10px; right: -10px; height: 2px; margin-top: -1px; }
+
+/* grote kaart: gekozen missie in de lijst even laten oplichten */
+.bm-item.flash { animation: bm-flash 1.2s ease-out; }
+@keyframes bm-flash { 0%, 30% { box-shadow: 0 0 0 3px var(--accent); transform: scale(1.02); } 100% { box-shadow: 0 0 0 0 transparent; transform: none; } }
+
+/* ---------- tuutjes trekken ---------- */
+.tt-machine { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 10px; background: radial-gradient(ellipse at 50% 40%, rgba(40,30,30,.55), rgba(0,0,0,.75)); }
+.tt-street { height: 92px; width: min(420px, 92%); display: flex; align-items: center; justify-content: center; }
+.tt-looker { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; opacity: .25; transition: opacity .2s, transform .2s; }
+.tt-looker .tt-face { font-size: 34px; filter: grayscale(1); }
+.tt-looker b { font-family: 'Baloo 2', sans-serif; font-size: 20px; }
+.tt-looker small { font-size: 13px; max-width: 360px; font-style: italic; }
+.tt-looker.komt { opacity: .8; }
+.tt-looker.kijkt { opacity: 1; transform: scale(1.12); }
+.tt-looker.kijkt .tt-face { filter: none; animation: tt-blink 0.4s steps(2) infinite; }
+.tt-looker.kijkt b { color: #ff8a80; }
+.tt-box { position: relative; width: 170px; height: 230px; border-radius: 10px; background: linear-gradient(#c62828, #8e1515); box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.2); }
+.tt-window { position: absolute; left: 18px; right: 18px; top: 18px; height: 80px; border-radius: 6px; background: #fff7f9; color: #b71c1c; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.tt-window small { font-family: Inter, sans-serif; font-weight: 600; font-size: 11px; color: #6d4c41; }
+.tt-knob { position: absolute; left: 50%; top: 122px; width: 58px; height: 58px; margin-left: -29px; border-radius: 50%; background: conic-gradient(#cfd8dc 0 25%, #90a4ae 0 50%, #cfd8dc 0 75%, #90a4ae 0); box-shadow: 0 3px 8px rgba(0,0,0,.4); transition: transform .12s; }
+.tt-slot { position: absolute; left: 50%; bottom: 14px; width: 70px; height: 14px; margin-left: -35px; border-radius: 4px; background: #2a0a0a; }
+.tt-meters { display: flex; gap: 22px; align-items: center; font-weight: 700; font-size: 14px; }
+.tt-meters .bar { display: inline-block; width: 140px; height: 12px; margin-left: 6px; border-radius: 6px; background: rgba(255,255,255,.25); vertical-align: middle; overflow: hidden; }
+.tt-meters .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd54f, #7cb342); }
+.tt-shame { font-size: 20px; }
+
+/* ---------- bommetje: jurykaartjes ---------- */
+.bm-judges { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); display: flex; gap: 12px; }
+.bm-judges span { min-width: 54px; padding: 6px 10px; border-radius: 8px; background: #fff; color: #1b2430; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,.4); animation: bm-pop 0.4s ease-out; }
+@keyframes bm-pop { from { transform: scale(.3) rotate(-10deg); opacity: 0; } }
+.mini-overlay .tt-task { pointer-events: none; }
