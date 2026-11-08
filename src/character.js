@@ -391,7 +391,7 @@ export function makeCharacter(opts = {}) {
     set('faL', -0.12); set('faR', -0.12);
     if (mode === 'bike') {
       phase += dt * (1.5 + speed * 0.55);
-      const p = phase;
+      const p = -phase; // de cyclus andersom: zo trap je vooruit in plaats van achteruit
       tgtPitch = 0.0;
       set('spine', 0.3); set('chest', 0.12); set('neck', -0.25); set('head', -0.12);
       set('uaL', -0.95, 0, -0.12); set('uaR', -0.95, 0, 0.12);

@@ -349,7 +349,7 @@ class Game {
     this.player.group.add(this.bike, this.board);
     this.scene.add(this.player.group);
     this.camYaw = 0.6;
-    this.camPitch = 0.17; // laag achter de speler: je kijkt vooruit en houdt overzicht
+    this.camPitch = 0.24; // iets boven en achter de speler: vooruit kijken met overzicht
     this.camDist = innerWidth < innerHeight ? 9 : 7;
     this.lastManualLook = -10;
   }
@@ -1354,7 +1354,7 @@ class Game {
       if (!ok(this.car.x) || !ok(this.car.z)) { this.car.x = p.x; this.car.z = p.z; }
     }
     if (!ok(this.camYaw)) { statsError('nan-camyaw'); this.camYaw = ok(p.heading) ? p.heading + Math.PI : 0; }
-    if (!ok(this.camPitch)) this.camPitch = 0.17;
+    if (!ok(this.camPitch)) this.camPitch = 0.24;
     const c = this.camera.position;
     if (!ok(c.x) || !ok(c.y) || !ok(c.z)) { statsError('nan-camera', this.missions?.active?.id || this.lastDone || ''); try { this.updateCamera(0, true); } catch { /* negeren */ } }
   }
