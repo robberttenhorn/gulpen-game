@@ -340,7 +340,7 @@ export const westHandlers = {
     if (!r || this.active?.id !== 'bbq') return;
     if (r.ok) {
       await ui.dialog(N, [
-        r.burnt ? `${r.served} burgers! En die ${r.burnt === 1 ? 'ene zwarte' : 'paar zwarte'} gaven we aan de buurman die altijd zijn auto voor jouw deur parkeert.` : `${r.served} burgers en niks verbrand. Jij bent de nieuwe barbecuemeester van de bloemenwijk!`,
+        r.burnt ? `${r.served} burgers! En die ${r.burnt === 1 ? 'ene zwarte' : 'paar zwarte'} geven we aan de Jehova's.` : `${r.served} burgers en niks verbrand. Jij bent de nieuwe barbecuemeester van de bloemenwijk!`,
         'O kijk, daar komt mijn vader aan. Met kolen. En een kratje bier. Ik denk dat hij nooit van plan was snel terug te komen.',
       ]);
       g.fx?.confetti(g.player.x, g.world.groundAt(g.player.x, g.player.z) + 2, g.player.z, 120);
