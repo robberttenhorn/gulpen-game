@@ -118,6 +118,7 @@ export function runTikTok(g, room, order) {
     g.input.consumeAction(); g.input.spacePressed = false; // geen oude tik meenemen
     g.ui.setActionLabel('Tik!');
     g.minigame = {
+      actionLabel: 'Tik!',
       stop: () => { stopped = true; resolve(null); },
       update: (dt) => {
         g.player.lockedFor = true;
@@ -143,6 +144,10 @@ export function runTikTok(g, room, order) {
     likes += views * (res === 'perfect' ? 0.12 : 0.05);
     comment(res, res === 'perfect' ? 3 : 2);
     for (let i = 0; i < (res === 'perfect' ? 6 : res === 'good' ? 3 : 1); i++) setTimeout(heart, i * 180);
+    // flits en een trilling bij een misser, zodat je direct ziet hoe het ging
+    const fx = el('div', 'fx-flash ' + (res === 'perfect' ? 'gold' : res === 'good' ? 'good' : 'bad'));
+    ov.append(fx); setTimeout(() => fx.remove(), 380);
+    if (res === 'miss' || res === 'fail') { const tk = ov.querySelector('.tt-task'); tk.classList.remove('fx-shake-strong'); void tk.offsetWidth; tk.classList.add('fx-shake-strong'); }
     const fl = el('div', 'tt-flash ' + res, labels[res]);
     ov.append(fl);
     setTimeout(() => fl.remove(), 1400);

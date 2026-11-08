@@ -980,6 +980,7 @@ class Game {
         resolve(caught);
       };
       this.minigame = {
+        actionLabel: 'Haal op',
         get phase() { return phase; },
         stop: finish,
         update: (dt) => {
@@ -1463,7 +1464,14 @@ class Game {
       this.ui.toast('Je bent er!', 1200);
     }
     this.syncTriggerMarkers(this.interior);
-    if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty || this.minigame) { if (!this.penalty && !this.minigame) this.ui.prompt(null); return; }
+    // tijdens een minispel: geen 'Praat'-knop, alleen de knop die bij het spel hoort (of geen)
+    if (this.minigame) {
+      this.ui.prompt(null);
+      const m = this.minigame;
+      this.ui.setActionLabel(m.actionLabel !== undefined ? m.actionLabel : m.debug && 'label' in m.debug ? m.debug.label : null);
+      return;
+    }
+    if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty) { if (!this.penalty) { this.ui.prompt(null); if (this.ui.dialogOpen) this.ui.setActionLabel(null); } return; }
 
     if (this.interior) {
       const room = this.interior;
@@ -1527,9 +1535,15 @@ class Game {
       this.povLook.lerp(this.pov.look, k);
       this.camera.up.set(0, 1, 0);
       this.camera.lookAt(this.povLook);
-      // een beetje handheld
+      // een beetje handheld, en een schok bij een klap of plons
       this.camera.rotateZ(Math.sin(this.time * 1.7) * 0.008);
       this.camera.rotateX(Math.sin(this.time * 2.3) * 0.006);
+      if (this.pov.shake > 0) {
+        const s = this.pov.shake;
+        this.camera.rotateX((Math.random() - 0.5) * 0.06 * s);
+        this.camera.rotateZ((Math.random() - 0.5) * 0.06 * s);
+        this.pov.shake = Math.max(0, s - dt * 1.5);
+      }
       return;
     }
     this.povLook = null;

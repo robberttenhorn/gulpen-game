@@ -57,7 +57,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Tuutjes trekken: condooms uit de automaat halen zonder dat het halve dorp het ziet | Condoomautomaat naast de DA, Rijksweg 53 |
 | Het grootste bommetje: drie sprongen, de jury geeft punten | Mosaqua, Landsraderweg 11 |
 | Gyros en Opa!: gyros snijden op het juiste moment, daarna borden kapotgooien | Grieks Restaurant Athene, Rijksweg 31 |
-| Afdingen op een keuken: een keuken van bijna 25.000 euro onder de 11.000 praten | Plan Keukens, Rijksweg 21 |
+| De deurtjes van de Gulperberg Deluxe: tijdens een demo openspringende keukendeurtjes dichtklappen voordat ze eraf vallen | Plan Keukens, Rijksweg 21 |
 | Het matras van Gulpen: langs de loketten van het gemeentehuis, van het kastje naar de muur | Gemeentehuis Gulpen-Wittem, Willem Vliegenstraat 12 |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
