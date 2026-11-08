@@ -110,6 +110,7 @@ export function makeCharacter(opts = {}) {
     shirt = 0xe8a33d, pants = 0x2e3f5c, skin = 0xf0c8a0, hair = 0x4a3020, shoes = 0x222222,
     hat = null, apron = null, chain = false, sash = null, scale = 1, coat = null,
     female = false, sleeves = 'short', beard = false, glasses = false, eyes = 0x4a3222,
+    jacket = null, // kort jasje tot op de heupen
   } = opts;
   const hairStyle = opts.hairStyle || (female ? 'long' : 'short');
   const b = new Builder();
@@ -176,7 +177,7 @@ export function makeCharacter(opts = {}) {
   }
 
   // --- armen ---
-  const longSleeve = sleeves === 'long' || coat;
+  const longSleeve = sleeves === 'long' || coat || jacket;
   for (const side of [-1, 1]) {
     const ua = side < 0 ? B.uaL : B.uaR, fa = side < 0 ? B.faL : B.faR, hd = side < 0 ? B.hL : B.hR;
     const x = side * 0.2;
@@ -186,7 +187,7 @@ export function makeCharacter(opts = {}) {
       [1.2, 0.045, [[ua, 0.8], [fa, 0.2]]], [1.15, 0.042, [[ua, 0.5], [fa, 0.5]]], [1.1, 0.042, [[ua, 0.15], [fa, 0.85]]],
       [1.0, 0.038, [[fa, 1]]], [0.93, 0.031, [[fa, 0.7], [hd, 0.3]]], [0.885, 0.029, [[fa, 0.3], [hd, 0.7]]], [0.86, 0.026, [[hd, 1]]],
     ];
-    const cSleeve = coat ? col(coat) : cShirt;
+    const cSleeve = coat ? col(coat) : jacket ? col(jacket) : cShirt;
     b.tube(arm.map(([y, r, w]) => ({ y, x, z: 0, rx: r * (y > 1.43 ? 1.05 : 0.92), rz: r, w, c: y >= sleeveEnd - 0.001 ? cSleeve : cSkin })), 10);
     // hand: handpalm naar het been
     const hand = new THREE.BoxGeometry(0.032, 0.085, 0.07, 1, 2, 1);
@@ -257,15 +258,15 @@ export function makeCharacter(opts = {}) {
     const l = Math.max(0, -s) * t * 0.6, r = Math.max(0, s) * t * 0.6;
     return [[B.hips, 1 - l - r], [B.thL, l], [B.thR, r]];
   };
-  if (coat) {
-    const cc = col(coat);
+  if (coat || jacket) {
+    const cc = col(coat || jacket);
     const rings = [];
-    for (const y of [1.5, 1.45, 1.38, 1.3, 1.2, 1.1, 1.0, 0.9, 0.78, 0.66, 0.56]) {
+    for (const y of coat ? [1.5, 1.45, 1.38, 1.3, 1.2, 1.1, 1.0, 0.9, 0.78, 0.66, 0.56] : [1.5, 1.45, 1.38, 1.3, 1.2, 1.1, 1.0, 0.92]) {
       const r = y > 0.95 ? torsoR(y) : { rx: 0.185 + (0.95 - y) * 0.08, rzf: 0.13 + (0.95 - y) * 0.06, rzb: 0.14 + (0.95 - y) * 0.06 };
       rings.push({ y, x: 0, z: 0, rx: r.rx + 0.014, rzf: r.rzf + 0.014, rzb: r.rzb + 0.014, w: y > 0.95 ? torsoW(y) : skirtW(y), c: cc });
     }
     b.tube(rings, 18);
-    b.rigid(T(new THREE.CylinderGeometry(0.075, 0.1, 0.06, 14, 1, true), 0, 1.53, 0, 0, 0, 0), B.chest, coat);
+    b.rigid(T(new THREE.CylinderGeometry(0.075, 0.1, 0.06, 14, 1, true), 0, 1.53, 0, 0, 0, 0), B.chest, coat || jacket);
   }
   if (apron) {
     const ca = col(apron);
