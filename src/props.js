@@ -1,6 +1,7 @@
 // Kleine voorwerpen en effecten: bier, friet, pakketjes, confetti, spetters.
 // De voorwerpen zijn iets groter dan in het echt, zodat je ze vanaf de camera goed ziet.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
 const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); return o; };
@@ -338,6 +339,55 @@ export class Effects {
     this.puffs.push({ s, t: 0, size, vx: (Math.random() - 0.5) * 0.6, vz: (Math.random() - 0.5) * 0.6, rot: (Math.random() - 0.5) * 2 });
   }
 
+  // Snoepjes (klumpkes) die in een boog door de lucht vliegen, stuiteren en even blijven liggen.
+  candy(x, y, z, n = 40, groundY = 0, aim = null) {
+    if (!this.candyGeo) {
+      const parts = [new THREE.SphereGeometry(0.07, 10, 8)];
+      for (const s of [-1, 1]) { const c = new THREE.ConeGeometry(0.05, 0.08, 8); c.rotateZ(s * Math.PI / 2); c.translate(s * 0.1, 0, 0); parts.push(c); } // gedraaide wikkel
+      this.candyGeo = mergeGeometries(parts.map((g) => g.toNonIndexed()));
+    }
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.1, transparent: true });
+    const inst = new THREE.InstancedMesh(this.candyGeo, mat, n);
+    inst.frustumCulled = false;
+    const colors = [0xff1744, 0xffea00, 0x00e676, 0x2979ff, 0xd500f9, 0xff9100, 0xffffff];
+    const c = new THREE.Color();
+    const parts = [];
+    for (let i = 0; i < n; i++) {
+      // richting: rondom, of een beetje naar een doel toe (bijv. de speler)
+      let a = Math.random() * Math.PI * 2;
+      if (aim && Math.random() < 0.6) a = Math.atan2(aim[0] - x, aim[1] - z) + (Math.random() - 0.5) * 0.9;
+      const sp = 2.5 + Math.random() * 4.5;
+      parts.push({ p: new THREE.Vector3(x, y, z), v: new THREE.Vector3(Math.sin(a) * sp, 3 + Math.random() * 3.5, Math.cos(a) * sp), r: new THREE.Euler(Math.random() * 6, Math.random() * 6, 0), spin: (Math.random() - 0.5) * 16, rest: false });
+      inst.setColorAt(i, c.set(colors[i % colors.length]));
+    }
+    this.scene.add(inst);
+    this.candies = this.candies || [];
+    this.candies.push({ inst, parts, t: 0, groundY });
+  }
+  updateCandy(dt) {
+    if (!this.candies?.length) return;
+    const q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), m = new THREE.Matrix4();
+    for (const b of this.candies) {
+      b.t += dt;
+      b.parts.forEach((p, i) => {
+        if (!p.rest) {
+          p.v.y -= 9.8 * dt;
+          p.p.addScaledVector(p.v, dt);
+          p.r.x += p.spin * dt; p.r.y += p.spin * dt * 0.6;
+          if (p.p.y < b.groundY + 0.06) {
+            p.p.y = b.groundY + 0.06;
+            p.v.y *= -0.35; p.v.x *= 0.6; p.v.z *= 0.6; p.spin *= 0.5;
+            if (Math.abs(p.v.y) < 0.6) { p.rest = true; p.r.x = Math.PI / 2 * Math.round(p.r.x / (Math.PI / 2)); }
+          }
+        }
+        q.setFromEuler(p.r); m.compose(p.p, q, s); b.inst.setMatrixAt(i, m);
+      });
+      b.inst.instanceMatrix.needsUpdate = true;
+      b.inst.material.opacity = Math.max(0, 1 - Math.max(0, b.t - 9) / 1.5); // na een tijdje opgeraapt door de kinderen
+    }
+    this.candies = this.candies.filter((b) => { if (b.t > 10.5) { this.scene.remove(b.inst); b.inst.material.dispose(); return false; } return true; });
+  }
+
   // Confetti is er alleen bij het slotfeest op de Markt (finale.js geeft dan finale = true).
   confetti(x, y, z, n = 140, finale = false) {
     if (!finale) return;
@@ -368,6 +418,7 @@ export class Effects {
 
   update(dt) {
     this.updateFireworks(dt);
+    this.updateCandy(dt);
     const q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), mtx = new THREE.Matrix4();
     for (const b of this.bursts) {
       b.t += dt;

@@ -44,7 +44,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
 | Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
-| Op tijd voor de optocht: haal het gevolg van Prins Carnaval op, want hij moet klumpkes sjmiete (snoepjes gooien) | Markt |
+| Op tijd voor de optocht: haal het gevolg van Prins Carnaval op, want hij moet klumpkes sjmiete (snoepjes gooien); aan het eind gooit hij een paar handenvol snoep | Markt |
 | Nacht van Gulpen (alleen 's avonds): wandelen langs drie stempelposten | Bij de Markt |
 | Plat kalle: opa overhoort je in het Gulpens | Benkske bij de Markt |
 | Kroegentocht op de Hubertusmarkt: vier cafés, vier verhalen en een live interview met De Razende Reporter | Markt, De Kroon, De Zwarte Ruiter, Neubourg en De Poort |

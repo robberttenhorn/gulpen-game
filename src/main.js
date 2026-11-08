@@ -794,8 +794,10 @@ class Game {
       if (d < minD || d > maxD) continue;
       const s = w.nearestStreet(cx, cz);
       if (!s || s.dist > 30) continue;
-      const spot = w.spotNear(cx, cz);
-      if (w.blocked(...spot)) continue;
+      let spot = w.spotNear(cx, cz);
+      // in een rij panden kan het wegduwen uit het ene pand je in het volgende zetten: dan de straat zelf
+      if (w.insideBuilding(...spot)) spot = w.resolve(s.x, s.z, 0.6);
+      if (w.blocked(...spot) || w.insideBuilding(...spot)) continue;
       return spot;
     }
     return w.spotNear(100, 100);
