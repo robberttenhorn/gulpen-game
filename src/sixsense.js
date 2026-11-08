@@ -81,6 +81,9 @@ export class SixSense {
     this.g = game;
     this.state = load(); // { found: [0, 2], done: true }
     this.state.found ||= [];
+    // Oude versie: na de bus bleven de drie gevonden flyers bewaard, waardoor de bus bij elke start meteen
+    // weer kwam. Wie de bus al gehad heeft, begint gewoon opnieuw met flyers zoeken.
+    if (this.state.done && this.state.found.length >= 3) { this.state.found = []; save(this.state); }
     this.flyers = [];
     this.bus = null;
   }
@@ -107,7 +110,8 @@ export class SixSense {
     this.spawnFlyers();
     g.updaters.add((dt) => this.update(dt));
     // alle drie al gevonden maar de bus nog niet gehad (bijv. na herladen): bus komt alsnog
-    if (this.state.found.length >= 3) setTimeout(() => this.callBus(), 4000);
+    // drie gevonden maar nog niet ingestapt (game tussendoor gesloten): de bus komt pas als je al even speelt
+    this.pendingBus = this.state.found.length >= 3 ? 10 : 0;
   }
 
   // flyers neerleggen die nog niet gevonden zijn
@@ -137,6 +141,10 @@ export class SixSense {
       const d = Math.hypot(p.x - f.x, p.z - f.z);
       if (!f.armed) { if (d > 8) f.armed = true; continue; }
       if (!g.ui.dialogOpen && !g.interior && d < (g.mode === 'car' ? 3.5 : 1.8)) this.pickUp(f);
+    }
+    if (this.pendingBus > 0 && g.started && !g.interior && !g.minigame) {
+      this.pendingBus -= dt;
+      if (this.pendingBus <= 0) this.callBus();
     }
     this.updateBus(dt);
   }

@@ -114,6 +114,7 @@ class Game {
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
     this.sfx.start();
+    this.started = true; // vanaf nu wordt er echt gespeeld (voor dingen die niet op het startscherm mogen gebeuren)
     statsStart(); // anonieme telling (staat uit tot er een GoatCounter-code in stats.js staat)
     // stopknop: eerst bevestigen, dan stoppen
     // stopknoppen (op de opdrachtkaart en in het gesprekvenster): eerst bevestigen, dan stoppen
