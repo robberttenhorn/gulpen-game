@@ -62,7 +62,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | De strakste heg van de Heggerank: de heggenschaar op de lijn houden voor de jury van de Mooiste Voortuin | Heggerank (bloemenwijk) |
 | Kabouters ontvoerd: vijf tuinkabouters zoeken met een warm-koudmeter | Akelei en de straten eromheen (bloemenwijk) |
 | Burendag-BBQ: burgers op tijd omdraaien en opdienen, niet te veel verbranden | Aardaker 43 (bloemenwijk) |
-| Grond sjouwen: drie kruiwagens grond van de straat naar de tuin van de krullebol, zonder te rennen of te scherp de bocht om te gaan | Groeneweg 65 |
+| Grond sjouwen: de voortuin van de krullebol ophogen met drie kruiwagens grond van de straat, zonder te rennen of te scherp de bocht om te gaan | Groeneweg 65 |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 

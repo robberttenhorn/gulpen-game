@@ -327,6 +327,8 @@ export function startBarrow(g, { heap, drop, trips = 3, need = 2.1, limit = 110,
       status();
       return;
     }
+    // het gesprek zet de speler vast; zolang je niet schept of kiept moet je gewoon kunnen lopen
+    p.lockedFor = false;
     const near = (pt, r) => Math.hypot(p.x - pt[0], p.z - pt[1]) < r;
     if (state === 'naarBerg' && near(heap, 2.6)) { state = 'scheppen'; busyT = 1.1; p.speed = 0; g.ui.toast('Scheppen...', 900); }
     else if (state === 'naarTuin' && near(drop, 2.4)) { state = 'kiepen'; busyT = 0.9; p.speed = 0; g.sfx?.play('splat'); }
