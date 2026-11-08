@@ -41,7 +41,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
 | Gulperberg op!: fietstijdrit naar het Mariabeeld | Voet van de Gulperberg |
 | De ontsnapte geit: ren de zigzaggende geit achterna en tik hem drie keer aan | Boerenland aan de rand van het dorp |
-| Inparkeren bij de PLUS: twee keer netjes in het vak tussen andere auto's, zonder te botsen | Parkeerplaats PLUS |
+| Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
 | Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
 | Polonaise door Gulpe: verzamel feestgangers voor de Vastelaovesfinale | Markt |
@@ -57,12 +57,16 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Tuutjes trekken: condooms uit de automaat halen zonder dat het halve dorp het ziet | Condoomautomaat naast de DA, Rijksweg 53 |
 | Het grootste bommetje: drie sprongen, de jury geeft punten | Mosaqua, Landsraderweg 11 |
 | Gyros en Opa!: gyros snijden op het juiste moment, daarna borden kapotgooien | Grieks Restaurant Athene, Rijksweg 31 |
-| Afdingen op een keuken: een keuken van bijna 25.000 euro onder de 11.000 praten | Plan Keukens, Rijksweg 21 |
+| De deurtjes van de Gulperberg Deluxe: tijdens een demo openspringende keukendeurtjes dichtklappen voordat ze eraf vallen | Plan Keukens, Rijksweg 21 |
 | Het matras van Gulpen: langs de loketten van het gemeentehuis, van het kastje naar de muur | Gemeentehuis Gulpen-Wittem, Willem Vliegenstraat 12 |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
+
+**Besturing**: fiets, skateboard en auto sturen zoals een voertuig: vooruit is gas (of trappen), achteruit is remmen, links en rechts is sturen. Met toetsen lopen gas en sturen geleidelijk op; de joystick heeft een dode zone in het midden en stuurt bij een kleine uitslag maar een klein beetje.
+
+**Auto kapen**: ga voor of naast een rijdende auto staan, dan stopt hij en toetert hij. Bij het portier kun je de chauffeur eruit trekken (knop **Kapen** of E) en zelf verder rijden. De chauffeur valt op straat en rent scheldend weg.
 
 Voortgang wordt in de browser bewaard. Een missie kun je altijd stoppen met de knop **Stoppen** op de opdrachtkaart of in het gesprekvenster (tik nogmaals om te bevestigen), of met Esc.
 

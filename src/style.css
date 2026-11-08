@@ -396,3 +396,95 @@ body.touch .mini-overlay.aim .mini-hint { padding-bottom: 140px; }
 .bm-judges span { min-width: 54px; padding: 6px 10px; border-radius: 8px; background: #fff; color: #1b2430; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,.4); animation: bm-pop 0.4s ease-out; }
 @keyframes bm-pop { from { transform: scale(.3) rotate(-10deg); opacity: 0; } }
 .mini-overlay .tt-task { pointer-events: none; }
+
+/* introductie bij het starten: gedimd scherm en een duidelijke 'verder'-knop */
+body.intro #hud::before { content: ''; position: fixed; inset: 0; background: rgba(10, 16, 24, 0.55); pointer-events: none; z-index: 0; }
+body.intro #dialog { z-index: 5; box-shadow: 0 0 0 4px var(--accent), 0 18px 50px rgba(0,0,0,.5); }
+body.intro #dialog-next {
+  display: inline-block; float: right; margin-top: 10px; padding: 8px 16px; border-radius: 99px;
+  background: var(--accent); color: var(--ink); font-weight: 800; font-size: 15px;
+  box-shadow: 0 4px 0 var(--accent-dark); animation: intro-pulse 1.2s ease-in-out infinite;
+}
+@keyframes intro-pulse { 50% { transform: scale(1.06); } }
+body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.intro #joystick { opacity: .35; }
+
+/* ---------- gedeelde minigame-effecten ---------- */
+.fx-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 6; white-space: nowrap;
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.35), 0 0 12px rgba(0,0,0,.4);
+  animation: fx-pop 1.1s ease-out forwards; }
+.fx-pop.good { color: #b9f6ca; }
+.fx-pop.gold { color: #ffd54f; }
+.fx-pop.bad { color: #ff8a80; }
+.fx-pop.big { font-size: 40px; }
+.fx-pop.small { font-size: 16px; opacity: .85; }
+@keyframes fx-pop { 0% { transform: translate(-50%, -30%) scale(.5); opacity: 0; } 15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 30% { transform: translate(-50%, -55%) scale(1); } 100% { transform: translate(-50%, -140%) scale(1); opacity: 0; } }
+.fx-flash { position: absolute; inset: 0; pointer-events: none; z-index: 5; animation: fx-flash .38s ease-out forwards; }
+.fx-flash.good { background: radial-gradient(circle, rgba(120,255,160,.35), rgba(120,255,160,0) 70%); }
+.fx-flash.gold { background: radial-gradient(circle, rgba(255,215,80,.45), rgba(255,215,80,0) 70%); }
+.fx-flash.bad { background: radial-gradient(circle, rgba(255,60,60,0) 40%, rgba(255,60,60,.45)); }
+@keyframes fx-flash { from { opacity: 1; } to { opacity: 0; } }
+.fx-shake { animation: fx-shake .25s ease-in-out; }
+.fx-shake-strong { animation: fx-shake-strong .45s ease-in-out; }
+@keyframes fx-shake { 25% { transform: translateX(-4px) rotate(-1deg); } 75% { transform: translateX(4px) rotate(1deg); } }
+@keyframes fx-shake-strong { 15% { transform: translateX(-10px) rotate(-3deg); } 35% { transform: translateX(9px) rotate(2deg); } 55% { transform: translateX(-7px) rotate(-2deg); } 75% { transform: translateX(5px); } }
+.fx-bump { animation: fx-bump .25s ease-out; }
+@keyframes fx-bump { 40% { transform: scale(1.18); } }
+.fx-combo { position: absolute; right: 16px; top: 56px; z-index: 6; opacity: 0; transition: opacity .2s; pointer-events: none;
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 24px; color: #ffd54f; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.fx-drops { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+.fx-drops i { position: absolute; width: calc(26px * var(--s)); height: calc(34px * var(--s)); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.7), rgba(180,220,255,.25) 45%, rgba(120,180,230,.15)); box-shadow: inset 0 -2px 4px rgba(255,255,255,.4);
+  animation: fx-drip 2s ease-in forwards; }
+@keyframes fx-drip { 0% { transform: scale(.3); opacity: 0; } 10% { transform: scale(1); opacity: 1; } 100% { transform: translateY(60px) scale(1, 1.2); opacity: 0; } }
+.tt-bar.hot { box-shadow: 0 0 14px 3px rgba(255, 213, 79, .8); }
+.crosshair.hit::before, .crosshair.hit::after { background: #ff5252; }
+.crosshair.hit { border-color: #ff5252; animation: fx-bump .3s ease-out; }
+
+/* tuutjes: persoon loopt van opzij binnen en blijft staren */
+.tt-street { position: relative; overflow: hidden; }
+.tt-looker { position: absolute; left: 50%; top: 0; display: flex; align-items: center; gap: 10px; opacity: 1 !important; transform: translateX(-240%); transition: transform .8s ease-out; }
+.tt-looker.komt { transform: translateX(-120%); }
+.tt-looker.kijkt { transform: translateX(-50%) scale(1.15) !important; }
+.tt-person { display: flex; flex-direction: column; align-items: center; animation: tt-walk .35s ease-in-out infinite; }
+.tt-looker.kijkt .tt-person { animation: none; }
+.tt-head { font-size: 38px; line-height: 1; }
+.tt-body { width: 26px; height: 30px; border-radius: 10px 10px 4px 4px; background: #546e7a; margin-top: -4px; }
+@keyframes tt-walk { 50% { transform: translateY(-4px) rotate(3deg); } }
+.tt-bubble { background: rgba(255,255,255,.95); color: #1b2430; text-shadow: none; border-radius: 12px; padding: 6px 10px; max-width: 260px; display: none; flex-direction: column; text-align: left; }
+.tt-looker.komt .tt-bubble, .tt-looker.kijkt .tt-bubble { display: flex; }
+.tt-looker.kijkt .tt-bubble b { color: #c62828; }
+.tt-warn { position: absolute; right: 8px; top: 8px; width: 34px; height: 34px; border-radius: 50%; background: #ffb300; color: #1b2430; font-weight: 900; font-size: 22px; display: grid; place-items: center; opacity: 0; }
+.tt-warn.on { opacity: 1; animation: tt-blink .3s steps(2) infinite; }
+.tt-knob i { position: absolute; left: 50%; top: 4px; width: 6px; height: 18px; margin-left: -3px; border-radius: 3px; background: #455a64; }
+.tt-pack { position: absolute; left: 50%; bottom: 10px; font-size: 30px; transform: translate(-50%, -20px) scale(0); opacity: 0; }
+.tt-pack.drop { animation: tt-drop .8s cubic-bezier(.3,1.6,.5,1) forwards; }
+@keyframes tt-drop { 0% { transform: translate(-50%, -40px) scale(.3); opacity: 1; } 60% { transform: translate(-50%, 30px) scale(1.3); } 100% { transform: translate(-50%, 24px) scale(1.1); opacity: 1; } }
+
+/* stempelen */
+.st-desk { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 60%, #6d4c41, #3e2723); cursor: pointer; }
+.st-paper { position: relative; width: min(420px, 82%); height: 260px; background: #fffdf5; color: #1b2430; text-shadow: none; border-radius: 4px; padding: 18px 22px; box-shadow: 0 10px 30px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 4px; transform: rotate(-1.5deg); }
+.st-paper b { font-family: 'Baloo 2', sans-serif; font-size: 22px; }
+.st-paper small { color: #6d6d6d; font-size: 12px; }
+.st-lines i { display: block; height: 2px; background: #e0dccf; margin: 14px 0; }
+.st-box { position: absolute; left: 44%; width: 14%; bottom: 26px; height: 64px; border: 2px dashed #9e9e9e; border-radius: 6px; display: grid; place-items: center; font-size: 11px; color: #9e9e9e; transition: border-color .15s, background .15s; }
+.st-box.hot { border-color: #43a047; background: rgba(67,160,71,.12); color: #2e7d32; }
+.st-mark { position: absolute; bottom: 34px; padding: 6px 10px; border: 4px solid; border-radius: 6px; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: 1px; opacity: 0; }
+.st-mark.show { animation: st-ink .25s ease-out forwards; }
+.st-mark.ok { color: #c62828; border-color: #c62828; }
+.st-mark.bad { color: #6d4c41; border-color: #6d4c41; }
+@keyframes st-ink { from { opacity: 0; filter: blur(3px); } to { opacity: .85; filter: none; } }
+.st-stamp { position: absolute; top: 14%; left: calc(50% - min(210px, 41%)); width: min(420px, 82%); height: 0; pointer-events: none; }
+.st-stamp > * { position: absolute; left: 0; transform: translateX(-50%); }
+.st-handle { top: -10px; width: 34px; height: 60px; border-radius: 16px 16px 6px 6px; background: linear-gradient(90deg, #5d4037, #8d6e63, #5d4037); margin-left: 0; }
+.st-foot { top: 46px; width: 74px; height: 22px; border-radius: 4px; background: #263238; margin-left: 0; box-shadow: 0 6px 12px rgba(0,0,0,.4); }
+/* tuutjes: ballonnetje naast de persoon, niet erachter */
+.tt-street { height: 120px; width: min(520px, 96%); }
+.tt-looker { flex-direction: row !important; align-items: center; top: 10px; white-space: normal; }
+.tt-bubble { min-width: 170px; }
+@media (max-height: 560px) {
+  .tt-machine { gap: 6px; padding: 4px; }
+  .tt-street { height: 96px; }
+  .tt-box { width: 140px; height: 175px; }
+  .tt-window { height: 62px; font-size: 21px; top: 12px; left: 14px; right: 14px; }
+  .tt-knob { top: 88px; width: 50px; height: 50px; margin-left: -25px; }
+}

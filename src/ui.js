@@ -122,8 +122,9 @@ export class UI {
     document.body.classList.add('dialog-open');
     $('dialog').hidden = false;
     this.prompt(null);
-    $('dialog-next').textContent = this.input.isTouch ? 'Tik om verder te gaan' : 'Druk op E of tik om verder te gaan';
+    const nextText = this.input.isTouch ? 'Tik om verder te gaan' : 'Druk op E of tik om verder te gaan';
     for (let i = 0; i < lines.length; i++) {
+      $('dialog-next').textContent = lines.length > 1 ? `${nextText}  ·  ${i + 1}/${lines.length}  ›` : `${nextText}  ›`;
       const line = typeof lines[i] === 'string' ? { name, text: lines[i] } : { name, ...lines[i] };
       $('dialog-name').textContent = line.name;
       // Gulpense zin: vertaling eronder
@@ -262,18 +263,36 @@ export class Minimap {
       ctx.globalAlpha = 1;
     }
 
-    // pijl naar doel als dat buiten beeld is
+    // doel: binnen bereik een pulserende ring, buiten bereik een grote pulserende pijl aan de rand met de afstand
     if (target) {
       const dx = target.x - px, dz = target.z - pz;
       const ang = Math.atan2(dz, dx) + camYaw;
-      const dist = Math.hypot(dx, dz) * this.scale * zoom;
-      if (dist > W / 2 - 10) {
+      const meters = Math.hypot(dx, dz);
+      const dist = meters * this.scale * zoom;
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 180);
+      if (dist > W / 2 - 16) {
         ctx.save();
-        ctx.translate(W / 2 + Math.cos(ang) * (W / 2 - 14), H / 2 + Math.sin(ang) * (H / 2 - 14));
+        ctx.translate(W / 2 + Math.cos(ang) * (W / 2 - 22), H / 2 + Math.sin(ang) * (H / 2 - 22));
         ctx.rotate(ang);
-        ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-6, -6); ctx.lineTo(-6, 6); ctx.closePath();
-        ctx.fillStyle = '#e8a33d'; ctx.fill(); ctx.strokeStyle = '#1b2430'; ctx.lineWidth = 1.5; ctx.stroke();
+        const s = 1.6 + pulse * 0.35;
+        ctx.scale(s, s);
+        ctx.shadowColor = 'rgba(232,163,61,0.9)'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-7, -9); ctx.lineTo(-3, 0); ctx.lineTo(-7, 9); ctx.closePath();
+        ctx.fillStyle = '#ffb300'; ctx.fill();
+        ctx.shadowBlur = 0; ctx.strokeStyle = '#1b2430'; ctx.lineWidth = 2; ctx.stroke();
         ctx.restore();
+        // afstand bij de pijl
+        const lx = W / 2 + Math.cos(ang) * (W / 2 - 50), ly = H / 2 + Math.sin(ang) * (H / 2 - 50);
+        const txt = meters >= 1000 ? (meters / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(meters / 10) * 10 + ' m';
+        ctx.font = '800 15px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(27,36,48,0.9)'; ctx.strokeText(txt, lx, ly);
+        ctx.fillStyle = '#fff'; ctx.fillText(txt, lx, ly);
+      } else {
+        const c = Math.cos(camYaw), s = Math.sin(camYaw);
+        const ex = W / 2 + (dx * c - dz * s) * this.scale * zoom, ey = H / 2 + (dx * s + dz * c) * this.scale * zoom;
+        ctx.beginPath(); ctx.arc(ex, ey, 9 + pulse * 7, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,179,0,${0.9 - pulse * 0.5})`; ctx.lineWidth = 4; ctx.stroke();
+        drawPin(ctx, ex, ey, { color: '#ffb300', glyph: '★' }, 8);
       }
     }
 

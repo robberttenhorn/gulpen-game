@@ -139,11 +139,15 @@ class Game {
     this.clock.getDelta();
     this.renderer.setAnimationLoop(() => this.tick());
 
+    // introductie: scherm gedimd en een duidelijke knop, zodat je weet dat je eerst moet doorklikken
+    document.body.classList.add('intro');
     await this.ui.dialog('Gulpen, zaterdag', [
       { text: 'Welkom in Gullepe!', nl: 'Welkom in Gulpen!' },
-      'Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto.',
+      'Het hele dorp ligt voor je open: loop, fiets, skate of pak een auto. Of trek iemand uit zijn auto, als je durft.',
       'Overal zijn missies te doen. Tik op de minikaart rechtsboven om ze allemaal te zien, en kies zelf waar je begint.',
     ]);
+    document.body.classList.remove('intro');
+    this.ui.toast('Aan de slag!', 1400);
   }
 
   // ------------------------------------------------------------ lucht, licht en nabewerking
@@ -390,6 +394,61 @@ class Game {
     this.camYaw = car.heading + Math.PI;
     if (car.isVolvo && !this.volvoSeen) { this.volvoSeen = true; this.ui.toast('Grijze Volvo XC40', 2000); }
     if (car.isTractor) this.ui.toast('Tractor! Niet zo snel, wel overal doorheen.', 2200);
+  }
+
+  // Auto kapen: chauffeur eruit trekken, die valt op straat en rent scheldend weg.
+  async hijackCar(c) {
+    if (this.keg) { this.ui.toast('Met een vat in je handen? Eerst afleveren!', 2000); return; }
+    if (this.missions?.active?.noVehicles) { this.ui.toast('Niet nu, je moet lopen!', 2000); return; }
+    const p = this.player;
+    const [dx, dz] = this.cars.driverDoor(c);
+    c.speed = 0; c.cruise0 = c.cruise; c.cruise = 0;
+    p.lockedFor = true;
+    p.x = dx; p.z = dz;
+    p.heading = Math.atan2(c.x - dx, c.z - dz);
+    p.pose = 'drink'; // arm vooruit: aan de deur trekken
+    this.sfx.play('door');
+    await wait(450);
+    // chauffeur verschijnt naast de auto en valt om
+    const looks = [[0x8d6e63, 0x37474f, 0x9e9e9e], [0x1565c0, 0x263238, 0x3e2723], [0xad1457, 0x212121, 0xd7b56d, true]];
+    const [shirt, pants, hair, female] = looks[Math.floor(Math.random() * looks.length)];
+    const drv = makeCharacter({ shirt, pants, hair, female: !!female, glasses: Math.random() < 0.4 });
+    const ox = dx + Math.cos(c.heading) * 0.9, oz = dz - Math.sin(c.heading) * 0.9;
+    drv.position.set(ox, this.world.groundAt(ox, oz), oz);
+    drv.rotation.y = c.heading + Math.PI / 2;
+    this.scene.add(drv);
+    this.sfx.play('crash');
+    const shouts = [['Hé! Mijn auto!', null], ['Pliesie!', 'politie'], ['Onnut!', 'viezerik'], ['Dat is een lease-auto!', null], ['Mijn boodschappen liggen achterin!', null]];
+    const [sh, nl] = shouts[Math.floor(Math.random() * shouts.length)];
+    if (nl) this.ui.toastDialect(sh, nl, 1800); else this.ui.toast(sh, 1600);
+    this.fleeing = this.fleeing || [];
+    this.fleeing.push({ m: drv, x: ox, z: oz, h: drv.rotation.y, t: 0 });
+    p.pose = null;
+    p.lockedFor = false;
+    this.cars.hijack(c);
+    this.enterCar(c);
+  }
+
+  // weggeduwde chauffeurs: eerst op de grond, dan wegrennen en verdwijnen
+  updateFleeing(dt) {
+    if (!this.fleeing?.length) return;
+    for (const f of this.fleeing) {
+      f.t += dt;
+      if (f.t < 0.9) {
+        f.m.rotation.x = -Math.min(1.3, f.t * 4); // ligt op de grond
+        f.m.userData.animate(dt, 0, 'idle');
+      } else {
+        f.m.rotation.x = Math.max(0, f.m.rotation.x - dt * 5);
+        const [nx, nz] = this.world.resolve(f.x + Math.sin(f.h) * 5.5 * dt, f.z + Math.cos(f.h) * 5.5 * dt, 0.35);
+        if (Math.hypot(nx - f.x, nz - f.z) < 5.5 * dt * 0.3) f.h += 0.8; // tegen een muur: draaien
+        f.x = nx; f.z = nz;
+        f.m.position.set(f.x, this.world.groundAt(f.x, f.z), f.z);
+        f.m.rotation.y = f.h;
+        f.m.userData.animate(dt, 5.5, 'walk');
+      }
+      if (f.t > 7) this.scene.remove(f.m);
+    }
+    this.fleeing = this.fleeing.filter((f) => f.t <= 7);
   }
 
   exitCar() {
@@ -921,6 +980,7 @@ class Game {
         resolve(caught);
       };
       this.minigame = {
+        actionLabel: 'Haal op',
         get phase() { return phase; },
         stop: finish,
         update: (dt) => {
@@ -1207,7 +1267,7 @@ class Game {
   tick() {
     const dt = Math.min(0.05, this.clock.getDelta());
     this.time += dt;
-    this.input.update();
+    this.input.update(dt);
     if (this.bigmap.open) { this.render(); return; }
     if (this.mode === 'car') this.updateCar(dt);
     else this.updatePlayer(dt);
@@ -1215,6 +1275,7 @@ class Game {
     // een fout in een minispel mag nooit de hele game laten vastlopen
     try { this.minigame?.update(dt); } catch (e) { console.error('minispel', e); try { this.minigame?.stop?.(); } catch (e2) { /* negeren */ } this.minigame = null; this.player.lockedFor = false; }
     this.updateFollowers(dt);
+    this.updateFleeing(dt);
     this.updateNpcs(dt);
     this.cars.updateTraffic(dt, this.mode === 'car' ? this.car : this.player);
     this.peds.update(dt, this.player, this.mode === 'car' ? Math.abs(this.car.speed) : this.player.speed);
@@ -1250,8 +1311,8 @@ class Game {
   updateCar(dt) {
     const car = this.car, inp = this.input;
     const busy = this.ui.dialogOpen;
-    const throttle = busy ? 0 : -inp.move.y;
-    const steer = busy ? 0 : inp.move.x;
+    const throttle = busy ? 0 : -inp.drive.y;
+    const steer = busy ? 0 : inp.drive.x;
     this.cars.drive(car, dt, throttle, steer, inp.keys.has('Space'));
     this.sfx.engineUpdate(car.speed, throttle);
     const p = this.player;
@@ -1278,16 +1339,27 @@ class Game {
     if (this.keg) maxSpeed = SPEED.keg;
     if (this.fragile) maxSpeed = Math.min(maxSpeed, SPEED.walk); // met vlaaien ren je niet
     // op de fiets en het skateboard gaat de joystick niet half: altijd volle snelheid
-    const want = mag > 0.05 ? maxSpeed * (this.mode === 'walk' ? Math.min(1, mag * 1.2) : 1) : 0;
-    const accel = this.mode === 'walk' ? 12 : this.mode === 'bike' ? 4 : 3.5;
-    const decel = this.mode === 'walk' ? 14 : 3;
-    p.speed += (want - p.speed) * Math.min(1, (want > p.speed ? accel : decel) * dt);
-    // na een paar pilsjes loop je niet meer helemaal recht
-    if (this.drunk && mag > 0.05) p.heading += Math.sin(this.time * 1.7) * 0.012 * this.drunk;
-    if (mag > 0.05) {
-      let diff = Math.atan2(dx, dz) - p.heading;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      p.heading += diff * Math.min(1, (this.mode === 'walk' ? 12 : 5) * dt);
+    if (this.mode === 'walk') {
+      const want = mag > 0.05 ? maxSpeed * Math.min(1, mag * 1.2) : 0;
+      p.speed += (want - p.speed) * Math.min(1, (want > p.speed ? 12 : 14) * dt);
+      // na een paar pilsjes loop je niet meer helemaal recht
+      if (this.drunk && mag > 0.05) p.heading += Math.sin(this.time * 1.7) * 0.012 * this.drunk;
+      if (mag > 0.05) {
+        let diff = Math.atan2(dx, dz) - p.heading;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        p.heading += diff * Math.min(1, 12 * dt);
+      }
+    } else {
+      // fiets en skateboard sturen zoals een voertuig: vooruit = trappen, links/rechts = sturen.
+      // Zo stuurt de camera niet meer mee en slinger je niet meer heen en weer.
+      const throttle = busy ? 0 : -inp.drive.y, steer = busy ? 0 : inp.drive.x;
+      const want = throttle > 0 ? maxSpeed * throttle : 0;
+      const rate = throttle < -0.2 ? 7 : want > p.speed ? (this.mode === 'bike' ? 3 : 2.6) : 1.6; // achteruit = remmen
+      p.speed += (want - p.speed) * Math.min(1, rate * dt);
+      const k = Math.min(1, p.speed / Math.max(1, maxSpeed));
+      const turn = p.speed < 0.6 ? 1.4 : 2.5 - k * 1.2; // langzaam = scherp, hard = rustig
+      p.heading -= steer * turn * dt;
+      if (this.drunk) p.heading += Math.sin(this.time * 1.7) * 0.012 * this.drunk;
     }
     if (this.interior) {
       // binnen: muren en meubels, vlakke vloer
@@ -1403,7 +1475,14 @@ class Game {
       this.ui.toast('Je bent er!', 1200);
     }
     this.syncTriggerMarkers(this.interior);
-    if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty || this.minigame) { if (!this.penalty && !this.minigame) this.ui.prompt(null); return; }
+    // tijdens een minispel: geen 'Praat'-knop, alleen de knop die bij het spel hoort (of geen)
+    if (this.minigame) {
+      this.ui.prompt(null);
+      const m = this.minigame;
+      this.ui.setActionLabel(m.actionLabel !== undefined ? m.actionLabel : m.debug && 'label' in m.debug ? m.debug.label : null);
+      return;
+    }
+    if (this.ui.dialogOpen || p.lockedFor || this.race || this.penalty) { if (!this.penalty) { this.ui.prompt(null); if (this.ui.dialogOpen) this.ui.setActionLabel(null); } return; }
 
     if (this.interior) {
       const room = this.interior;
@@ -1432,12 +1511,16 @@ class Game {
       if (d < nd) { near = n; nd = d; }
     }
     const car = !near ? this.cars.nearestCar(p.x, p.z, 1.8) : null;
+    const jack = !near && !car && this.mode === 'walk' ? this.cars.nearestTraffic(p.x, p.z) : null;
     if (near) {
       // "De monteur" wordt "de monteur", maar een eigennaam als "De Razende Reporter" blijft staan
       const nm = near.name;
       const role = nm.startsWith('De ') && nm[3] === nm[3].toLowerCase();
       this.ui.prompt(`Praat met ${role ? 'de' + nm.slice(2) : nm}`);
       this.ui.setActionLabel('Praat');
+    } else if (jack) {
+      this.ui.prompt('Trek de chauffeur eruit!');
+      this.ui.setActionLabel('Kapen');
     } else if (car) {
       this.ui.prompt(car.isTractor ? 'Instappen in de tractor' : car.isVolvo ? 'Instappen in de Volvo XC40' : car.isGolden ? 'Instappen in de gouden bolide' : 'Instappen');
       this.ui.setActionLabel('Auto');
@@ -1447,6 +1530,7 @@ class Game {
     }
     if (this.input.consumeAction()) {
       if (near) { p.speed = 0; this.missions.talk(near); }
+      else if (jack) this.hijackCar(jack);
       else if (car) this.enterCar(car);
     }
   }
@@ -1462,9 +1546,15 @@ class Game {
       this.povLook.lerp(this.pov.look, k);
       this.camera.up.set(0, 1, 0);
       this.camera.lookAt(this.povLook);
-      // een beetje handheld
+      // een beetje handheld, en een schok bij een klap of plons
       this.camera.rotateZ(Math.sin(this.time * 1.7) * 0.008);
       this.camera.rotateX(Math.sin(this.time * 2.3) * 0.006);
+      if (this.pov.shake > 0) {
+        const s = this.pov.shake;
+        this.camera.rotateX((Math.random() - 0.5) * 0.06 * s);
+        this.camera.rotateZ((Math.random() - 0.5) * 0.06 * s);
+        this.pov.shake = Math.max(0, s - dt * 1.5);
+      }
       return;
     }
     this.povLook = null;

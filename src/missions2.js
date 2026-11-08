@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { makeCharacter } from './character.js';
 import { makePuntzak } from './props.js';
-import { startMice, startTuutjes, startBommetje, startGyros, startStamp } from './skills2.js';
+import { startMice, startTuutjes, startBommetje, startGyros, startStamp, startDoors } from './skills2.js';
 import './interiors2.js';
 
 const G = (text, nl) => ({ text, nl });
@@ -54,7 +54,7 @@ export function moreItems(n) {
     { id: 'tuutjes', npc: n.tuutjes, title: 'Tuutjes trekken', place: 'Condoomautomaat naast de DA', desc: 'Haal een pakje uit de automaat zonder dat het halve dorp het ziet.' },
     { id: 'bommetje', npc: n.badmeester, title: 'Het grootste bommetje', place: 'Mosaqua, Landsraderweg 11', desc: 'Drie sprongen vanaf de plank. Maak de grootste bom en laat de jury juichen.' },
     { id: 'gyros', npc: n.athene, title: 'Gyros en Opa!', place: 'Grieks Restaurant Athene, Rijksweg 31', desc: 'Snijd de gyros op het juiste moment en gooi daarna borden kapot.' },
-    { id: 'keuken', npc: n.verkoper, title: 'Afdingen op een keuken', place: 'Plan Keukens, Rijksweg 21', desc: 'Een droomkeuken van bijna 25.000 euro. Praat de prijs onder de 11.000.' },
+    { id: 'keuken', npc: n.verkoper, title: 'De deurtjes van de Gulperberg Deluxe', place: 'Plan Keukens, Rijksweg 21', desc: 'Tijdens een demo springen de keukendeurtjes steeds open. Klap ze dicht voordat ze eraf vallen.' },
     { id: 'matras', npc: n.portier, title: 'Het matras van Gulpen', place: 'Gemeentehuis, Willem Vliegenstraat 12', desc: 'Al weken ligt er een matras voor het gemeentehuis. Vind het loket dat erover gaat.' },
   ].filter((x) => x.npc);
 }
@@ -158,44 +158,27 @@ export const moreHandlers = {
     }
   },
 
-  // ------------------------------------------------------------ Plan Keukens: onderhandelen
+  // ------------------------------------------------------------ Plan Keukens: de deurtjes van de Gulperberg Deluxe
   async verkoper(npc, N, ui, g) {
     const a = await ui.dialog(N, [
-      'Goedemiddag! U kijkt naar onze topper: de Gulperberg Deluxe. Marmer, kraan met bruiswater, en een afzuigkap die zelfs carnavalsgeur aankan.',
-      'Voor u een speciale prijs: 24.999 euro. Exclusief montage. En exclusief de deurtjes.',
-    ], ['Daar valt over te praten', 'Ik koop wel een magnetron']);
+      'Goedemiddag! Help! Over een minuut komt er een klant voor een demo van onze topper: de Gulperberg Deluxe. 24.999 euro.',
+      'Klein probleempje: de deurtjes. Die springen open zodra iemand kijkt. En als ze te lang openstaan, vallen ze eraf.',
+      'Jij staat erbij en klapt ze dicht. BAM. Niemand merkt iets. Lukt het, dan krijg jij er ook eentje met korting. Mét deurtjes.',
+    ], ['Ik hou ze dicht!', 'Ik koop wel een magnetron']);
     if (a !== 0) { await ui.dialog(N, ['Een magnetron. Natuurlijk. En dan klagen dat je frikandellen slap zijn.']); return; }
-    this.setActive('keuken', 'Afdingen op een keuken', 'Praat de prijs onder de 11.000 euro in zes rondes. Let op zijn geduld!', 'Prijs: 24.999 · geduld 100%');
-    let price = 24999, patience = 100, round = 0;
-    const tactics = [
-      { label: 'Zeggen dat de buren hem goedkoper hadden', fx: () => [-2500 - Math.random() * 2000, -15], lines: ['De buren? Die hebben een keuken uit een doos. Maar goed, voor u...'] },
-      { label: 'Heel lang stil blijven en zuchten', fx: () => [-1800 - Math.random() * 1500, -10], lines: ['...', 'Oké, oké, die stilte is ongemakkelijk. Ik doe er wat vanaf.'] },
-      { label: 'Weglopen richting de deur', fx: () => (Math.random() < 0.65 ? [-4000, -25] : [0, -40]), lines: ['Wacht, wacht! Kom terug! Ik heb nog wat ruimte.', 'Ga maar. Ik heb nog drie klanten vandaag.'] },
-      { label: 'Zeggen dat je oom ook keukens verkoopt', fx: () => [-2200, -20], lines: ['Uw oom? Die van die keukens met deurtjes die er na een week af vallen? Nou, vooruit.'] },
-      { label: 'Vragen of de deurtjes nou inbegrepen zijn', fx: () => [-1500, -5], lines: ['Goed punt. De deurtjes doe ik erbij. Ik ben vandaag in een goede bui.'] },
-      { label: 'Contant betalen, zonder bonnetje', fx: () => [-3000, -30], lines: ['Ssst! Niet zo hard. Mijn baas staat daar. Maar... ik kan er wat mee.'] },
-      { label: 'Complimentje over zijn stropdas', fx: () => [-1200, 5], lines: ['Vindt u? Van mijn vrouw gekregen. U bent een goed mens. Ik doe er wat vanaf.'] },
-      { label: 'Een pilsje aanbieden bij de Zwarte Ruiter', fx: () => [-2000, 10], lines: ['Een pilsje? Nou, dat praat makkelijker. Proost alvast!'] },
-    ];
-    while (price > 11000 && patience > 0 && round < 6) {
-      round++;
-      const pick = tactics.slice().sort(() => Math.random() - 0.5).slice(0, 3);
-      const k = await ui.dialog(N, [`Huidige prijs: ${Math.round(price).toLocaleString('nl-NL')} euro. Wat doet u?`], pick.map((t) => t.label));
-      if (this.active?.id !== 'keuken' || k < 0) return;
-      const t = pick[k];
-      const [dp, dpat] = t.fx();
-      price = Math.max(9000, price + dp);
-      patience = Math.min(100, patience + dpat);
-      const said = dp === 0 ? [t.lines[t.lines.length - 1]] : t.label.startsWith('Heel') ? t.lines : [t.lines[0]];
-      await ui.dialog(N, said);
-      this.progress(`Prijs: ${Math.round(price).toLocaleString('nl-NL')} · geduld ${Math.max(0, patience)}%`);
-    }
-    if (price <= 11000) {
-      await ui.dialog(N, [`${Math.round(price).toLocaleString('nl-NL')} euro. Inclusief deurtjes. Ik word ontslagen, maar dat is mijn probleem.`, 'Gefeliciteerd met uw nieuwe keuken! De montage duurt maar zes tot veertien weken.']);
-      this.complete('keuken', 'Keuken voor een prikkie!');
+    this.setActive('keuken', 'De deurtjes van de Gulperberg Deluxe', 'Klap openspringende deurtjes dicht voordat ze eraf vallen. Hou het 35 seconden vol, je mag er maximaal 2 verliezen.', '');
+    const r = await startDoors(g);
+    if (!r || this.active?.id !== 'keuken') return;
+    if (r.ok) {
+      await ui.dialog(N, [
+        `${r.slammed} keer dichtgeklapt en de klant heeft niks gemerkt! Ze vond het "lekker stevig sluiten". Verkocht!`,
+        r.lost ? `Dat ene deurtje dat eraf viel? Dat noemen we vanaf nu "open design". Kost 400 euro extra.` : 'Zonder één deurtje te verliezen. Jij mag hier zo beginnen.',
+        'Jouw korting: 60 procent. Montage duurt maar zes tot veertien weken. Of zestien.',
+      ]);
+      this.complete('keuken', 'Keuken met korting (en deurtjes)!');
     } else {
-      await ui.dialog(N, [patience <= 0 ? 'Zo, en nu de winkel uit! Ga maar een magnetron kopen.' : 'Lager ga ik echt niet. Mijn kinderen moeten ook eten. Uit een keuken, uiteraard.']);
-      this.fail('Geen deal.');
+      await ui.dialog(N, ['Drie deurtjes op de grond, en de klant is gillend weggerend. Ze koopt nu een keuken in Maastricht. Zonder deurtjes, uit wraak.']);
+      this.fail('Te veel deurtjes eraf.');
     }
   },
 
@@ -272,3 +255,6 @@ export const moreHandlers = {
   },
 };
 void makeCharacter;
+
+// voor automatische tests: minigames los kunnen starten met ?dev in de adresbalk
+if (typeof location !== 'undefined' && location.search.includes('dev')) window.__mini = { startMice, startTuutjes, startBommetje, startGyros, startStamp, startDoors };
