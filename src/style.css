@@ -523,3 +523,8 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 #mission-tally { position: absolute; left: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 44px); padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(20, 24, 32, 0.72); color: #fff; font: 700 13px/1.2 Inter, sans-serif; pointer-events: auto; cursor: pointer; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
 #mission-tally.all { background: linear-gradient(90deg, #e8a33d, #f2c14e); color: #2a1a00; }
 #mission-tally[hidden] { display: none; }
+/* keuzes in een gesprek: even zichtbaar invliegen, zodat je ziet dat er iets te kiezen valt */
+#dialog-choices button { animation: choice-in 0.35s ease-out both; }
+#dialog-choices button:nth-child(2) { animation-delay: 0.08s; }
+#dialog-choices button:nth-child(3) { animation-delay: 0.16s; }
+@keyframes choice-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

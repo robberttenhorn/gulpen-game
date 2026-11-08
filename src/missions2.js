@@ -130,7 +130,7 @@ export const moreHandlers = {
     if (r.total >= 21) {
       await ui.dialog(N, [`${tot} punten! De jury is doorweekt, de badmeester is doorweekt, en er zit minder water in het bad dan in de kantine.`, 'Die bom hoort in het Mosaqua-museum. Als dat er ooit komt.']);
       if (g.interior) await g.exitInterior();
-      this.complete('bommetje', 'Bommenkoning van Mosaqua!');
+      this.complete('bommetje', 'Bommenkoning van Mosaqua!', { v: Math.round(r.total * 10) / 10, unit: 'punten', high: true });
     } else {
       await ui.dialog(N, [`${tot} punten. Dat was meer een theezakje dan een bom. Nog een keer?`]);
       this.fail('Te kleine bommetjes.');

@@ -98,6 +98,12 @@ Texturen opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-textures.py` (P
 Luchtfoto opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-ortho.py` (Python met Pillow).
 Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `node tools/bake-trees.cjs` (Playwright). Zonder `public/data/trees/` maakt de game de bomen zelf, maar laadt dan ~4 MB extra.
 
+## Alle missies af
+
+Na de laatste missie nodigt de waard van De Zwarte Ruiter je uit op de Markt. Daar staan alle personen uit de missies, de waard houdt een toespraak (je wordt Ereburger van Gullepe) en daarna volgen vuurwerk, muziek en een polonaise achter jou aan.
+
+Elke missie onthoudt je beste prestatie, zichtbaar in de lijst op de grote kaart. Meestal is dat de tijd van start tot finish; bij de heg, het bommetje, TikTok, de penalty's en het grond sjouwen is het de score. Verbeter je die, dan meldt het spel een nieuw record.
+
 ## Bezoekers tellen
 
 `src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. Het dashboard staat op https://10horn.goatcounter.com. Leeg je `GOATCOUNTER_CODE` in `src/stats.js`, dan staat de telling uit.
@@ -109,6 +115,8 @@ Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `nod
 | `spel-gestart` | elke keer dat iemand op Speel drukt |
 | `speelminuut` | elke minuut dat het spel in beeld is: het totaal is de speeltijd in minuten |
 | `drie-missies` | één keer per apparaat: hoeveel spelers drie missies halen |
+
+Daarnaast komen fouten anoniem binnen als `fout/...` (bijvoorbeeld `fout/zwart-beeld` of `fout/webgl-weg`), met welke missie er net klaar was. Zo zie je wat er op telefoons misgaat.
 
 Niet geteld: lokaal testen, adressen met `?dev` of `?nostats`, en apparaten waar in de browserconsole `localStorage.setItem('skipgc', 't')` is gedaan (handig voor je eigen telefoon).
 

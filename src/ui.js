@@ -150,12 +150,22 @@ export class UI {
       if (isLast && choices) {
         $('dialog-text').textContent = line.text;
         $('dialog-next').hidden = true;
+        // De tik die de vorige zin wegklikte mag niet meteen een keuze maken (op Android viel die
+        // 'klik' op de knop die net onder je vinger verscheen). Daarom telt een keuze pas als je
+        // de knop zelf indrukt, en niet in de eerste 0,4 seconde.
+        const shownAt = performance.now();
         const idx = await new Promise((resolve) => {
           choices.forEach((c, k) => {
             if (gen !== (this.gen || 0)) return;
             const b = document.createElement('button');
             b.textContent = c;
-            b.addEventListener('click', () => resolve(k));
+            let armed = false;
+            b.addEventListener('pointerdown', () => { if (performance.now() - shownAt > 250) armed = true; });
+            b.addEventListener('click', (e) => {
+              const keyboard = e.detail === 0; // Enter of spatie op een knop
+              if (!keyboard && (!armed || performance.now() - shownAt < 400)) return;
+              resolve(k);
+            });
             $('dialog-choices').appendChild(b);
           });
         });

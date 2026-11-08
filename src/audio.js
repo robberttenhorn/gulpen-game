@@ -31,7 +31,7 @@ export class Sound {
 
   // ------------------------------------------------------------ bouwstenen
 
-  tone(freq, dur, { type = 'sine', vol = 0.2, at = 0, slide = null, attack = 0.005 } = {}) {
+  tone(freq, dur, { type = 'sine', vol = 0.2, at = 0, slide = null, attack = 0.005, out = null } = {}) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime + at;
     const o = this.ctx.createOscillator();
@@ -42,7 +42,7 @@ export class Sound {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(this.master);
+    o.connect(g).connect(out || this.master);
     o.start(t);
     o.stop(t + dur + 0.05);
   }
@@ -61,6 +61,53 @@ export class Sound {
     src.connect(f).connect(g).connect(this.master);
     src.start(t, Math.random() * 0.5);
     src.stop(t + dur + 0.05);
+  }
+
+  // ------------------------------------------------------------ feestmuziek (eigen deuntje, hoempa-stijl)
+
+  startMusic() {
+    if (!this.ctx || this.music) return;
+    // eigen volumeknop, zodat de muziek bij stoppen meteen stil is (ook al ingeplande noten)
+    this.musicBus = this.ctx.createGain();
+    this.musicBus.connect(this.master);
+    const out = this.musicBus;
+    const bpm = 132, e = 60 / bpm / 2; // duur van een achtste
+    const f = (n) => 440 * Math.pow(2, (n - 69) / 12);
+    // melodie in achtsten: [noot (MIDI) of null, lengte]
+    const mel = [
+      [67, 1], [72, 1], [72, 1], [74, 1], [76, 2], [72, 2],
+      [74, 1], [74, 1], [71, 1], [74, 1], [79, 2], [74, 2],
+      [76, 1], [76, 1], [72, 1], [76, 1], [79, 2], [76, 1], [79, 1],
+      [81, 2], [77, 2], [72, 2], [77, 2],
+      [79, 1], [79, 1], [76, 1], [79, 1], [84, 2], [79, 2],
+      [77, 1], [77, 1], [74, 1], [77, 1], [79, 2], [71, 2],
+      [72, 1], [76, 1], [79, 1], [76, 1], [74, 2], [71, 2],
+      [72, 4], [null, 4],
+    ];
+    const roots = [48, 43, 48, 41, 48, 43, 48, 48]; // C G C F C G C C
+    const loop = () => {
+      if (!this.music) return;
+      let at = 0.05;
+      for (const [n, len] of mel) {
+        if (n) { this.tone(f(n), len * e * 0.9, { type: 'square', vol: 0.035, at, out }); this.tone(f(n + 12), len * e * 0.6, { type: 'sine', vol: 0.02, at, out }); }
+        at += len * e;
+      }
+      roots.forEach((r, bar) => {
+        for (let beat = 0; beat < 4; beat++) {
+          const t0 = 0.05 + (bar * 4 + beat) * e * 2;
+          if (beat % 2 === 0) this.tone(f(r - 12 + (beat === 2 ? 7 : 0)), e * 1.6, { type: 'triangle', vol: 0.2, at: t0, out }); // hoem
+          else for (const k of [0, 4, 7]) this.tone(f(r + 12 + k), e * 0.7, { type: 'square', vol: 0.018, at: t0, out }); // pa
+        }
+      });
+    };
+    this.music = setInterval(loop, mel.reduce((s, [, l]) => s + l, 0) * e * 1000);
+    loop();
+  }
+
+  stopMusic() {
+    clearInterval(this.music);
+    this.music = null;
+    if (this.musicBus) { const b = this.musicBus; b.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3); setTimeout(() => b.disconnect(), 2000); this.musicBus = null; }
   }
 
   // ------------------------------------------------------------ geluiden
@@ -95,6 +142,8 @@ export class Sound {
       case 'camera': this.hiss(0.05, { vol: 0.2, freq: 3000 }); this.hiss(0.05, { vol: 0.15, freq: 2000, at: 0.08 }); break;
       case 'skid': this.hiss(0.55, { vol: 0.14, filter: 'bandpass', freq: 2400, q: 6 }); this.tone(1900, 0.5, { vol: 0.03, type: 'sawtooth', slide: 1500 }); break;
       case 'honk': this.tone(415, 0.22, { type: 'square', vol: 0.09 }); this.tone(349, 0.22, { type: 'square', vol: 0.07 }); this.tone(415, 0.35, { type: 'square', vol: 0.09, at: 0.3 }); this.tone(349, 0.35, { type: 'square', vol: 0.07, at: 0.3 }); break;
+      case 'launch': this.hiss(0.9, { vol: 0.07, filter: 'bandpass', freq: 3000, q: 1.5, attack: 0.3 }); this.tone(500, 0.9, { vol: 0.02, slide: 1800, type: 'sine' }); break;
+      case 'boom': this.tone(70, 0.7, { vol: 0.3, type: 'triangle', slide: 35 }); this.hiss(1.1, { vol: 0.22, freq: 1600 }); for (let i = 0; i < 5; i++) this.hiss(0.05, { vol: 0.06, filter: 'highpass', freq: 5000, at: 0.25 + i * 0.09 + Math.random() * 0.05 }); break;
       case 'cart': this.hiss(0.2, { vol: 0.08, filter: 'bandpass', freq: 3000, q: 3 }); break;
       default: break;
     }

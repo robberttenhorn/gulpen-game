@@ -14,7 +14,7 @@ import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
-import { statsStart, statsPageview } from './stats.js';
+import { statsStart, statsPageview, statsError } from './stats.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
@@ -642,7 +642,7 @@ class Game {
         items.push({ key: m.id, x: m.npc.pos.x, z: m.npc.pos.z, title: m.title, place: m.place, color: '#9aa4b0', glyph: 'z', state: '', stateLabel: 'Alleen \'s avonds' });
         return;
       }
-      items.push({ key: m.id, x: m.npc.pos.x, z: m.npc.pos.z, title: m.title, place: m.place, color: colors[m.state], glyph: m.state === 'klaar' ? '✓' : '!', state: m.state, stateLabel: labels[m.state] });
+      items.push({ key: m.id, x: m.npc.pos.x, z: m.npc.pos.z, title: m.title, place: m.best ? `${m.place} · beste: ${m.best}` : m.place, color: colors[m.state], glyph: m.state === 'klaar' ? '✓' : '!', state: m.state, stateLabel: labels[m.state] });
     });
     if (this.tractor) items.push({ key: 'tractor', x: this.tractor.x, z: this.tractor.z, title: 'Tractor', place: 'Op het boerenland', color: '#64b5f6', glyph: 'T', state: '', stateLabel: 'Voertuig' });
     return items;
@@ -1290,7 +1290,63 @@ class Game {
 
   // ------------------------------------------------------------ hoofdlus
 
+  // Hoofdlus met vangnet: een fout in één onderdeel mag het beeld nooit laten stilvallen.
   tick() {
+    try {
+      this.tickInner();
+    } catch (e) {
+      console.error('tick', e);
+      statsError('tick', e?.message || e);
+      try { this.render(); } catch { /* negeren */ }
+    }
+    this.guardState();
+    this.checkBlack();
+  }
+
+  // ongeldige getallen (NaN) in speler of camera herstellen: die maken het hele beeld zwart
+  guardState() {
+    const p = this.player;
+    const ok = (v) => Number.isFinite(v);
+    if (ok(p.x) && ok(p.z) && ok(p.heading) && ok(p.y) && ok(p.speed)) {
+      this.lastGood = { x: p.x, z: p.z, heading: p.heading };
+    } else if (this.lastGood) {
+      statsError('nan-speler', this.missions?.active?.id || this.lastDone || '');
+      Object.assign(p, this.lastGood, { speed: 0, y: this.world.groundAt(this.lastGood.x, this.lastGood.z) });
+    }
+    if (!ok(this.camYaw)) { statsError('nan-camyaw'); this.camYaw = p.heading + Math.PI; }
+    if (!ok(this.camPitch)) this.camPitch = 0.17;
+    const c = this.camera.position;
+    if (!ok(c.x) || !ok(c.y) || !ok(c.z)) { statsError('nan-camera', this.missions?.active?.id || this.lastDone || ''); try { this.updateCamera(0, true); } catch { /* negeren */ } }
+  }
+
+  // Zwart beeld herkennen (een paar pixels, elke 1,5 s). Eerst zelf herstellen, anders een herlaadknop tonen.
+  checkBlack() {
+    const now = performance.now();
+    if (now - (this.blackCheckT || 0) < 1500 || document.visibilityState !== 'visible' || document.getElementById('hud').hidden) return;
+    this.blackCheckT = now;
+    const gl = this.renderer.getContext();
+    if (gl.isContextLost()) { statsError('webgl-weg', this.lastDone || ''); showReloadBar('Het beeld is even weggevallen'); return; }
+    const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(4);
+    let black = true;
+    for (const [fx, fy] of [[0.5, 0.5], [0.25, 0.3], [0.75, 0.3], [0.25, 0.75], [0.75, 0.75]]) {
+      gl.readPixels(Math.floor(w * fx), Math.floor(h * fy), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      if (px[0] || px[1] || px[2]) { black = false; break; }
+    }
+    if (!black) { this.blackCount = 0; return; }
+    this.blackCount = (this.blackCount || 0) + 1;
+    if (this.blackCount === 2) {
+      statsError('zwart-beeld', `${this.lastDone || '-'} ${this.mode}${this.interior ? ' binnen' : ''}`);
+      // herstelpoging: camera opnieuw achter de speler, en het beeld opnieuw opbouwen
+      try {
+        this.updateCamera(0, true);
+        this.renderer.setSize(innerWidth, innerHeight);
+        this.composer?.setSize(innerWidth, innerHeight);
+      } catch { /* negeren */ }
+    }
+    if (this.blackCount === 5) { statsError('zwart-blijft', this.lastDone || ''); showReloadBar('Het beeld is zwart geworden'); }
+  }
+
+  tickInner() {
     const dt = Math.min(0.05, this.clock.getDelta());
     this.time += dt;
     this.input.update(dt);
@@ -1739,16 +1795,26 @@ function roundRect(ctx, x, y, w, h, r) {
 
 // Raakt de telefoon de 3D-weergave kwijt (te weinig geheugen), dan wordt het beeld zwart.
 // Laat dan een duidelijke melding zien; de voortgang is bewaard.
-document.getElementById('scene').addEventListener('webglcontextlost', (e) => {
-  e.preventDefault();
+// Melding met herlaadknop (bijv. als de telefoon de 3D-weergave kwijtraakt). De voortgang is bewaard.
+function showReloadBar(title) {
   if (document.querySelector('[data-id="ctx-lost"]')) return;
   const b = document.createElement('button');
   b.id = 'update-bar'; b.type = 'button';
-  b.innerHTML = '<b>Het beeld is even weggevallen</b><span>Tik om GTA Gullepe opnieuw te laden. Je missies blijven bewaard.</span>';
+  b.innerHTML = `<b>${title}</b><span>Tik om GTA Gullepe opnieuw te laden. Je missies blijven bewaard.</span>`;
   b.addEventListener('click', () => location.reload());
   b.dataset.id = 'ctx-lost';
   document.body.appendChild(b);
+}
+
+// Raakt de telefoon de 3D-weergave kwijt (te weinig geheugen), dan wordt het beeld zwart.
+document.getElementById('scene').addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  statsError('webgl-weg-event', window.game?.lastDone || '');
+  showReloadBar('Het beeld is even weggevallen');
 });
+// overige fouten ook anoniem meetellen
+addEventListener('error', (e) => statsError('js', `${e.message} ${(e.filename || '').split('/').pop()}:${e.lineno}`));
+addEventListener('unhandledrejection', (e) => statsError('promise', e.reason?.message || e.reason));
 
 const game = new Game();
 document.fonts.ready.then(() => game.init()).catch((e) => {

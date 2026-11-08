@@ -178,7 +178,7 @@ export const westHandlers = {
         'Mijn rug is je eeuwig dankbaar. Mijn krullen ook, er zit nu iets minder zand in.',
       ]);
       g.fx?.confetti(drop[0], g.world.groundAt(...drop) + 2, drop[1], 90);
-      this.complete('grond', 'Grondwerker van de Groeneweg!');
+      this.complete('grond', 'Grondwerker van de Groeneweg!', { v: pct, unit: '% in de tuin', high: true });
     } else {
       await ui.dialog(N, [r.late ? 'De tijd is om, en de berg ligt er nog half. Morgen weer een dag. Of nu meteen nog een keer?' : `Maar ${pct} procent in de tuin? Er ligt meer grond op straat dan in mijn tuin, zo wordt hij nooit hoger. Nog een keer, en dan rustig aan!`]);
       // berg weer vol voor een nieuwe poging
@@ -205,7 +205,7 @@ export const westHandlers = {
         'Die jury valt flauw van bewondering. En de buurman valt flauw van jaloezie. Twee vliegen in één klap!',
       ]);
       g.fx?.confetti(g.player.x, g.world.groundAt(g.player.x, g.player.z) + 2, g.player.z, 80);
-      this.complete('heg', 'Heg als een liniaal!');
+      this.complete('heg', 'Heg als een liniaal!', { v: pct, unit: '% netjes', high: true });
     } else {
       await ui.dialog(N, [`${pct} procent... Het lijkt alsof er een geit doorheen is gelopen. De ontsnapte geit van de boer misschien? Nog een keer!`]);
       this.fail('Heg te scheef geknipt.');
