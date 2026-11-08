@@ -241,6 +241,7 @@ export class Effects {
     this.rings = [];
     this.puffs = [];
     this.initSmoke();
+    this.initFireworks();
   }
 
   // Rookwolkje (bijv. bij de wielen tijdens hard remmen): groeit, stijgt een beetje en vervaagt.
@@ -267,6 +268,63 @@ export class Effects {
     this.smokePool[0].visible = true;
     this.smokePool[0].scale.setScalar(0.001);
   }
+  // Vuurwerk: een raket stijgt op en spat uiteen in een bol gekleurde vonken.
+  // Eén vooraf gemaakt (doorzichtig) puntje zorgt dat de shader al bij het laden klaar is.
+  initFireworks() {
+    this.rockets = [];
+    this.sparks = [];
+    const warm = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, -50, 0], 3)),
+      new THREE.PointsMaterial({ size: 0.5, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    warm.frustumCulled = false;
+    this.scene.add(warm);
+  }
+  firework(x, y, z, color = null, onBurst = null) {
+    const c = color ?? [0xff5252, 0xffd740, 0x69f0ae, 0x40c4ff, 0xe040fb, 0xffffff, 0xff9100][Math.floor(Math.random() * 7)];
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([x, y, z], 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.9, color: 0xfff3c4, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+    pts.frustumCulled = false;
+    this.scene.add(pts);
+    this.rockets.push({ pts, x, y, z, vx: (Math.random() - 0.5) * 2, vy: 24 + Math.random() * 7, vz: (Math.random() - 0.5) * 2, t: 0, fuse: 1.0 + Math.random() * 0.5, color: c, onBurst });
+  }
+  burstFirework(x, y, z, color) {
+    const n = 110;
+    const pos = new Float32Array(n * 3), vel = new Float32Array(n * 3);
+    const speed = 9 + Math.random() * 5;
+    for (let i = 0; i < n; i++) {
+      // gelijkmatig over een bol
+      const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u), k = speed * (0.85 + Math.random() * 0.3);
+      vel[i * 3] = r * Math.cos(a) * k; vel[i * 3 + 1] = u * k; vel[i * 3 + 2] = r * Math.sin(a) * k;
+      pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+    }
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.75, color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+    pts.frustumCulled = false;
+    this.scene.add(pts);
+    this.sparks.push({ pts, vel, t: 0, life: 1.9 + Math.random() * 0.5 });
+  }
+  updateFireworks(dt) {
+    for (const r of this.rockets) {
+      r.t += dt;
+      r.vy -= 6 * dt;
+      r.x += r.vx * dt; r.y += r.vy * dt; r.z += r.vz * dt;
+      r.pts.geometry.attributes.position.setXYZ(0, r.x, r.y, r.z);
+      r.pts.geometry.attributes.position.needsUpdate = true;
+      if (r.t >= r.fuse) { r.done = true; this.burstFirework(r.x, r.y, r.z, r.color); r.onBurst?.(); }
+    }
+    this.rockets = this.rockets.filter((r) => { if (r.done) { this.scene.remove(r.pts); r.pts.geometry.dispose(); r.pts.material.dispose(); return false; } return true; });
+    for (const sp of this.sparks) {
+      sp.t += dt;
+      const a = sp.pts.geometry.attributes.position, v = sp.vel, drag = Math.max(0, 1 - 1.6 * dt);
+      for (let i = 0; i < v.length; i += 3) {
+        v[i] *= drag; v[i + 1] = v[i + 1] * drag - 5 * dt; v[i + 2] *= drag;
+        a.array[i] += v[i] * dt; a.array[i + 1] += v[i + 1] * dt; a.array[i + 2] += v[i + 2] * dt;
+      }
+      a.needsUpdate = true;
+      sp.pts.material.opacity = Math.max(0, 1 - Math.pow(sp.t / sp.life, 2));
+    }
+    this.sparks = this.sparks.filter((sp) => { if (sp.t > sp.life) { this.scene.remove(sp.pts); sp.pts.geometry.dispose(); sp.pts.material.dispose(); return false; } return true; });
+  }
+
   smoke(x, y, z, size = 1) {
     this.initSmoke();
     let s = this.smokePool.find((q) => !q.userData.busy);
@@ -307,6 +365,7 @@ export class Effects {
   }
 
   update(dt) {
+    this.updateFireworks(dt);
     const q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), mtx = new THREE.Matrix4();
     for (const b of this.bursts) {
       b.t += dt;

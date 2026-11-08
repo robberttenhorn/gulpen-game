@@ -68,3 +68,12 @@ export function statsMissions(doneCount) {
   s.three = Date.now(); save(s);
   send('drie-missies');
 }
+
+// Foutmeldingen anoniem meetellen (één keer per soort per sessie), zodat we zien wat er op telefoons misgaat.
+const reported = new Set();
+export function statsError(kind, msg = '') {
+  const key = `fout/${kind}${msg ? '/' + String(msg).replace(/\s+/g, ' ').slice(0, 80) : ''}`;
+  if (reported.has(key) || reported.size > 20) return;
+  reported.add(key);
+  send(key);
+}

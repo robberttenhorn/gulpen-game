@@ -9,6 +9,7 @@ import { runTikTok, ORDERS, formatViews } from './tiktok.js';
 import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } from './skills.js';
 import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
 import { statsMissions } from './stats.js';
+import { inviteFinale } from './finale.js';
 import { setupWest, setupGroeneweg, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
@@ -28,10 +29,34 @@ export class Missions {
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) JSON.parse(raw).forEach((id) => this.done.add(id));
     } catch { /* geen opslag beschikbaar */ }
+    // beste tijd of score per missie: { id: { v, unit, high } }
+    this.best = {};
+    try { this.best = JSON.parse(localStorage.getItem('gulpe-records')) || {}; } catch { /* geen opslag */ }
   }
 
   save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify([...this.done])); } catch { /* negeren */ }
+    try { localStorage.setItem('gulpe-records', JSON.stringify(this.best)); } catch { /* negeren */ }
+  }
+
+  // record bijwerken; geeft 'nieuw' (eerste keer), 'record' (verbeterd) of null terug
+  record(id, score) {
+    let rec = score;
+    if (!rec) {
+      if (this.runStart?.id !== id) return null;
+      rec = { v: Math.round((performance.now() - this.runStart.t) / 100) / 10, unit: 'tijd', high: false };
+    }
+    const old = this.best[id];
+    if (old && old.unit === rec.unit && (rec.high ? rec.v <= old.v : rec.v >= old.v)) return null;
+    this.best[id] = rec;
+    return old && old.unit === rec.unit ? 'record' : 'nieuw';
+  }
+
+  bestLabel(id) {
+    const b = this.best[id];
+    if (!b) return '';
+    if (b.unit === 'tijd') { const m = Math.floor(b.v / 60), sec = Math.round(b.v % 60); return m ? `${m}:${String(sec).padStart(2, '0')} min` : `${Math.round(b.v)} s`; }
+    return `${b.v.toLocaleString('nl-NL')} ${b.unit}`;
   }
 
   // ------------------------------------------------------------ opzet
@@ -48,7 +73,7 @@ export class Missions {
       return g.world.spotNear(...poi(id).pos);
     };
 
-    const add = (key, name, spot, look) => (this.npcs[key] = g.addNpc(name, spot, makeCharacter(look)));
+    const add = (key, name, spot, look) => { const npc = (this.npcs[key] = g.addNpc(name, spot, makeCharacter(look))); npc.look = look; return npc; };
     add('monteur', 'De monteur', spotFor('jefabels'), { shirt: 0x2b2b2b, pants: 0x2b3a4a, apron: 0x5a3b22, hair: 0x2a2a2a, hat: 'cap', hatColor: 0xff9800 });
     add('frituur', 'Mevrouw achter de toonbank', spotFor('anpiet'), { shirt: 0xffffff, pants: 0x333333, apron: 0xd32f2f, hair: 0x7a5230, hairStyle: 'long', female: true });
     add('salma', 'De kok van Salma', spotFor('salma'), { shirt: 0xffffff, pants: 0x222222, apron: 0x2e7d32, hair: 0x1a1a1a });
@@ -246,7 +271,7 @@ export class Missions {
       { id: 'polonaise', npc: n.carnaval, title: 'Op tijd voor de optocht', place: 'Markt', desc: 'Prins Carnaval moet klumpkes sjmiete in de optocht. Haal zijn gevolg op, dan kan de optocht beginnen.' },
       { id: 'nachtvangulpen', npc: n.organisator, title: 'Nacht van Gulpen', place: 'Bij de Markt (alleen \'s avonds)', desc: 'Een proefrondje wandelen langs de stempelposten.', nightOnly: true },
     ].filter((m) => m.npc).concat(moreItems(n), westItems(n));
-    for (const m of items) m.state = this.active?.id === m.id ? 'actief' : this.done.has(m.id) && !m.repeat ? 'klaar' : 'open';
+    for (const m of items) { m.state = this.active?.id === m.id ? 'actief' : this.done.has(m.id) && !m.repeat ? 'klaar' : 'open'; m.best = this.bestLabel(m.id); }
     void g;
     return items;
   }
@@ -265,12 +290,20 @@ export class Missions {
       g.ui.setQuest(null); // vrij rondlopen: geen tekstblok, wel de teller
       // tel alleen missies die in de lijst op de kaart staan (oude opgeslagen namen tellen niet mee)
       const items = this.list();
-      g.ui.setTally(items.filter((m) => this.done.has(m.id)).length, items.length);
+      const doneN = items.filter((m) => this.done.has(m.id)).length;
+      g.ui.setTally(doneN, items.length);
+      // alles af? dan een uitnodiging voor het feest op de Markt (één keer per sessie, tot de finale gespeeld is)
+      if (items.length && doneN >= items.length && !this.done.has('finale') && !this.finaleInvited) {
+        this.finaleInvited = true;
+        setTimeout(() => { if (!this.active && !g.ui.dialogOpen) inviteFinale(this, g); else this.finaleInvited = false; }, 3500);
+      }
     }
     g.updateMarkers();
   }
 
   setActive(id, title, desc, progress = '') {
+    // tijd meten vanaf de start van de missie (opnieuw zetten tijdens dezelfde missie telt niet)
+    if (this.runStart?.id !== id) this.runStart = { id, t: performance.now() };
     this.active = { id, title, desc, progress };
     this.refresh();
   }
@@ -280,8 +313,12 @@ export class Missions {
     this.g.ui.setProgress(text);
   }
 
-  complete(id, toast) {
+  complete(id, toast, score = null) {
     this.done.add(id);
+    this.g.lastDone = id; // voor foutmeldingen: welke missie net klaar was
+    const rec = id === 'finale' ? null : this.record(id, score);
+    this.runStart = null;
+    if (rec === 'record') toast = `${toast || 'Missie geslaagd!'} Nieuw record: ${this.bestLabel(id)}!`;
     this.save();
     statsMissions(this.list().filter((m) => this.done.has(m.id)).length);
     this.active?.cleanup?.();
@@ -294,6 +331,7 @@ export class Missions {
   }
 
   fail(text) {
+    this.runStart = null;
     this.active?.cleanup?.();
     this.active = null;
     if (this.g.interior) this.g.exitInterior();
@@ -366,6 +404,7 @@ export class Missions {
 
   abort() {
     const g = this.g;
+    this.runStart = null;
     this.active?.cleanup?.();
     if (g.interior) g.exitInterior();
     g.collectibles.forEach((c) => c.cleanup?.());
@@ -584,7 +623,7 @@ export class Missions {
       const goals = await g.startPenalty();
       if (goals >= 3) {
         await ui.dialog(N, [`${goals} van de 5! Jij staat zaterdag in de basis.`]);
-        this.complete('penalty', 'Penaltyspecialist van FC Gulpen!');
+        this.complete('penalty', 'Penaltyspecialist van FC Gulpen!', { v: goals, unit: 'van de 5', high: true });
       } else {
         await ui.dialog(N, [`${goals} van de 5... Dat moet beter. Kom maar terug als je getraind hebt.`]);
         this.fail('Niet genoeg gescoord.');
@@ -748,7 +787,7 @@ export class Missions {
                 'Hier, een patatje van de zaak. Voor de content natuurlijk.',
               ]);
               await g.eat(makePuntzak(), 3);
-              this.complete('tiktok', `Viraal! ${formatViews(v)} views`);
+              this.complete('tiktok', `Viraal! ${formatViews(v)} views`, { v: Math.round(v), unit: 'views', high: true });
             } else {
               await ui.dialog(N, [`${formatViews(v)} views... Daar ga ik niet mee naar de baas. Probeer je het nog een keer?`]);
               this.fail('Te weinig views. Praat nog eens met de stagiair.');
