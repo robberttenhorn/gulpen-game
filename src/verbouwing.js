@@ -60,7 +60,7 @@ export function buildRenovation(g, [ax, az]) {
   const tube = std(0x9e9e9e, { metalness: 0.7, roughness: 0.4 }), plank = std(0xc8a165);
   const sx0 = W / 2 + 0.4;
   for (const dx of [0, 1.8]) for (const dz of [0.3, 1.3]) grp.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 6), tube, sx0 + dx, 3, dz));
-  for (const y of [2, 4]) { grp.add(mesh(new THREE.BoxGeometry(2.0, 0.05, 1.2), plank, sx0 + 0.9, y, 0.8)); grp.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.8, 6), tube, sx0 + 0.9, y + 0.9, 1.3)).rotation.z = Math.PI / 2; }
+  for (const y of [2, 4]) { grp.add(mesh(new THREE.BoxGeometry(2.0, 0.05, 1.2), plank, sx0 + 0.9, y, 0.8)); const rail = mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.8, 6), tube, sx0 + 0.9, y + 0.9, 1.3); rail.rotation.z = Math.PI / 2; grp.add(rail); } // leuning (alleen de buis draaien, niet de hele groep)
   // ---- container met puin en een betonmolen op straat
   const cont = new THREE.Group();
   const orange = std(0xf57c00, { roughness: 0.6 });
@@ -76,7 +76,7 @@ export function buildRenovation(g, [ax, az]) {
   const drum = mesh(new THREE.CylinderGeometry(0.35, 0.22, 0.75, 14), std(0xff6f00, { roughness: 0.5 }), 0, 0.85, 0);
   drum.rotation.x = 0.9;
   mixer.add(drum);
-  for (const s of [-1, 1]) mixer.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.06, 12), std(0x111111), s * 0.38, 0.15, 0.3)).rotation.z = Math.PI / 2;
+  for (const s of [-1, 1]) { const wheel = mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.06, 12), std(0x111111), s * 0.38, 0.15, 0.3); wheel.rotation.z = Math.PI / 2; mixer.add(wheel); }
   mixer.position.set(W / 2 + 1.0, 0, 2.6);
   grp.add(mixer);
   // pallet met nieuwe tegels voor de badkamer

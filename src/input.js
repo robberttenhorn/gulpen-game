@@ -20,22 +20,27 @@ export class Input {
     addEventListener('blur', () => this.keys.clear());
 
     // kijken met muis (slepen) of touch (rechterhelft)
-    let dragId = null, lx = 0, ly = 0;
+    let dragId = null, lx = 0, ly = 0, lastMove = 0;
     canvas.addEventListener('pointerdown', (e) => {
-      if (dragId !== null) return;
-      if (e.pointerType === 'touch' && e.clientX < innerWidth * 0.4) return;
-      dragId = e.pointerId; lx = e.clientX; ly = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
+      // een oude sleep die nooit netjes is losgelaten (bijv. doordat er een venster overheen kwam) niet laten blokkeren
+      if (dragId !== null && performance.now() - lastMove < 400) return;
+      // op touch alleen het joystickhoekje (linksonder) overslaan, de rest van het scherm kan slepen
+      if (e.pointerType === 'touch' && e.clientX < innerWidth * 0.45 && e.clientY > innerHeight * 0.55) return;
+      dragId = e.pointerId; lx = e.clientX; ly = e.clientY; lastMove = performance.now();
+      try { canvas.setPointerCapture(e.pointerId); } catch { /* negeren */ }
     });
     canvas.addEventListener('pointermove', (e) => {
       if (e.pointerId !== dragId) return;
       this.lookDelta.x += e.clientX - lx;
       this.lookDelta.y += e.clientY - ly;
-      lx = e.clientX; ly = e.clientY;
+      lx = e.clientX; ly = e.clientY; lastMove = performance.now();
     });
     const end = (e) => { if (e.pointerId === dragId) dragId = null; };
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('lostpointercapture', end);
+    addEventListener('blur', () => { dragId = null; });
+    document.addEventListener('visibilitychange', () => { dragId = null; });
     // niet zoomen: geen scrollwiel-zoom van de camera, en de pagina zelf ook niet laten zoomen
     // (iPhone negeert user-scalable=no, dus knijpen en dubbeltikken hier tegenhouden)
     canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
