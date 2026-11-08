@@ -14,6 +14,7 @@ import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
+import { statsStart } from './stats.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
@@ -108,6 +109,7 @@ class Game {
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
     this.sfx.start();
+    statsStart(); // anonieme telling (staat uit tot er een GoatCounter-code in stats.js staat)
     // stopknop: eerst bevestigen, dan stoppen
     // stopknoppen (op de opdrachtkaart en in het gesprekvenster): eerst bevestigen, dan stoppen
     const stopBtns = [document.getElementById('btn-stop'), document.getElementById('dialog-stop')];
