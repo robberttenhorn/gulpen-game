@@ -512,7 +512,8 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 /* warm-koudmeter bij de kabouterjacht */
 .gnome-meter { --heat: 0; position: absolute; left: 50%; transform: translateX(-50%); top: calc(max(12px, env(safe-area-inset-top)) + 4px); width: min(260px, 60vw); padding: 8px 12px 9px; border-radius: 14px; text-align: center; color: #fff; font-family: Inter, sans-serif; background: color-mix(in srgb, rgb(30, 90, 200) calc((1 - var(--heat)) * 100%), rgb(230, 60, 30)); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); pointer-events: none; z-index: 5; transition: background 0.3s; }
 .gnome-meter .gm-label { font-weight: 800; font-size: 20px; letter-spacing: 0.02em; }
-.gnome-meter .gm-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.25); margin: 5px 0 4px; overflow: hidden; }
+.gnome-meter .gm-bar { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.25); margin: 5px 0 4px; overflow: hidden; }
+.gnome-meter .gm-bar::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.7); } /* streepje in het midden: lauw */
 .gnome-meter .gm-bar i { display: block; height: 100%; width: 0; background: #fff; border-radius: 4px; transition: width 0.25s; }
 .gnome-meter .gm-count { font-size: 12px; opacity: 0.9; }
 /* smalle schermen: meter onderin tussen joystick en knoppen, zodat hij het bordje en de missie niet bedekt */
