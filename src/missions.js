@@ -10,7 +10,7 @@ import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } 
 import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
 import { statsMissions } from './stats.js';
 import { inviteFinale } from './finale.js';
-import { setupWest, setupGroeneweg, setupFitness, setupVerbouwing, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
+import { setupWest, setupGroeneweg, setupFitness, setupVerbouwing, setupPloegen, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
@@ -247,6 +247,7 @@ export class Missions {
     setupGroeneweg(this, g, add);
     setupFitness(this, g, add);
     setupVerbouwing(this, g, add);
+    setupPloegen(this, g, add);
     Object.assign(this.extra, westHandlers);
 
     Object.values(this.npcs).forEach((n) => { n.active = true; });
@@ -316,6 +317,8 @@ export class Missions {
   }
 
   setActive(id, title, desc, progress = '') {
+    // een gewone missie start in het donker: eerst weer dag (niet bij de nachtmissies, het pilsje of de finale)
+    if (this.g.night > 0.5 && !['nacht', 'nachtvangulpen', 'pils', 'finale'].includes(id) && !this.g.dawning) this.g.dawn();
     // tijd meten vanaf de start van de missie (opnieuw zetten tijdens dezelfde missie telt niet)
     if (this.runStart?.id !== id) this.runStart = { id, t: performance.now() };
     this.active = { id, title, desc, progress };
@@ -330,7 +333,7 @@ export class Missions {
   complete(id, toast, score = null) {
     this.done.add(id);
     this.g.lastDone = id; // voor foutmeldingen: welke missie net klaar was
-    if (id === 'nacht') this.g.morningAsap = true; // ambtsketen terug: weer ochtend
+    if (id === 'nacht' || id === 'nachtvangulpen') this.g.morningAsap = true; // nachtmissie gehaald: weer ochtend
     const rec = id === 'finale' ? null : this.record(id, score);
     this.runStart = null;
     if (rec === 'record') toast = `${toast || 'Missie geslaagd!'} Nieuw record: ${this.bestLabel(id)}!`;
@@ -441,9 +444,10 @@ export class Missions {
 
   handlers = {
     async monteur(npc, N, ui, g) {
-      if (this.done.has('fiets')) {
-        await ui.dialog(N, ['Rijdt hij lekker? Die Gulperberg vraagt wat van je banden, kom gerust terug als er iets is!']);
-        return;
+      if (this.done.has('fiets') && g.bikeTuned) {
+        // al gedaan: je mag de proefrit gewoon nog eens rijden
+        const again = await ui.dialog(N, ['Rijdt hij lekker? Zin in nog een rondje door de pionnen? Kijken of je je tijd kunt verbeteren.'], ['Nog een proefrit!', 'Nee, ik rij verder']);
+        if (again !== 0) return;
       }
       if (!g.bikeTuned) {
         await ui.dialog(N, [
@@ -535,11 +539,13 @@ export class Missions {
     },
 
     async concierge(npc, N, ui, g) {
-      if (g.vehicles.skate) {
-        await ui.dialog(N, ['Je hebt je skateboard toch al? Niet op het schoolplein hè!']);
-        return;
-      }
-      await ui.dialog(N, [
+      const replay = g.vehicles.skate;
+      if (replay) {
+        // skateboard heb je al, maar de overhoring mag je nog eens doen
+        const again = await ui.dialog(N, ['Je hebt je skateboard toch al? Of kom je nog eens overhoord worden? Goed voor je cijfers.'], ['Overhoor me maar!', 'Nee, dank je']);
+        if (again !== 0) return;
+        this.setActive('skateboard', 'In beslag genomen', 'Beantwoord de vragen van de conciërge goed.', '');
+      } else await ui.dialog(N, [
         G('Neet skate bie de sjoel!', 'Niet skaten bij school!'),
         'Zo, kom je je skateboard ophalen? Op het schoolplein wordt niet geskatet, dat weet je.',
         'Goed, je krijgt hem terug. Maar eerst een overhoring. Je zit tenslotte op het Sophianum!',
@@ -557,9 +563,9 @@ export class Missions {
         }
         await ui.dialog(N, ['Goed zo.']);
       }
-      await ui.dialog(N, ['Netjes, alles goed. Hier is je skateboard. En niet op het schoolplein!']);
-      g.unlockVehicle('skate');
-      this.complete('skateboard', 'Skateboard terug!');
+      await ui.dialog(N, [replay ? 'Netjes, weer alles goed. Jij mag de volgende overhoring zelf maken.' : 'Netjes, alles goed. Hier is je skateboard. En niet op het schoolplein!']);
+      if (!replay) g.unlockVehicle('skate');
+      this.complete('skateboard', replay ? 'Overhoring weer gehaald!' : 'Skateboard terug!');
     },
 
     async skater(npc, N, ui, g) {
@@ -608,7 +614,10 @@ export class Missions {
       const a = await ui.dialog(N, [night ? G('Nog ee glaas beer, braggelear?', 'Nog een glas bier, nachtbraker?') : G('Ee glaas beer op de maat?', 'Een glas bier op de markt?')],
         [night ? 'Nog eentje (tot morgenochtend)' : 'Graag, een pilsje!', 'Nee, dank je']);
       if (a !== 0) return;
-      if (!this.done.has('pils')) {
+      // eerder al geholpen? dan mag je kiezen of je het dienblad nog eens doet
+      let tray = !this.done.has('pils');
+      if (!tray) tray = (await ui.dialog(N, ['Help je me nog eens met het dienblad? Het terras zit weer vol.'], ['Ja, geef dat blad maar', 'Nee, gewoon een pilsje'])) === 0;
+      if (tray) {
         // eerste keer: eerst de waard helpen met een overvol dienblad
         await ui.dialog(N, ['Eerst even helpen, want het terras staat vol en ik heb veel te veel glazen pils op mijn blad...', 'Oei, daar gaan ze! Vang ze op!']);
         this.setActive('pils', 'Pils vangen', 'Vang de vallende glazen pils op met het dienblad.', '');
@@ -633,13 +642,14 @@ export class Missions {
     async trainer(npc, N, ui, g) {
       const a = await ui.dialog(N, [
         'Hé! Wij zoeken nog een penaltyspecialist voor het eerste elftal.',
-        'Vijf penalty\'s. Scoor er minstens drie en je mag zaterdag meedoen. Klaar?',
+        'Vijf penalty\'s tegen onze keeper. Scoor er minstens drie en je mag zaterdag meedoen.',
+        'Eerst zet je het mikpunt vast, dan kies je de kracht. Groen is goed, te hard en hij ligt in de Gulp. En pas op: onze keeper leest je als een boek. Klaar?',
       ], ['Ik ben er klaar voor', 'Een andere keer']);
       if (a !== 0) return;
-      this.setActive('penalty', 'Penalty\'s bij FC Gulpen', g.input.isTouch ? 'Tik op "Schiet" als het mikpunt goed staat.' : 'Druk op E of spatie als het mikpunt goed staat.', '0 / 5');
+      this.setActive('penalty', 'Penalty\'s bij FC Gulpen', g.input.isTouch ? 'Tik om het mikpunt vast te zetten, en nog eens om te schieten als de krachtbalk in het groen staat.' : 'Druk op E of spatie om het mikpunt vast te zetten, en nog eens om te schieten als de krachtbalk in het groen staat.', '0 / 5');
       const goals = await g.startPenalty();
       if (goals >= 3) {
-        await ui.dialog(N, [`${goals} van de 5! Jij staat zaterdag in de basis.`]);
+        await ui.dialog(N, [goals === 5 ? 'Vijf van de vijf! Onze keeper zit in de kleedkamer te huilen. Jij bent aanvoerder.' : `${goals} van de 5! Jij staat zaterdag in de basis.`]);
         this.complete('penalty', 'Penaltyspecialist van FC Gulpen!', { v: goals, unit: 'van de 5', high: true });
       } else {
         await ui.dialog(N, [`${goals} van de 5... Dat moet beter. Kom maar terug als je getraind hebt.`]);
@@ -692,6 +702,7 @@ export class Missions {
         'Maar ik ben mijn ambtsketen kwijt! Zonder keten neemt niemand me serieus.',
         'Ik had hem nog bij een bruggetje over de Gulp. Wil je helpen zoeken?',
       ]);
+      this.keten.visible = false; // opnieuw spelen: de keten is weer kwijt
       this.setActive('nacht', 'De ambtsketen', 'Zoek de ambtsketen bij een bruggetje over de Gulp.');
       this.spawnChain();
     },
@@ -754,12 +765,12 @@ export class Missions {
     async schutter(npc, N, ui, g) {
       const a = await ui.dialog(N, [
         'Goedendag! Vandaag is het koningsschieten bij de schutterij. Wie het laatste stuk van de vogel eraf schiet, is schutterskoning.',
-        'Eerst de kop, de vleugels en de staart, dan pas de romp. Je hebt twaalf schoten. Durf je het aan?',
+        'Eerst de kop, de vleugels en de staart, dan pas de romp. Je hebt veertien schoten. Durf je het aan?',
       ], ['Geef mij de buks', 'Ik kijk wel toe']);
       if (a !== 0) return;
       if (g.mode === 'car') g.exitCar();
       g.setMode('walk');
-      this.setActive('vogelschieten', 'Vogelschieten', 'Richt op de vogel en schiet de vijf stukken er een voor een af. Eerst kop, vleugels en staart.', '0 / 5 stukken');
+      this.setActive('vogelschieten', 'Vogelschieten', 'Richt op de vogel en schiet de vijf stukken er een voor een af. Eerst kop, vleugels en staart, de romp als laatste.', '0 / 5 stukken');
       const r = await startVogelschieten(g, this.polePos || [npc.pos.x + 15, npc.pos.z]);
       if (!r || this.active?.id !== 'vogelschieten') return;
       if (r.king) {

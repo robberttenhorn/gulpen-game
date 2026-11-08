@@ -5,6 +5,8 @@ import { startHedge, startGnomes, startBBQ, startBarrow } from './skills3.js';
 import { makeKruiwagen, makeSchep } from './props.js';
 import { startCurls } from './fitness.js';
 import { buildRenovation, startTiles } from './verbouwing.js';
+import { setupPloegen, startPloegen } from './ploegen.js';
+export { setupPloegen };
 
 const G = (text, nl) => ({ text, nl });
 
@@ -16,6 +18,36 @@ const OUDE_AKERWEG_43 = [191102.875 - 190531, -(314218.601 - 314058)];
 const GROENEWEG_65 = [190419.491 - 190531, -(314258.471 - 314058)];
 
 // punt halverwege een straat, een paar meter opzij (in de voortuin of op de stoep)
+// Willekeurige plekjes in voortuinen (naast de straat) tussen 20 en 75 m van (x, z), minstens 16 m uit elkaar.
+function gnomeSpotsNear(g, x, z, n = 5, rMin = 20, rMax = 75) {
+  const w = g.world;
+  const cands = [];
+  for (const [, ax, az, bx, bz] of w.segments) {
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 1) continue;
+    const dx = (bx - ax) / len, dz = (bz - az) / len;
+    for (let t = 2; t < len - 1; t += 6) {
+      const sx = ax + dx * t, sz = az + dz * t;
+      const d = Math.hypot(sx - x, sz - z);
+      if (d < rMin - 5 || d > rMax + 5) continue;
+      for (const side of [4, -4]) {
+        const px = sx - dz * side, pz = sz + dx * side;
+        const pd = Math.hypot(px - x, pz - z);
+        if (pd < rMin || pd > rMax || w.insideBuilding(px, pz)) continue;
+        const [qx, qz] = w.resolve(px, pz, 0.6);
+        if (Math.hypot(qx - px, qz - pz) > 1.5 || w.insideBuilding(qx, qz)) continue;
+        cands.push([qx, qz]);
+      }
+    }
+  }
+  const out = [];
+  for (let tries = 0; tries < 400 && cands.length && out.length < n; tries++) {
+    const c = cands[Math.floor(Math.random() * cands.length)];
+    if (out.every((o) => Math.hypot(o[0] - c[0], o[1] - c[1]) >= 16)) out.push(c);
+  }
+  return out;
+}
+
 function streetSpot(g, name, at = 0.5, side = 3.2) {
   const path = g.world.streetPath(name);
   if (!path || path.length < 2) return null;
@@ -162,13 +194,37 @@ export function westItems(n) {
     { id: 'bbq', npc: n.bbqjongen, title: 'Burendag-BBQ', place: 'Aardaker 43', desc: 'De barbecuemeester is zoek. Draai de burgers op tijd om en serveer de hele straat.' },
     { id: 'biceps', npc: n.pt, title: 'Biceps pompen', place: 'Anytime Fitness, hoek Looierstraat', desc: 'Zaterdag naar Mosaqua. Pomp je biceps op in de sportschool, zodat je niet uitgelachen wordt op de glijbaan.' },
     { id: 'tegels', npc: n.verbouwer, title: 'Badkamer betegelen', place: 'Oude Akerweg 43', desc: 'Het halve huis ligt open en de tegelzetter is weg. Leg de badkamertegels in het juiste patroon, binnen de tijd.' },
+    { id: 'ploegen', npc: n.akkerbouwer, title: 'Ploegen op de Gulperberg', place: 'Akker op de Gulperberg', desc: 'Ploeg met de tractor een akker om, in zes banen die zo recht mogelijk zijn.' },
     { id: 'grond', npc: n.krullebol, title: 'Grond sjouwen', place: 'Groeneweg 65', desc: 'Help de krullebol zijn voortuin op te hogen: rij drie kruiwagens grond van de straat naar zijn tuin, zonder te morsen.' },
   ].filter((x) => x.npc);
 }
 
-export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond', pt: 'biceps', verbouwer: 'tegels' };
+export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond', pt: 'biceps', verbouwer: 'tegels', akkerbouwer: 'ploegen' };
 
 export const westHandlers = {
+  // ------------------------------------------------------------ Gulperberg: ploegen met de tractor
+  async akkerbouwer(npc, N, ui, g) {
+    const a = await ui.dialog(N, [
+      G('Enne? Kom je kijken of je wat kunt leren?', 'En? Kom je kijken of je wat kunt leren?'),
+      'Deze akker moet vandaag nog omgeploegd worden, maar mijn knecht is aangefietst naar de kermis.',
+      'Zes banen, zo recht als een liniaal. Volg de witte lijn, keer op de kopakker en ploeg terug. Krom ploegen is voor beginners uit de stad.',
+    ], ['Ik kruip op de tractor', 'Ik heb geen trekkerrijbewijs']);
+    if (a !== 0) { await ui.dialog(N, ['Trekkerrijbewijs? Hier op de berg rijden de kinderen al tractor voordat ze kunnen fietsen.']); return; }
+    this.setActive('ploegen', 'Ploegen op de Gulperberg', 'Rij met de tractor over de witte lijn. Aan het eind keren en de volgende baan terug. Zes banen, zo recht mogelijk, binnen de tijd.', '');
+    const r = await startPloegen(g, this.field, { limit: 170 });
+    if (!r || this.active?.id !== 'ploegen') return;
+    if (r.ok) {
+      await ui.dialog(N, [
+        r.straight >= 90 ? `${r.straight} procent recht! Doa velt mig de boks van aaf. Zo recht heeft mijn vader nooit geploegd.` : `${r.straight} procent recht. Hier en daar een bochtje, maar de aardappels groeien er niet minder om.`,
+        G('Zo, de akker ligt er mooi bij. Ik ben afgewerkt voor vandaag. Haije!', 'Zo, de akker ligt er mooi bij. Ik ben klaar met werken voor vandaag. Doei!'),
+      ]);
+      this.complete('ploegen', 'Ploegkampioen van de Gulperberg!', { v: r.straight, unit: '% recht', high: true });
+    } else {
+      await ui.dialog(N, [r.late ? 'De tijd is om en de akker ligt er half bij. Zo komen de aardappels nooit in de grond. Nog een keer?' : `Maar ${r.straight} procent recht? Het lijkt wel een slingerpad. Nog een keer, en dan rustig langs de lijn.`]);
+      this.fail(r.late ? 'Niet op tijd geploegd.' : 'Te krom geploegd.');
+    }
+  },
+
   // ------------------------------------------------------------ Oude Akerweg 43: badkamer betegelen
   async verbouwer(npc, N, ui, g) {
     const a = await ui.dialog(N, [
@@ -307,10 +363,13 @@ export const westHandlers = {
       'Kijk maar naar die meter: hoe warmer, hoe dichterbij. Binnen drie minuten, voordat het donker wordt en ze echt gaan wandelen.',
     ], ['Ik vind ze!', 'Kabouters? Ik ben te oud voor sprookjes']);
     if (a !== 0) { await ui.dialog(N, ['Te oud? Kleine Jean-Pierre is zestig. Hij staat nog elke dag buiten. Jij kunt een voorbeeld aan hem nemen.']); return; }
-    const pool = (this.gnomeSpots || []).slice();
-    // kies vijf verschillende plekken
-    const spots = [];
-    while (pool.length && spots.length < 5) spots.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    // vijf verstopplekken in de voortuinen rond de kabouterman, niet te ver weg
+    let spots = gnomeSpotsNear(g, npc.pos.x, npc.pos.z, 5);
+    if (spots.length < 5) {
+      const pool = (this.gnomeSpots || []).slice();
+      spots = [];
+      while (pool.length && spots.length < 5) spots.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
     if (spots.length < 3) { await ui.dialog(N, ['Hm, ik zie ze nergens. Kom later nog eens terug.']); return; }
     this.setActive('kabouters', 'Kabouters ontvoerd', 'Loop, fiets of skate door de bloemenwijk. De meter zegt warm of koud. Loop tegen een kabouter aan om hem te pakken.', `0 / ${spots.length} kabouters`);
     const r = await startGnomes(g, spots, { limit: 180 });
@@ -352,4 +411,4 @@ export const westHandlers = {
   },
 };
 
-if (typeof location !== 'undefined' && location.search.includes('dev')) window.__mini3 = { startHedge, startGnomes, startBBQ };
+if (typeof location !== 'undefined' && location.search.includes('dev')) window.__mini3 = { startHedge, startGnomes, startBBQ, gnomeSpotsNear };

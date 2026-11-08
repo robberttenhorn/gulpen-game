@@ -461,7 +461,7 @@ function makeBird() {
 }
 
 // Met de buks op de houten vogel op de paal mikken. Geeft { hits, shots, king } terug.
-export function startVogelschieten(g, pos, { shots = 12 } = {}) {
+export function startVogelschieten(g, pos, { shots = 14 } = {}) {
   const w = g.world;
   const [px, pz] = pos;
   const y0 = w.groundAt(px, pz);
@@ -485,7 +485,7 @@ export function startVogelschieten(g, pos, { shots = 12 } = {}) {
   ov.className = 'mini-overlay aim';
   ov.innerHTML = `<div class="mini-head"><b>Vogelschieten</b><span class="mini-score">Schoten: ${shots}</span><button class="mini-stop" type="button">Stoppen</button></div>
     <div class="crosshair"></div>
-    <div class="mini-hint">${g.input.isTouch ? 'Sleep om te richten, tik op Schiet' : 'Muis slepen of pijltjes om te richten, spatie of E om te schieten'} · schiet alle vijf stukken van de vogel eraf</div>`;
+    <div class="mini-hint">${g.input.isTouch ? 'Sleep om te richten, tik op Schiet' : 'Muis slepen of pijltjes om te richten, spatie of E om te schieten'} · schiet alle vijf stukken van de vogel eraf, de romp als laatste</div>`;
   document.getElementById('hud').prepend(ov);
   document.body.classList.add('pov');
   ov.querySelector('.mini-stop').addEventListener('click', () => g.missions.stop());
@@ -500,9 +500,11 @@ export function startVogelschieten(g, pos, { shots = 12 } = {}) {
   ov.addEventListener('pointerup', () => { if (drag && drag.moved < 8 && performance.now() - drag.t < 300 && !g.input.isTouch) g.input.actionPressed = true; drag = null; });
   g.ui.setActionLabel('Schiet');
   const ray = new THREE.Raycaster();
-  let left = shots, hits = 0, t = 0;
+  let left = shots, hits = 0, t = 0, done = false;
+  const shotDir = new THREE.Vector3();
   const falling = [];
-  g.pov = { pos: eye.clone(), look: eye.clone(), snap: true };
+  // steady: geen extra camerawiebel, zodat het vizier precies wijst waar de kogel heen gaat
+  g.pov = { pos: eye.clone(), look: eye.clone(), snap: true, steady: true };
   // door het vizier: ingezoomd
   const fov0 = g.camera.fov;
   g.camera.fov = 26; g.camera.updateProjectionMatrix();
@@ -513,30 +515,39 @@ export function startVogelschieten(g, pos, { shots = 12 } = {}) {
     yaw -= m.x * dt * 0.8; pitch -= m.y * dt * 0.8;
     pitch = Math.max(0.2, Math.min(1.35, pitch));
     // trillende handen: langzaam slingeren, steeds iets meer
-    const sway = 0.012 + (shots - left) * 0.0015;
+    const sway = 0.008 + (shots - left) * 0.001;
     const sy = yaw + Math.sin(t * 1.3) * sway + Math.sin(t * 3.1) * sway * 0.4;
     const sp = pitch + Math.sin(t * 1.7 + 1) * sway + Math.cos(t * 2.6) * sway * 0.4;
     aim.set(Math.sin(sy) * Math.cos(sp), Math.sin(sp), Math.cos(sy) * Math.cos(sp));
     g.pov.pos.copy(eye);
     g.pov.look.copy(eye).addScaledVector(aim, 10);
     for (const f of falling) { f.v -= 9.8 * dt; f.m.position.y += f.v * dt; f.m.position.x += (f.vx || 0) * dt; f.m.position.z += (f.vz || 0) * dt; f.m.rotation.x += dt * 4; f.m.rotation.z += dt * 3; }
+    // wat je ziet: de camera kijkt (na de vorige frame) door het vizier
+    g.camera.getWorldDirection(shotDir);
+    if (!(shotDir.lengthSq() > 0.5)) shotDir.copy(aim);
     const pressed = g.input.consumeAction() || g.input.spacePressed;
     g.input.spacePressed = false;
-    if (pressed && left > 0) {
-      left--;
+    if (pressed && left > 0 && !done) {
       g.sfx?.play('kick');
       g.pov.shake = 0.5;
       pitch += 0.05; // terugslag
       flash(ov, 'gold');
       const ch = ov.querySelector('.crosshair'); bump(ch);
-      ray.set(eye, aim.clone().normalize());
+      // schiet precies door het midden van het beeld (waar het vizier staat), vóór de terugslag
+      pole.updateMatrixWorld(true);
+      ray.set(eye, shotDir.clone().normalize());
       const targets = Object.values(bird.userData.parts).filter((p) => p.parent === bird);
-      const hit = ray.intersectObjects(targets, true)[0];
+      const partOf = (o) => { while (o && !o.userData.part) o = o.parent; return o; };
+      const all = ray.intersectObjects(targets, true);
+      const rest = targets.filter((p) => p.userData.part !== 'romp').length;
+      // zolang er nog stukken aan zitten, gaat de kogel door de romp naar het stuk erachter
+      let hit = all[0];
+      if (hit && rest > 0 && partOf(hit.object)?.userData.part === 'romp') hit = all.find((h) => partOf(h.object)?.userData.part !== 'romp') || hit;
+      const part = partOf(hit?.object);
+      // de romp valt pas als de rest eraf is; een schot op de romp kost dan geen kogel
+      const early = part?.userData.part === 'romp' && rest > 0;
+      if (!early) left--;
       if (hit) {
-        let part = hit.object;
-        while (part && !part.userData.part) part = part.parent;
-        // de romp valt pas als de rest eraf is
-        const rest = targets.filter((p) => p.userData.part !== 'romp').length;
         ch.classList.remove('hit'); void ch.offsetWidth; ch.classList.add('hit');
         // houtsplinters
         for (let k = 0; k < 10; k++) {
@@ -545,7 +556,7 @@ export function startVogelschieten(g, pos, { shots = 12 } = {}) {
           g.scene.add(sp);
           falling.push({ m: sp, v: 2 + Math.random() * 3, vx: (Math.random() - 0.5) * 4, vz: (Math.random() - 0.5) * 4 });
         }
-        if (part.userData.part === 'romp' && rest > 0) { popText(ov, 'Raak, maar de romp zit nog vast!', 50, 36, 'small'); }
+        if (early) { popText(ov, 'Raak, maar de romp gaat pas als laatste! Dit schot telt niet.', 50, 36, 'small'); }
         else {
           hits++;
           const wp = new THREE.Vector3(); part.getWorldPosition(wp);
@@ -558,8 +569,8 @@ export function startVogelschieten(g, pos, { shots = 12 } = {}) {
       } else popText(ov, 'Mis!', 50 + (Math.random() - 0.5) * 10, 44, 'bad');
       ov.querySelector('.mini-score').textContent = `Schoten: ${left} · Raak: ${hits} / 5`;
       g.missions.progress(`${hits} / 5 stukken`);
-      if (hits >= 5) setTimeout(() => finish({ hits, shots: shots - left, king: true }), 1500);
-      else if (left <= 0) setTimeout(() => finish({ hits, shots, king: false }), 900);
+      if (hits >= 5) { done = true; setTimeout(() => finish({ hits, shots: shots - left, king: true }), 1500); }
+      else if (left <= 0) { done = true; setTimeout(() => finish({ hits, shots, king: false }), 900); }
     }
   }, () => {
     ov.remove(); document.body.classList.remove('pov');
