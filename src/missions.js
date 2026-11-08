@@ -261,7 +261,7 @@ export class Missions {
       { id: 'fiets', npc: n.monteur, title: 'Fiets afstellen', place: 'Jef Abels Bikes', desc: 'Laat Jef Abels je fiets afstellen en rij een slalom tussen de pionnen.' },
       { id: 'frikandel', npc: n.frituur, title: 'Frikandel super', place: 'Friture An + Piet', desc: 'Alleen contant! Zoek eerst wat muntgeld bij elkaar.' },
       { id: 'salma', npc: n.salma, title: 'Bezorgen voor Salma', place: 'Grillroom Pizzeria Salma', desc: 'Bezorg twee bestellingen in de buurt op tijd. Beloning: een Broodje Gulpen.' },
-      { id: 'zheng', npc: n.zheng, title: 'Friet bij Zheng', place: 'Cafetaria Zheng', desc: 'Een patatje halen. Maar met welke saus?' },
+      { id: 'zheng', npc: n.zheng, title: 'Friet bij Zheng', place: 'Cafetaria Zheng', desc: 'Een frietje halen. Maar met welke saus?' },
       { id: 'tiktok', npc: n.stagiair, title: 'Viraal met een frietje', place: 'Cafetaria Zheng', desc: 'Film binnen een POV-filmpje van het klaarmaken van een bestelling. Zo veel mogelijk views op TikTok!' },
       { id: 'skateboard', npc: n.concierge, title: 'In beslag genomen', place: 'Sophianum', desc: 'Haal je skateboard op bij de conciërge. Eerst een overhoring.' },
       { id: 'race', npc: n.skater, title: 'Ringweg Race', place: 'Ringweg', desc: 'Skatewedstrijd over de Ringweg. Je hebt je skateboard nodig.' },
@@ -521,10 +521,10 @@ export class Missions {
     },
 
     async zheng(npc, N, ui, g) {
-      const a = await ui.dialog(N, [G('Joa? Welkom in de frieteboet!', 'Ja? Welkom in de friture!'), 'Wat mag het zijn?'], ['Patat met mayo', 'Patatje oorlog', 'Patat speciaal', 'Gewoon zonder']);
+      const a = await ui.dialog(N, [G('Joa? Welkom in de frieteboet!', 'Ja? Welkom in de friture!'), 'Wat mag het zijn?'], ['Friet met mayo', 'Frietje oorlog', 'Friet speciaal', 'Gewoon zonder']);
       const reply = [
-        'Patat met mayo, de klassieker. Komt eraan!',
-        'Patatje oorlog: mayo, pindasaus en uitjes. Jij durft!',
+        'Friet met mayo, de klassieker. Komt eraan!',
+        'Frietje oorlog: mayo, pindasaus en uitjes. Jij durft!',
         'Speciaal: mayo, curry en uitjes. Goede keuze.',
         G('Zonder saus? Echt? Dan had je net zo goed naar de McDrek kunnen gaan. Nou, jij je zin.', 'Zonder saus? Echt? Dan had je net zo goed naar de McDonald\'s kunnen gaan. Nou, jij je zin.'),
       ][a];
@@ -801,7 +801,7 @@ export class Missions {
               await ui.dialog(N, [
                 `${formatViews(v)} views! ${v >= 250000 ? 'Dit is groter dan carnaval!' : v >= 80000 ? 'Heel Limburg kijkt mee!' : 'Gulpe kijkt mee!'}`,
                 r.results.includes('fail') ? 'En dat bakje dat viel... de mensen kunnen er geen genoeg van krijgen.' : perfect >= 4 ? 'Strak als een frituurmandje. De baas gaat dit inlijsten.' : 'Netjes gedaan. De baas is tevreden.',
-                G('Dat is kei leuk! Hier, een patatje van de zaak. Voor de content natuurlijk.', 'Dat is heel erg leuk! Hier, een patatje van de zaak. Voor de content natuurlijk.'),
+                G('Dat is hiel leuk! Hier, een frietje van de zaak. Voor de content natuurlijk.', 'Dat is heel leuk! Hier, een frietje van de zaak. Voor de content natuurlijk.'),
               ]);
               await g.eat(makePuntzak(), 3);
               this.complete('tiktok', `Viraal! ${formatViews(v)} views`, { v: Math.round(v), unit: 'views', high: true });
