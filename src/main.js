@@ -415,10 +415,20 @@ class Game {
     if (this.interior) await this.exitInterior();
     if (this.mode === 'car') { this.car.speed = 0; this.exitCar(); }
     if (this.mode !== 'walk') this.setMode('walk');
-    const [x, z] = this.world.resolve(it.x + 2, it.z + 2, 0.5);
+    let [x, z] = it.free ? [it.x, it.z] : [it.x + 2, it.z + 2];
+    // vrij gekozen punt: niet in het water of in een pand neerkomen
+    if (it.free) {
+      outer: for (let r = 0; r < 40; r += 2) {
+        for (let k = 0; k < Math.max(1, r * 2); k++) {
+          const a = (k / Math.max(1, r * 2)) * Math.PI * 2, px = it.x + Math.cos(a) * r, pz = it.z + Math.sin(a) * r;
+          if (!this.world.blocked(px, pz) && !this.world.insideBuilding(px, pz)) { x = px; z = pz; break outer; }
+        }
+      }
+    }
+    [x, z] = this.world.resolve(x, z, 0.5);
     const p = this.player;
     p.x = x; p.z = z; p.speed = 0;
-    p.heading = Math.atan2(it.x - x, it.z - z);
+    p.heading = it.free ? p.heading : Math.atan2(it.x - x, it.z - z);
     this.camYaw = p.heading + Math.PI;
     this.fx.confetti(x, this.world.groundAt(x, z) + 2, z, 60);
     this.sfx.play('pop');

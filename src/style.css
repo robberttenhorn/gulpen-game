@@ -539,3 +539,11 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 .six-count { font-size: 13px; color: #ffb3d6; }
 @keyframes six-in { from { opacity: 0; transform: translateX(-50%) rotate(-12deg) scale(.6); } to { opacity: 1; transform: translateX(-50%) rotate(-4deg) scale(1); } }
 @keyframes six-out { to { opacity: 0; transform: translateX(-50%) rotate(6deg) scale(.8) translateY(-20px); } }
+
+/* beheerdersmodus: vrij punt op de kaart kiezen */
+.bm-gohere { position: absolute; transform: translate(-50%, calc(-100% - 10px)); z-index: 3; padding: 8px 14px; border: 0; border-radius: 999px; background: #ff6b5a; color: #fff; font: 800 14px Inter, sans-serif; box-shadow: 0 6px 18px rgba(0,0,0,.35); cursor: pointer; }
+.bm-gohere::after { content: ''; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #ff6b5a; }
+
+/* tussenscène (SixSense-bus): geen knoppen, alleen kijken */
+body.cutscene #touch-ui, body.cutscene #joystick, body.cutscene #btn-action, body.cutscene #btn-vehicle, body.cutscene #prompt,
+body.cutscene #minimap-wrap, body.cutscene #mission-tally, body.cutscene #street-sign, body.cutscene #quest-card, body.cutscene #btn-sound, body.cutscene #race-timer { display: none !important; }

@@ -78,7 +78,7 @@ export const moreHandlers = {
     const r = await startMice(g, room);
     if (!r || this.active?.id !== 'muizen') return;
     if (r.caught >= r.n) {
-      await ui.dialog(N, [`Allemaal! In ${Math.round(r.time)} seconden. Jij bent beter dan elke kat in Gulpen.`, 'De keuring kan komen. Hier, een stuk vlaai. Zonder extra krenten, beloofd.']);
+      await ui.dialog(N, [`Allemaal! In ${Math.round(r.time)} seconden. Jij bent beter dan elke kat in Gulpen.`, G('De keuring kan komen. Heb je zin in mik? Of liever een stuk vlaai. Zonder extra krenten, beloofd.', 'De keuring kan komen. Heb je zin in een boterham? Of liever een stuk vlaai. Zonder extra krenten, beloofd.')]);
       if (g.interior) await g.exitInterior();
       this.complete('muizen', 'Muizenvanger van Pijls!');
     } else {
@@ -90,7 +90,7 @@ export const moreHandlers = {
   // ------------------------------------------------------------ DA: tuutjes trekken
   async tuutjes(npc, N, ui, g) {
     const a = await ui.dialog(N, [
-      'Psst... Hé. Kun jij iets voor me doen? Vanavond komt mijn vriendin langs en ik eh... heb niks in huis.',
+      G('Psst... Hé. Kun jij iets voor me doen? Vanavond komt mijn sjattepoemelke langs en ik eh... heb niks in huis.', 'Psst... Hé. Kun jij iets voor me doen? Vanavond komt mijn schatje langs en ik eh... heb niks in huis.'),
       'Die automaat daar. Maar het hele dorp loopt hier langs! Mijn tante, de buurvrouw, de juf van vroeger...',
       G('Tuutjes trekke, joa. Doe jij het?', 'Condooms halen, ja. Doe jij het?'),
     ], ['Geef dat muntje maar', 'Regel het zelf maar, held']);
@@ -119,7 +119,7 @@ export const moreHandlers = {
       'Drie sprongen. Tik voor de sprong als de balk vol is, en maak in de lucht een bommetje. De jury geeft punten.',
       'En niet in het water plassen. Ik zie alles. Nou ja, bijna alles.',
     ], ['Zwembroek aan, ik ga!', 'Ik ben net gegeten']);
-    if (a !== 0) { await ui.dialog(N, ['Net gegeten? Die regel van een half uur is een fabeltje. Maar goed, jij je zin.']); return; }
+    if (a !== 0) { await ui.dialog(N, [G('Wablief? Net gegeten? Die regel van een half uur is een fabeltje. Maar goed, jij je zin.', 'Wat zeg je? Net gegeten? Die regel van een half uur is een fabeltje. Maar goed, jij je zin.')]); return; }
     this.setActive('bommetje', 'Het grootste bommetje', 'Drie sprongen. Kracht kiezen, dan in de lucht op tijd tikken voor een bommetje. Haal samen 21 punten.', 'Sprong 1 / 3');
     const room = g.interiors.room('zwembad');
     await g.enterInterior(room);
@@ -142,7 +142,7 @@ export const moreHandlers = {
     const a = await ui.dialog(N, [
       'Kalimera! Mijn hulpkok is ziek. Te veel ouzo, zegt hij. Te veel ouzo bestaat niet, zeg ik.',
       'Jij snijdt de gyros. Alleen het donkere, krokante vlees snijd je eraf. Het lichte vlees laat je nog even grillen, anders krijgen de gasten rauwe lappen.',
-      'En als het lukt, gooien we de stapel oude borden kapot. Tien stuks. Opa! Dat is hier gewoon traditie, de afwasmachine is toch stuk.',
+      'En als het lukt, gooien we de stapel oude borden kapot. Tien stuks. Opa! Dat is hier gewoon traditie, de afwasmachine is toch stuk.', G('En de sjottelslet ligt al sinds Pasen in de vuilnisbak.', 'En de vaatdoek ligt al sinds Pasen in de vuilnisbak.'),
     ], ['Opa! Geef dat mes', 'Ik ben vegetariër']);
     if (a !== 0) { await ui.dialog(N, ['Vegetariër? Dan krijg jij een bord met tzatziki. Met extra knoflook. Je vriendin slaapt vannacht toch op de bank.']); return; }
     this.setActive('gyros', 'Gyros en Opa!', 'Snijd zes keer het donkere vlees eraf en gooi daarna de stapel van tien borden kapot, binnen zes seconden.', '');
@@ -187,20 +187,20 @@ export const moreHandlers = {
     const a = await ui.dialog(N, [
       'Ziet u dat matras? Dat ligt hier al drie weken. Niemand weet wie het is, niemand weet van wie het is.',
       'De gemeenteraad heeft er al twee vergaderingen over gehad. Uitkomst: een werkgroep. De werkgroep vergadert volgend jaar.',
-      'Wilt u binnen even uitzoeken welk loket erover gaat? Ze sturen u wel van het kastje naar de muur. Binnen twee minuten, voor de lunchpauze.',
+      G('Wilt u binnen even uitzoeken welk loket erover gaat? Ze sturen u wel van het kastje naar de muur. Het is al tien op twaalf, dus binnen twee minuten, voor de lunchpauze.', 'Wilt u binnen even uitzoeken welk loket erover gaat? Ze sturen u wel van het kastje naar de muur. Het is al tien over twaalf, dus binnen twee minuten, voor de lunchpauze.'),
     ], ['Ik regel het', 'Ik heb ook een leven']);
     if (a !== 0) { await ui.dialog(N, ['Een leven? Bij de gemeente? Dat is ook een loket, maar daar zit nooit iemand.']); return; }
     this.setActive('matras', 'Het matras van Gulpen', 'Ga binnen langs de loketten. Elk loket stuurt je door. Vind wie erover gaat, binnen twee minuten.', 'Loket: ?');
     const room = g.interiors.room('gemeentehuis');
     const chain = [
-      ['Afval', 'Een matras? Dat is grofvuil, maar het ligt op de stoep. Stoep is Wegen. Volgende!'],
+      ['Afval', G('Een matras? Dat past niet in de dreksbak, dus dat is grofvuil. Maar het ligt op de stoep. Stoep is Wegen. Volgende!', 'Een matras? Dat past niet in de vuilnisbak, dus dat is grofvuil. Maar het ligt op de stoep. Stoep is Wegen. Volgende!')],
       ['Wegen', 'Ligt het óp de stoep of ernaast? Ernaast? Dan is het Openbare Orde. Daar, met die snor.'],
       ['Openbare Orde', 'Heeft iemand erop geslapen? Dan is het geen afval maar een woning. Dat is Cultuur. Hè, nee, dat is... ach, ga maar naar Cultuur.'],
       ['Cultuur', 'Hm. Het heeft wel iets. Kunst, zou ik zeggen. Maar kunst moet ingeschreven worden. Burgerzaken!'],
       ['Burgerzaken', null],
     ];
     let step = 0;
-    const wrongLines = ['Daar gaan wij niet over. Neem een nummertje.', 'Matrassen? Hier? Nee. Wij doen alleen hondenbelasting en ruzies over heggen.', 'Momentje... koffiepauze. Nee, ik weet het niet. Probeer een ander loket.'];
+    const wrongLines = ['Daar gaan wij niet over. Neem een nummertje.', 'Matrassen? Hier? Nee. Wij doen alleen hondenbelasting en ruzies over heggen.', G('Momentje... schud me eerst even een tas koffie in. Nee, ik weet het niet. Probeer een ander loket.', 'Momentje... schenk me eerst even een kop koffie in. Nee, ik weet het niet. Probeer een ander loket.')];
     let resolveRun;
     const done = new Promise((r) => { resolveRun = r; });
     const t0 = performance.now();

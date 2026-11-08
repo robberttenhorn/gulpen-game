@@ -10,7 +10,7 @@ import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } 
 import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
 import { statsMissions } from './stats.js';
 import { inviteFinale } from './finale.js';
-import { setupWest, setupGroeneweg, setupFitness, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
+import { setupWest, setupGroeneweg, setupFitness, setupVerbouwing, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
@@ -234,6 +234,7 @@ export class Missions {
     setupWest(this, g, add);
     setupGroeneweg(this, g, add);
     setupFitness(this, g, add);
+    setupVerbouwing(this, g, add);
     Object.assign(this.extra, westHandlers);
 
     Object.values(this.npcs).forEach((n) => { n.active = true; });
@@ -467,12 +468,12 @@ export class Missions {
         return;
       }
       if (this.active?.id === 'frikandel') {
-        await ui.dialog(N, [G('Hoi sjat!', 'Hoi schat!'), 'Nog geen muntgeld gevonden? Kijk eens rond in de buurt.']);
+        await ui.dialog(N, [G('Hoi sjat!', 'Hoi schat!'), G('Nog geen muntgeld gevonden? Kijk eens in je tes, of anders rond in de buurt.', 'Nog geen muntgeld gevonden? Kijk eens in je broekzak, of anders rond in de buurt.')]);
         return;
       }
       await ui.dialog(N, [
         G('Hoi sjat!', 'Hoi schat!'),
-        'Wat mag het zijn?',
+        G('Enne? Wat mag het zijn?', 'En? Wat mag het zijn?'),
         { name: 'Jij', text: 'Een frikandel super graag. Kan ik pinnen?' },
         'Pinnen? Nee hoor, hier is het alleen contant. Al sinds jaar en dag!',
       ]);
@@ -510,7 +511,7 @@ export class Missions {
         'Patat met mayo, de klassieker. Komt eraan!',
         'Patatje oorlog: mayo, pindasaus en uitjes. Jij durft!',
         'Speciaal: mayo, curry en uitjes. Goede keuze.',
-        'Zonder saus? Echt? Nou, jij je zin.',
+        G('Zonder saus? Echt? Dan had je net zo goed naar de McDrek kunnen gaan. Nou, jij je zin.', 'Zonder saus? Echt? Dan had je net zo goed naar de McDonald\'s kunnen gaan. Nou, jij je zin.'),
       ][a];
       await ui.dialog(N, [reply, 'Alsjeblieft, vers uit het vet. Smakelijk eten!']);
       await g.eat(makePuntzak(), 4);
@@ -639,7 +640,7 @@ export class Missions {
       const a = await ui.dialog(N, [
         G('Psst. Hot de moel.', 'Psst. Zwijg.'),
         'Niet zo opvallend kijken. En let op de pliesie.',
-        'Ik heb hier een pakketje dat zo snel mogelijk naar een adres in het dorp moet. Geen vragen.',
+        G('Ik heb hier een pakketje dat zo snel mogelijk naar een adres in het dorp moet. Geen vragen, anders gaan we op de kis houwe.', 'Ik heb hier een pakketje dat zo snel mogelijk naar een adres in het dorp moet. Geen vragen, anders gaan we vechten.'),
         'Je hebt niet veel tijd. Doe je het?',
       ], ['Oké, geef maar', 'Nee, dat zit me niet lekker']);
       if (a !== 0) { await ui.dialog(N, ['Dan heb je mij nooit gezien.']); return; }
@@ -706,7 +707,7 @@ export class Missions {
       });
       g.player.lockedFor = true;
       await ui.dialog(N, [
-        'Kijk. Het offerblok. Helemaal leeg. Alleen dit briefje: "Even geleend, voor de goede zaak."',
+        G('Kijk. Het offerblok. Toenstraks zat er nog geld in, nu is het helemaal leeg. Alleen dit briefje: "Even geleend, voor de goede zaak."', 'Kijk. Het offerblok. Daarnet zat er nog geld in, nu is het helemaal leeg. Alleen dit briefje: "Even geleend, voor de goede zaak."'),
         'De goede zaak! Ik wed dat die goede zaak vier wielen had en een zwembad op de achterbank.',
         'Ik heb gehoord dat er nog wat sporen door het dorp slingeren. Een koffer vol reisstickers, en een bankafschrift uit het buitenland. Ga jij even kijken?',
       ]);
@@ -785,7 +786,7 @@ export class Missions {
               await ui.dialog(N, [
                 `${formatViews(v)} views! ${v >= 250000 ? 'Dit is groter dan carnaval!' : v >= 80000 ? 'Heel Limburg kijkt mee!' : 'Gulpe kijkt mee!'}`,
                 r.results.includes('fail') ? 'En dat bakje dat viel... de mensen kunnen er geen genoeg van krijgen.' : perfect >= 4 ? 'Strak als een frituurmandje. De baas gaat dit inlijsten.' : 'Netjes gedaan. De baas is tevreden.',
-                'Hier, een patatje van de zaak. Voor de content natuurlijk.',
+                G('Dat is kei leuk! Hier, een patatje van de zaak. Voor de content natuurlijk.', 'Dat is heel erg leuk! Hier, een patatje van de zaak. Voor de content natuurlijk.'),
               ]);
               await g.eat(makePuntzak(), 3);
               this.complete('tiktok', `Viraal! ${formatViews(v)} views`, { v: Math.round(v), unit: 'views', high: true });
@@ -923,7 +924,7 @@ export class Missions {
       const a = await ui.dialog(N, [
         'Hallo hallo! Hier De Razende Reporter, live vanaf de 482e Hubertusmarkt in Gulpen!',
         'Of nou ja, bijna live. Mijn uitzending begint zo en ik heb nog geen enkel verhaal. Geen tijd, geen tijd!',
-        'Jij gaat voor mij op kroegentocht: Brasserie De Kroon, Herberg De Zwarte Ruiter, Grand Café Neubourg en Gasterij De Poort.',
+        G('Jij gaat voor mij op de joets: Brasserie De Kroon, Herberg De Zwarte Ruiter, Grand Café Neubourg en Gasterij De Poort.', 'Jij gaat voor mij op stap: Brasserie De Kroon, Herberg De Zwarte Ruiter, Grand Café Neubourg en Gasterij De Poort.'),
         'Bij elke kroeg haal je een bierviltje, drink je een pilsje en hoor je wat de stamgasten over de Hubertusmarkt vertellen.',
         'Daarna kom je terug, en dan interview ik jou live. En je gaat te voet hè: wie drinkt, rijdt niet!',
       ], ['Proost, ik ga!', 'Ik moet nog rijden vandaag']);
@@ -1020,7 +1021,7 @@ export class Missions {
       const go = (fn) => { if (!finished) { finished = true; cleanup(); fn(); } };
       g.setDestination(dest, 900, async () => {
         go(async () => {
-          await ui.dialog(N, ['Wat?! Jij was eerder boven? Ik had... eh... een lekke band. Bijna.', 'Respect. Jij bent de nieuwe Koning van de Gulperberg.']);
+          await ui.dialog(N, [G('Wat?! Jij was eerder boven? Doa valle mig de sjoon van oet! Ik had... eh... een lekke band. Bijna.', 'Wat?! Jij was eerder boven? Daar sta ik versteld van! Ik had... eh... een lekke band. Bijna.'), 'Respect. Jij bent de nieuwe Koning van de Gulperberg.']);
           this.complete('gulperberg', 'Koning van de Gulperberg!');
         });
       }, (msg) => go(() => this.fail(msg || 'Opgegeven.')), {
@@ -1107,7 +1108,7 @@ export class Missions {
       this.setActive('vissen', 'Vissen in de Gulp', g.input.isTouch ? 'Tik op "Haal op" als de dobber onder gaat.' : 'Druk op E als de dobber onder gaat.', '0 / 3 vissen');
       const caught = await g.startFishing();
       if (caught >= 3) {
-        await ui.dialog(N, ['Drie stuks! Jij hebt dit vaker gedaan. Ik zet ze wel weer terug, hoor.']);
+        await ui.dialog(N, ['Drie stuks! Jij hebt dit vaker gedaan. Ik zet ze wel weer terug, hoor.', G('En nu snel naar huis, anders is het d\'n klets kriegen hier aan het water.', 'En nu snel naar huis, anders word je verkouden hier aan het water.')]);
         this.complete('vissen', 'Visser van de Gulp!');
       } else {
         await ui.dialog(N, [`${caught} gevangen. Geduld is het halve werk. Probeer het straks nog eens.`]);
@@ -1135,7 +1136,7 @@ export class Missions {
       g.setDestination(markt, 300, async () => {
         g.fx.confetti(markt[0], g.world.groundAt(...markt) + 3, markt[1], 220);
         g.stopPolonaise();
-        await ui.dialog(N, ['Daar zijn ze allemaal, met de zakken snoep! Net op tijd, de optocht kan vertrekken.', 'Alaaf! Klumpkes voor iedereen!']);
+        await ui.dialog(N, ['Daar zijn ze allemaal, met de zakken snoep! Net op tijd, de optocht kan vertrekken.', G('Alaaf! Klumpkes voor iedereen! Haije!', 'Alaaf! Snoep voor iedereen! Doei!')]);
         // de prins gooit meteen een handvol snoep in het rond
         for (let k = 0; k < 4; k++) setTimeout(() => g.fx.confetti(npc.pos.x + (Math.random() - 0.5) * 6, g.world.groundAt(npc.pos.x, npc.pos.z) + 3, npc.pos.z + (Math.random() - 0.5) * 6, 90), k * 350);
         this.complete('polonaise', 'Op tijd voor de optocht!');

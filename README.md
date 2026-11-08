@@ -62,7 +62,8 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | De strakste heg van de Heggerank: de heggenschaar op de lijn houden voor de jury van de Mooiste Voortuin | Heggerank (bloemenwijk) |
 | Kabouters ontvoerd: vijf tuinkabouters zoeken met een warm-koudmeter | Akelei en de straten eromheen (bloemenwijk) |
 | Burendag-BBQ: burgers op tijd omdraaien en opdienen, niet te veel verbranden | Aardaker 43 (bloemenwijk) |
-| Biceps pompen: in de sportschool curlen tot je Mosaqua-klaar bent (ingedrukt houden, bovenin aanspannen tot de ring vol is, dan loslaten) | Anytime Fitness, Nieuwstraat 8 |
+| Biceps pompen: in de sportschool curlen tot je Mosaqua-klaar bent (ingedrukt houden, bovenin aanspannen tot de ring vol is, dan loslaten) | Anytime Fitness, hoek Looierstraat en Nieuwstraat |
+| Badkamer betegelen: het halve huis ligt open en de tegelzetter is aangefietst; leg de tegels volgens het voorbeeld binnen de tijd | Oude Akerweg 43 |
 | Grond sjouwen: de voortuin van de krullebol ophogen met drie kruiwagens grond van de straat, zonder te rennen of te scherp de bocht om te gaan | Groeneweg 65 |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
@@ -101,7 +102,7 @@ Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `nod
 
 ## Verborgen: de SixSense-flyers
 
-Op drie plekken (bij het busstation, bij het tankstation en op de Markt) ligt een flyer met een kortingscode voor SixSense; ze staan als roze 6 op de kaart. Heb je ze alle drie, dan komt er een zwarte bus met een grote roze 6 voorrijden. Instappen, de bus rijdt een hoekje om, staat vijf seconden te schommelen en te piepen, en daarna stap je vanzelf weer uit en rijdt hij weg. Je ziet alleen de bus van buiten. De kortingscodes zijn verzonnen.
+Op drie plekken (bij het busstation, bij het tankstation en op de Markt) ligt een flyer met een kortingscode voor SixSense; ze staan als roze 6 op de kaart. Heb je ze alle drie, dan komt er een zwarte bus met een grote roze 6 voorrijden. Instappen, en de bus staat meteen vijf seconden te schommelen en te piepen (je ziet hem helemaal, van buiten, zonder knoppen in beeld). Daarna stap je vanzelf weer uit en rijdt de bus weg. De flyers liggen er daarna weer, zodat je het opnieuw kunt doen. De kortingscodes zijn verzonnen.
 
 ## Alle missies af
 
@@ -136,13 +137,15 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 
 ## Nog te controleren
 
+- **Limburgse woorden en uitspraken**: Enne?, aangefietst, wablief?, op de kis houwe, op de joets, doa velt mig de boks van aaf, doa valle mig de sjoon van oet, d'n klets kriegen, kei leuk, afgewerkt, roetsjen, uithelpen, tien op twaalf, zeiveren, toenstraks, McDrek, dreksbak, drek, een tas koffie inschudden, tes, sjattepoemelke, zin in mik, sjottelslet en haije komen uit een lijst van de maker en zijn waar het paste in de bestaande teksten verwerkt, steeds met een vertaling.
 - **Dialect**: de dorpsbewoners spreken af en toe Gulpens, met een Nederlandse vertaling eronder (aan en uit te zetten in de dialoog). Alle Gulpense woorden komen uit de [woordenlijst Gulpens op mijnwoordenboek.nl](https://www.mijnwoordenboek.nl/dialect/Gulpens), die door bezoekers is samengesteld en geen officiële bron is. De zinnetjes zijn met die woorden gemaakt en moeten door een echte Gulpenaar worden nagelopen.
 - **Echte personen**: bewust weggelaten. De mensen in de zaken zijn verzonnen rollen ("de monteur", "de waard"). De nachtburgemeester is verzonnen.
 - **Naam GTA**: "GTA" verwijst naar Grand Theft Auto, een merk van Rockstar Games. Voor een spel onder vrienden is dat een knipoog; bij breder delen of geld vragen is een andere naam verstandiger.
 - **Winkels en bedrijven**: de gevels aan de Rijksweg en in het centrum (onder andere HEMA, Top1Toys, Pearle, DA, Euronics, Decorette, de bakkerijen Pijls en Ortmans, Rousseau Chocolade, IJzerwaren Knubben, Gulpener Bierhuys, VVV, Il Gusto, IJssalon Mezzaluna en Slagerij Bormans) staan op adressen uit online bedrijvengidsen en officiële winkelpagina's. Die gidsen kunnen verouderd zijn: controleer ter plekke of de zaken er nog zitten. De adressen zelf komen uit de PDOK Locatieserver. Het tankstation (Rijksweg 70) en de plek van het busstation (busbaan bij de Rijksweg) komen uit TOP10NL; het tankstation heeft bewust geen merk. Borden, kleuren en etalages zijn verzonnen, zonder echte logo's.
 - **Nieuwe plekken**: De Pannekoekenmolen (Molenweg 2A), Mosaqua (Landsraderweg 11), Grieks Restaurant Athene (Rijksweg 31) en het gemeentehuis (Willem Vliegenstraat 12) staan op adressen uit online gidsen en de gemeentesite; Plan Keukens op Rijksweg 21 en Bakkerij Pijls op Rijksweg 57 zijn opgegeven door de maker. Volgens L1/NOS sluit Mosaqua na 32 jaar; de badmeester verwijst daarnaar.
 - **Bloemenwijk (west)**: het speelgebied loopt nu ook over de wijk met Bolderik, Aardaker, Akelei, Bosrank, Wederik, Sleedoorn, Heggerank, Maretak en Schuttersveld (gebouwen, terrein en straten uit dezelfde open data). De buurman, de mevrouw van de kabouters en de wedstrijd Mooiste Voortuin zijn verzonnen. De plek en het uiterlijk van de jongen bij de BBQ (Aardaker 43, adres via de PDOK Locatieserver) zijn opgegeven door de maker; zijn verhaal is verzonnen. Hetzelfde geldt voor de krullebol op Groeneweg 65: plek en uiterlijk komen van de maker, het verhaal over de gestorte grond is verzonnen. De missies zijn gekozen bij de straatnamen, niet bij echte gebeurtenissen.
-- **Anytime Fitness**: adres Nieuwstraat 8 volgens openingstijden.nl (coördinaten via de PDOK Locatieserver); controleer of de vestiging daar nog zit. De glazen pui, de sporters, de personal trainer en het roepen zijn verzonnen; bord in een passende stijl, geen echt logo.
+- **Anytime Fitness**: adres Nieuwstraat 8 volgens openingstijden.nl (coördinaten via de PDOK Locatieserver). De ingang staat op aanwijzing van de maker aan de Looierstraat-kant van hetzelfde pand, bij de hoek met de Nieuwstraat. De glazen pui, de sporters, de personal trainer en het roepen zijn verzonnen; bord in een passende stijl, geen echt logo.
+- **Oude Akerweg 43**: plek en de blonde jongen zijn opgegeven door de maker (adres via de PDOK Locatieserver); de verbouwing, de opengewerkte kamer en het verhaal zijn verzonnen.
 - **SixSense**: naam opgegeven door de maker. Er staat geen adres in de game; de bus, de flyers en de codes zijn verzonnen. Vraag toestemming voordat de game breed gedeeld wordt.
 - **Het matras van Gulpen**: volledig verzonnen verhaal. Alle loketmedewerkers, de portier, de stagiair, de zenuwachtige jongen, de bakkersgezel, de kok en de keukenverkoper zijn verzonnen rollen.
 - **Joods monument**: staat op de plek van het herdenkingsmonument aan de Beversbergweg volgens de BGT, ongeveer 400 meter ten westen van het gedetailleerde dorpsgebied. Het echte ontwerp is niet nagemaakt: het is een eenvoudige gedenksteen, zonder missie.

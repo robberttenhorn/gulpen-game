@@ -411,6 +411,7 @@ export class BigMap {
   }
 
   hide() {
+    $('bigmap').querySelector('.bm-gohere')?.remove();
     this.open = false;
     this.el.hidden = true;
     document.body.classList.remove('map-open');
@@ -446,6 +447,22 @@ export class BigMap {
       if (d < bd) { bd = d; best = it; }
     }
     if (best) this.select(best);
+    else if (this.secret?.on) this.offerGoHere(x, y, this.cx + (x - r.width / 2) / this.pxPerM(), this.cz + (y - r.height / 2) / this.pxPerM());
+  }
+
+  // beheerdersmodus: op een leeg punt op de kaart tikken geeft een knop 'Ga hierheen'
+  offerGoHere(sx, sy, wx, wz) {
+    $('bigmap').querySelector('.bm-gohere')?.remove();
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bm-gohere';
+    b.textContent = 'Ga hierheen';
+    const r = this.canvas.getBoundingClientRect(), host = $('bigmap').getBoundingClientRect();
+    b.style.left = `${r.left - host.left + sx}px`;
+    b.style.top = `${r.top - host.top + sy}px`;
+    b.addEventListener('click', (e) => { e.stopPropagation(); b.remove(); this.g.fastTravel({ x: wx, z: wz, title: 'Gekozen plek', free: true }); });
+    $('bigmap').appendChild(b);
+    setTimeout(() => b.remove(), 10000);
   }
 
   select(it) {

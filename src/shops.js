@@ -3,7 +3,7 @@
 // Namen en adressen komen uit online bedrijvengidsen en kunnen verouderd zijn.
 // De borden, kleuren en etalages zijn verzonnen in een passende stijl: geen echte logo's.
 import * as THREE from 'three';
-import { buildFitnessFront } from './fitness.js';
+import { buildFitnessFront, frameLooierCorner } from './fitness.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
 const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; return m; };
@@ -56,7 +56,8 @@ export function buildShops(fac, pois) {
   for (const id of Object.keys(frames)) shopFacade(fac, frames[id], SHOPS[id]);
   // Anytime Fitness: eigen gevel met een grote glazen pui (fitness.js)
   if (pois.anytime) {
-    const f = fac.frameAtAddress(...pois.anytime.pos);
+    // de ingang aan de Looierstraat, op de hoek met de Nieuwstraat (zelfde pand als Nieuwstraat 8)
+    const f = frameLooierCorner(fac, pois.anytime.pos) || fac.frameAtAddress(...pois.anytime.pos);
     if (f) { fac.frames.anytime = f; fac.fitness = buildFitnessFront(fac, f); }
   }
   if (pois.tankstation) buildTankstation(fac, pois.tankstation.pos);
