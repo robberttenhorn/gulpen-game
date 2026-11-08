@@ -118,9 +118,11 @@ export function startGnomes(g, spots, { limit = 180 } = {}) {
   });
   const hud = document.createElement('div');
   hud.className = 'gnome-meter';
-  hud.innerHTML = '<div class="gm-label">Koud</div><div class="gm-bar"><i></i></div><div class="gm-count"></div>';
+  hud.innerHTML = '<div class="gm-label">Lauw</div><div class="gm-bar"><i></i></div><div class="gm-count"></div>';
   document.getElementById('hud').appendChild(hud);
-  let t = 0, found = 0, lastWord = '';
+  // De meter begint in het midden (lauw) en wordt warmer als je dichterbij komt en kouder als je ervandaan loopt.
+  // Het midden is de afstand tot de dichtstbijzijnde kabouter bij de start, en opnieuw na elke gevonden kabouter.
+  let t = 0, found = 0, lastWord = '', ref = null, shown = 0.5;
   return runMini(g, (dt, finish) => {
     t += dt;
     g.player.lockedFor = false; // je loopt gewoon rond
@@ -128,17 +130,22 @@ export function startGnomes(g, spots, { limit = 180 } = {}) {
     const left = gnomes.filter((k) => !k.found);
     let d = Infinity;
     for (const k of left) d = Math.min(d, Math.hypot(k.x - p.x, k.z - p.z));
-    const heat = Math.max(0, Math.min(1, 1 - d / 70));
-    const word = d < 6 ? 'HEET!' : d < 14 ? 'Warm' : d < 28 ? 'Lauw' : d < 50 ? 'Koud' : 'IJskoud';
+    if (ref == null) ref = Math.max(25, d);
+    // d = ref: 0,5 · d = 0: 1 (heet) · d = 2x ref: 0 (ijskoud); dichtbij altijd heet
+    let heat = Math.max(0, Math.min(1, 0.5 + (ref - d) / (2 * ref)));
+    if (d < 6) heat = Math.max(heat, 0.95);
+    shown += (heat - shown) * Math.min(1, dt * 4);
+    const word = shown > 0.9 ? 'HEET!' : shown > 0.72 ? 'Warm' : shown > 0.58 ? 'Warmer' : shown >= 0.42 ? 'Lauw' : shown >= 0.28 ? 'Kouder' : shown >= 0.12 ? 'Koud' : 'IJskoud';
     if (word !== lastWord) { lastWord = word; bump(hud); if (word === 'HEET!') g.sfx?.play('tally'); }
     hud.querySelector('.gm-label').textContent = word;
-    hud.querySelector('.gm-bar i').style.width = heat * 100 + '%';
-    hud.style.setProperty('--heat', heat.toFixed(2));
+    hud.querySelector('.gm-bar i').style.width = shown * 100 + '%';
+    hud.style.setProperty('--heat', shown.toFixed(2));
     hud.querySelector('.gm-count').textContent = `${found} / ${gnomes.length} kabouters · ${Math.max(0, Math.ceil(limit - t))} s`;
     for (const k of left) {
       k.m.rotation.y += dt * (Math.hypot(k.x - p.x, k.z - p.z) < 10 ? 3 : 0.3); // dichtbij: hij draait zich om
       if (Math.hypot(k.x - p.x, k.z - p.z) < 2.2) {
         k.found = true; found++;
+        ref = null; shown = 0.5; // voor de volgende kabouter begint de meter weer in het midden
         g.fx?.confetti(k.x, k.m.position.y + 1, k.z, 50);
         g.sfx?.play('pop');
         g.ui.toast(['Hebbes!', 'Daar zit er een!', 'Gevonden!', 'De laatste!'][Math.min(3, found - 1)], 1100);
