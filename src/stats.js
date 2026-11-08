@@ -6,9 +6,10 @@
 //   speelminuut    elke gespeelde minuut     = totale speeltijd in minuten
 //   drie-missies   1x per apparaat           = hoeveel spelers er 3 missies halen
 //
-// Aanzetten: maak een (gratis) account op goatcounter.com en vul hieronder je code in,
-// bijvoorbeeld 'gullepe' als je dashboard op https://gullepe.goatcounter.com staat.
-const GOATCOUNTER_CODE = '';
+//   (pagina)       elke keer dat iemand de game opent = bezoekers, ook wie niet op "Speel" drukt
+//
+// Dashboard: https://10horn.goatcounter.com (de code hieronder; leeg maken zet de telling uit).
+const GOATCOUNTER_CODE = '10horn';
 
 const KEY = 'gulpe-stats';
 // Niet tellen: zonder code, lokaal testen, met ?dev of ?nostats, of op een apparaat waar
@@ -22,9 +23,9 @@ const off = () => {
 };
 
 // Zelfde verzoek als GoatCounters eigen count.js: /count met e=true (telt als event, niet als pagina).
-function send(event) {
+function send(event, isEvent = true) {
   if (off()) return;
-  const q = new URLSearchParams({ p: event, t: event, e: 'true', s: String(screen.width), rnd: Math.random().toString(36).slice(2, 7) });
+  const q = new URLSearchParams({ p: event, t: isEvent ? event : document.title, e: String(isEvent), s: String(screen.width), r: isEvent ? '' : document.referrer, rnd: Math.random().toString(36).slice(2, 7) });
   const url = `https://${GOATCOUNTER_CODE}.goatcounter.com/count?${q}`;
   try {
     if (!navigator.sendBeacon || !navigator.sendBeacon(url)) new Image().src = url;
@@ -36,6 +37,11 @@ function load() {
 }
 function save(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* negeren */ }
+}
+
+// Aanroepen zodra de pagina opent: een gewone paginaweergave (met verwijzer, bijv. Facebook of WhatsApp).
+export function statsPageview() {
+  send(location.pathname || '/', false);
 }
 
 // Aanroepen zodra iemand op "Speel" drukt.

@@ -100,10 +100,11 @@ Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `nod
 
 ## Bezoekers tellen
 
-`src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. De telling staat uit totdat je in `src/stats.js` je GoatCounter-code invult (`GOATCOUNTER_CODE`).
+`src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. Het dashboard staat op https://10horn.goatcounter.com. Leeg je `GOATCOUNTER_CODE` in `src/stats.js`, dan staat de telling uit.
 
 | In het GoatCounter-dashboard | Betekenis |
 |---|---|
+| paginaweergaven (`/gulpen-game/`) | elke keer dat iemand de game opent, ook wie niet op Speel drukt; met de verwijzer (bijv. Facebook of WhatsApp) |
 | `speler-nieuw` | één keer per apparaat of browser: ongeveer het aantal verschillende spelers |
 | `spel-gestart` | elke keer dat iemand op Speel drukt |
 | `speelminuut` | elke minuut dat het spel in beeld is: het totaal is de speeltijd in minuten |
