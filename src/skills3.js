@@ -1,4 +1,4 @@
-// Minigames voor de bloemenwijk (west-Gulpen): heg knippen, kabouterjacht en de burendag-BBQ.
+// Minigames voor buurtmissies: heg knippen, kabouterjacht, de burendag-BBQ en grond sjouwen met de kruiwagen.
 import * as THREE from 'three';
 import { popText, flash, shake, bump, makeCombo, Particles, fitCanvas } from './minifx.js';
 
@@ -243,4 +243,101 @@ export function startBBQ(g, { need = 8, maxBurnt = 3, limit = 60 } = {}) {
       else if (burnt >= maxBurnt || t >= limit) { ok = false; end = 1.2; }
     }
   }, () => { ui.close(); removeEventListener('keydown', onKey); g.player.lockedFor = false; }, { patties, act, label: null });
+}
+
+// ------------------------------------------------------------ grond sjouwen met de kruiwagen
+
+// Rij de kruiwagen heen en weer tussen de berg grond en de tuin. Rennen of scherpe bochten = grond morsen.
+// Geeft { ok, delivered, trips } terug (delivered in volle kruiwagens).
+export function startBarrow(g, { heap, drop, trips = 3, need = 2.1, limit = 110, makeBarrow, onDeliver } = {}) {
+  const p = g.player;
+  const barrow = makeBarrow();
+  barrow.position.set(0, 0, 0.55);
+  p.group.add(barrow);
+  const { soil, tray } = barrow.userData;
+  p.pose = 'push';
+  const clumps = [];
+  const clumpGeo = new THREE.DodecahedronGeometry(0.07, 0);
+  const clumpMat = std(0x4a3220, { roughness: 1 });
+  // ring bij de plek waar je moet zijn
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.1, 8, 28), new THREE.MeshBasicMaterial({ color: 0xf2c14e }));
+  ring.rotation.x = Math.PI / 2;
+  g.scene.add(ring);
+  let load = 0, delivered = 0, trip = 0, t = 0, state = 'naarBerg', busyT = 0, lastHeading = p.heading, warnT = 0, spillAcc = 0;
+  const goTo = ([x, z]) => {
+    ring.position.set(x, g.world.groundAt(x, z) + 0.15, z);
+    g.setTarget({ pos: new THREE.Vector3(x, 0, z) });
+  };
+  goTo(heap);
+  const status = () => {
+    const pct = Math.round(load * 100);
+    g.missions.progress(`Rit ${Math.min(trip + 1, trips)} / ${trips}  ·  kruiwagen ${pct}% vol  ·  in de tuin: ${Math.round(delivered * 100)}%`);
+  };
+  status();
+  return runMini(g, (dt, finish) => {
+    t += dt; warnT -= dt;
+    g.ui.timer(`${Math.max(0, Math.ceil(limit - t))} s`);
+    if (g.mode !== 'walk') g.setMode('walk');
+    // morsen: rennen en scherpe bochten
+    let dh = p.heading - lastHeading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+    lastHeading = p.heading;
+    const turn = Math.abs(dh) / Math.max(dt, 1e-3);
+    if (load > 0 && state === 'naarTuin') {
+      const spill = (Math.max(0, p.speed - 4.3) * 0.11 + (p.speed > 0.6 ? Math.max(0, turn - 3) * 0.035 : 0)) * dt;
+      if (spill > 0) {
+        load = Math.max(0, load - spill);
+        spillAcc += spill;
+        // kluitjes vallen uit de bak op straat
+        while (spillAcc > 0.012 && clumps.length < 90) {
+          spillAcc -= 0.012;
+          const c = new THREE.Mesh(clumpGeo, clumpMat);
+          const fx = Math.sin(p.heading), fz = Math.cos(p.heading);
+          const x = p.x + fx * 1.0 + (Math.random() - 0.5) * 0.5, z = p.z + fz * 1.0 + (Math.random() - 0.5) * 0.5;
+          c.position.set(x, g.world.groundAt(x, z) + 0.04, z);
+          c.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+          c.scale.setScalar(0.7 + Math.random() * 0.8);
+          g.scene.add(c); clumps.push(c);
+        }
+        if (warnT <= 0) { warnT = 2.2; g.ui.toast(p.speed > 4.3 ? 'Niet rennen, je morst!' : 'Rustig in de bocht!', 1100); g.sfx?.play('splat'); }
+        status();
+      }
+    }
+    soil.scale.y = Math.max(0.001, load * 1.1);
+    // bak wiebelt mee bij lopen
+    tray.rotation.z = Math.sin(t * 9) * 0.03 * Math.min(1, p.speed / 4);
+    if (busyT > 0) {
+      busyT -= dt;
+      p.lockedFor = true;
+      if (state === 'scheppen') {
+        load = Math.min(1, load + dt / 1.1);
+        if (Math.random() < dt * 4) g.sfx?.play('step');
+        if (busyT <= 0) { load = 1; state = 'naarTuin'; goTo(drop); g.ui.toast('Vol! Naar de tuin, rustig aan.', 1300); }
+      } else if (state === 'kiepen') {
+        tray.rotation.x = Math.sin(Math.max(0, 1 - busyT / 0.9) * Math.PI) * 0.9; // bak naar voren kiepen en terug
+        if (busyT <= 0) {
+          tray.rotation.x = 0;
+          delivered += load; onDeliver?.(delivered, load); load = 0; trip++;
+          g.sfx?.play('pop');
+          if (trip >= trips) { status(); finish({ ok: delivered >= need, delivered, trips: trip }); return; }
+          state = 'naarBerg'; goTo(heap);
+          g.ui.toast(`Rit ${trip} klaar. Nog ${trips - trip}!`, 1200);
+        }
+      }
+      if (busyT <= 0) p.lockedFor = false;
+      status();
+      return;
+    }
+    const near = (pt, r) => Math.hypot(p.x - pt[0], p.z - pt[1]) < r;
+    if (state === 'naarBerg' && near(heap, 2.6)) { state = 'scheppen'; busyT = 1.1; p.speed = 0; g.ui.toast('Scheppen...', 900); }
+    else if (state === 'naarTuin' && near(drop, 2.4)) { state = 'kiepen'; busyT = 0.9; p.speed = 0; g.sfx?.play('splat'); }
+    if (t > limit) finish({ ok: false, delivered, trips: trip, late: true });
+  }, () => {
+    p.group.remove(barrow);
+    p.pose = null;
+    p.lockedFor = false;
+    g.scene.remove(ring);
+    g.setTarget(null);
+    g.ui.timer(null);
+    clumps.forEach((c) => g.scene.remove(c));
+  }, { get state() { return state; }, get load() { return load; }, heap, drop, label: null });
 }
