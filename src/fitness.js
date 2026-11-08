@@ -106,8 +106,18 @@ function pointIn(x, z, ring) {
 // Bouwt de pui op het gevelframe f. Geeft een object met tick(dt, game) terug.
 export function buildFitnessFront(fac, f) {
   const w = fac.world;
-  const g = fac.group(f, 0.02);
   const W = Math.max(5, Math.min(f.len - 0.6, 9)), D = 2.6, H = 3.1;
+  // de gevel verspringt soms: zet de pui (met bord) vóór het verst uitstekende stuk, anders valt er iets achter de muur
+  let out = 0.02;
+  for (let k = 0; k <= 12; k++) {
+    const along = -W / 2 - 0.3 + (k / 12) * (W + 0.6);
+    for (let d = 0; d <= 1.6; d += 0.05) {
+      const x = f.x + f.nx * d - f.ux * along, z = f.z + f.nz * d - f.uz * along;
+      const x2 = f.x + f.nx * d + f.ux * along, z2 = f.z + f.nz * d + f.uz * along;
+      if (w.insideBuilding(x, z) || w.insideBuilding(x2, z2)) out = Math.max(out, d + 0.08);
+    }
+  }
+  const g = fac.group(f, out);
   // bord boven de pui
   fac.sign(g, 'Anytime Fitness', { w: Math.min(W, 6.5), h: 0.8, y: H + 0.75, z: 0.06, bg: '#5b2a86', fg: '#ffffff', font: '800 104px "Baloo 2", sans-serif', sub: '24/7 open', subFont: '600 44px Inter, sans-serif' });
   // dak, vloer en achterwand
