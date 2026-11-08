@@ -488,3 +488,11 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
   .tt-window { height: 62px; font-size: 21px; top: 12px; left: 14px; right: 14px; }
   .tt-knob { top: 88px; width: 50px; height: 50px; margin-left: -25px; }
 }
+
+/* geheime snelreis */
+.bm-go { margin-left: 8px; padding: 4px 9px; border-radius: 99px; background: #1b2430; color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.bm-tick { animation: bm-tick .25s ease-in-out; display: inline-block; }
+@keyframes bm-tick { 50% { transform: rotate(-2deg); } }
+.bm-item { position: relative; }
+.bm-go { position: absolute; right: 10px; bottom: 6px; margin: 0; padding: 2px 8px; font-size: 11px; }
+.bm-item.has-go { padding-bottom: 30px; }

@@ -66,6 +66,8 @@ Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café
 
 **Besturing**: fiets, skateboard en auto sturen zoals een voertuig: vooruit is gas (of trappen), achteruit is remmen, links en rechts is sturen. Met toetsen lopen gas en sturen geleidelijk op; de joystick heeft een dode zone in het midden en stuurt bij een kleine uitslag maar een klein beetje.
 
+**Snelreismodus (voor de maker)**: tik op de grote kaart 7 keer snel op het woord 'Gulpen' bovenaan. Dan staat bij elke missie een knop 'Ga erheen'. Nog eens 7 keer tikken zet het weer uit. De keuze blijft bewaard op dat apparaat.
+
 **Auto kapen**: ga voor of naast een rijdende auto staan, dan stopt hij en toetert hij. Bij het portier kun je de chauffeur eruit trekken (knop **Kapen** of E) en zelf verder rijden. De chauffeur valt op straat en rent scheldend weg.
 
 Voortgang wordt in de browser bewaard. Een missie kun je altijd stoppen met de knop **Stoppen** op de opdrachtkaart of in het gesprekvenster (tik nogmaals om te bevestigen), of met Esc.
