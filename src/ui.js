@@ -414,6 +414,7 @@ export class BigMap {
   tap(clientX, clientY) {
     const r = this.canvas.getBoundingClientRect();
     const x = clientX - r.left, y = clientY - r.top;
+    if (this.secret?.tap(x, y, r.width, r.height)) return;
     let best = null, bd = 22;
     for (const it of this.items()) {
       const [sx, sy] = this.toScreen(it.x, it.z);
@@ -450,6 +451,14 @@ export class BigMap {
       st.textContent = it.stateLabel || '';
       st.dataset.state = it.state || '';
       b.addEventListener('click', () => this.select(it));
+      if (this.secret?.on && it.npc !== false) {
+        const go = document.createElement('span');
+        go.className = 'bm-go';
+        b.classList.add('has-go');
+        go.textContent = 'Ga erheen';
+        go.addEventListener('click', (e) => { e.stopPropagation(); this.g.fastTravel(it); });
+        b.appendChild(go);
+      }
       list.appendChild(b);
     }
   }

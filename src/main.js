@@ -17,6 +17,7 @@ import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
+import { setupSecret } from './secret.js';
 
 const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
 const HIGH = !isMobile;
@@ -87,6 +88,7 @@ class Game {
     this.setupPoiLabels();
     this.minimap = new Minimap(this.world);
     this.bigmap = new BigMap(this);
+    this.bigmap.secret = setupSecret(this.bigmap, this);
     this.missions = new Missions(this);
     this.missions.setup();
     if (this.missions.done.has('fiets')) this.tuneBike();
@@ -394,6 +396,24 @@ class Game {
     this.camYaw = car.heading + Math.PI;
     if (car.isVolvo && !this.volvoSeen) { this.volvoSeen = true; this.ui.toast('Grijze Volvo XC40', 2000); }
     if (car.isTractor) this.ui.toast('Tractor! Niet zo snel, wel overal doorheen.', 2200);
+  }
+
+  // Geheime snelreis (zie secret.js): direct naar een missie.
+  async fastTravel(it) {
+    this.bigmap.hide();
+    if (this.minigame) this.missions.stop();
+    if (this.interior) await this.exitInterior();
+    if (this.mode === 'car') { this.car.speed = 0; this.exitCar(); }
+    if (this.mode !== 'walk') this.setMode('walk');
+    const [x, z] = this.world.resolve(it.x + 2, it.z + 2, 0.5);
+    const p = this.player;
+    p.x = x; p.z = z; p.speed = 0;
+    p.heading = Math.atan2(it.x - x, it.z - z);
+    this.camYaw = p.heading + Math.PI;
+    this.fx.confetti(x, this.world.groundAt(x, z) + 2, z, 60);
+    this.sfx.play('pop');
+    this.ui.toast(it.title, 1400);
+    this.updateCamera(0, true);
   }
 
   // Auto kapen: chauffeur eruit trekken, die valt op straat en rent scheldend weg.
