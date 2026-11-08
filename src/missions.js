@@ -1149,11 +1149,13 @@ export class Missions {
       this.setActive('polonaise', 'Op tijd voor de optocht', 'Het gevolg van de prins staat als roze punten op de kaart. Loop erheen, dan lopen ze achter je aan. Breng ze naar de Markt voordat de optocht vertrekt.', `0 / ${n} feestgangers`);
       const markt = g.world.spotNear(20, 0);
       g.setDestination(markt, 300, async () => {
-        g.fx.confetti(markt[0], g.world.groundAt(...markt) + 3, markt[1], 220);
         g.stopPolonaise();
         await ui.dialog(N, ['Daar zijn ze allemaal, met de zakken snoep! Net op tijd, de optocht kan vertrekken.', G('Alaaf! Klumpkes voor iedereen! Haije!', 'Alaaf! Snoep voor iedereen! Doei!')]);
-        // de prins gooit meteen een handvol snoep in het rond
-        for (let k = 0; k < 4; k++) setTimeout(() => g.fx.confetti(npc.pos.x + (Math.random() - 0.5) * 6, g.world.groundAt(npc.pos.x, npc.pos.z) + 3, npc.pos.z + (Math.random() - 0.5) * 6, 90), k * 350);
+        // de prins sjmiet klumpkes: een paar handenvol snoep in een boog, ook jouw kant op
+        const gy = g.world.groundAt(npc.pos.x, npc.pos.z);
+        npc.pose = 'wave'; npc.heading = Math.atan2(g.player.x - npc.pos.x, g.player.z - npc.pos.z);
+        for (let k = 0; k < 6; k++) setTimeout(() => { g.fx.candy(npc.pos.x, gy + 2.1, npc.pos.z, 26, gy, [g.player.x, g.player.z]); g.sfx?.play('pop'); }, k * 420);
+        setTimeout(() => { npc.pose = null; }, 3000);
         this.complete('polonaise', 'Op tijd voor de optocht!');
       }, (msg) => { g.stopPolonaise(); this.fail(msg || 'De optocht is al vertrokken. Zonder snoep.'); }, {
         require: () => (g.followersJoined() >= n ? null : `Je hebt pas ${g.followersJoined()} van de ${n} feestgangers.`),
