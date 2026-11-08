@@ -4,13 +4,13 @@
     "y": 314058
   },
   "core": {
-    "minX": 189900,
+    "minX": 189350,
     "minY": 313300,
     "maxX": 191600,
-    "maxY": 314700,
+    "maxY": 314750,
     "res": 2,
-    "w": 850,
-    "h": 700
+    "w": 1125,
+    "h": 725
   },
   "wide": {
     "minX": 186500,
@@ -224,17 +224,6 @@
       ]
     },
     {
-      "id": "volvo",
-      "name": "Ringweg 38",
-      "address": "Ringweg 38",
-      "x": 190985.6,
-      "y": 314375.8,
-      "pos": [
-        454.6000000000058,
-        -317.79999999998836
-      ]
-    },
-    {
       "id": "knubben",
       "name": "IJzerwaren Knubben",
       "address": "Rijksweg 6",
@@ -442,12 +431,12 @@
       "id": "bormans",
       "name": "Slagerij Bormans",
       "address": "Rosstraat 9",
-      "x": 190464.0,
-      "y": 314042.0,
+      "x": 190464,
+      "y": 314042,
       "shop": true,
       "pos": [
-        -67.0,
-        16.0
+        -67,
+        16
       ]
     },
     {
@@ -456,11 +445,11 @@
       "address": "Rijksweg 31",
       "x": 190643.558,
       "y": 314059.166,
+      "shop": true,
       "pos": [
         112.55799999998999,
         -1.1660000000265427
-      ],
-      "shop": true
+      ]
     },
     {
       "id": "plankeukens",
@@ -468,11 +457,11 @@
       "address": "Rijksweg 21",
       "x": 190564.118,
       "y": 314019.806,
+      "shop": true,
       "pos": [
         33.11799999998766,
         38.194000000017695
-      ],
-      "shop": true
+      ]
     },
     {
       "id": "pannekoekenmolen",
@@ -480,11 +469,11 @@
       "address": "Molenweg 2A",
       "x": 190369.248,
       "y": 313667.69,
+      "shop": true,
       "pos": [
         -161.75200000000768,
         390.3099999999977
-      ],
-      "shop": true
+      ]
     },
     {
       "id": "mosaqua",
@@ -492,11 +481,11 @@
       "address": "Landsraderweg 11",
       "x": 190401.358,
       "y": 313520.682,
+      "shop": true,
       "pos": [
         -129.64199999999255,
         537.3180000000284
-      ],
-      "shop": true
+      ]
     },
     {
       "id": "gemeentehuis",
@@ -504,11 +493,11 @@
       "address": "Willem Vliegenstraat 12",
       "x": 190323.202,
       "y": 314076.821,
+      "shop": true,
       "pos": [
         -207.79800000000978,
         -18.820999999996275
-      ],
-      "shop": true
+      ]
     },
     {
       "id": "joodsmonument",
@@ -516,13 +505,24 @@
       "address": "Beversbergweg",
       "x": 188914.8,
       "y": 314574.6,
+      "memorial": true,
       "pos": [
         -1616.2000000000116,
         -516.5999999999767
-      ],
-      "memorial": true
+      ]
+    },
+    {
+      "id": "volvo",
+      "name": "Ringweg 38",
+      "address": "Ringweg 38",
+      "x": 190985.6,
+      "y": 314375.8,
+      "pos": [
+        454.6000000000058,
+        -317.79999999998836
+      ]
     }
   ],
-  "generated": "2026-11-07T12:44:43.919Z",
+  "generated": "2026-11-08T08:21:18.028Z",
   "attribution": "3D BAG (TU Delft / 3DGI, CC BY 4.0), AHN (Rijkswaterstaat, CC0), BGT en NWB (PDOK, CC0)"
 }

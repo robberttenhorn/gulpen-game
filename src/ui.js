@@ -46,6 +46,9 @@ export class UI {
   }
 
   setQuest(title, desc, progress = '') {
+    // zonder lopende missie geen tekstblok linksboven
+    $('quest-card').hidden = !title;
+    if (!title) return;
     $('quest-title').textContent = title;
     $('quest-desc').textContent = desc;
     $('quest-progress').textContent = progress;
