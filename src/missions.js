@@ -241,7 +241,7 @@ export class Missions {
       { id: 'inparkeren', npc: n.klant, title: 'Inparkeren bij de PLUS', place: 'Parkeerplaats PLUS', desc: 'Vijf keer netjes inparkeren in twee minuten. Botsen kost tijd.' },
       { id: 'vogelschieten', npc: n.schutter, title: 'Vogelschieten', place: 'Bij het sportpark', desc: 'Schiet bij de schutterij de houten vogel stukje voor stukje van de paal.' },
       { id: 'vissen', npc: n.visser, title: 'Vissen in de Gulp', place: 'Oever van de Gulp', desc: 'Vang drie vissen. Tik pas als de dobber onder gaat.' },
-      { id: 'polonaise', npc: n.carnaval, title: 'Polonaise door Gulpe', place: 'Markt', desc: 'Verzamel feestgangers voor de Vastelaovesfinale op de Markt.' },
+      { id: 'polonaise', npc: n.carnaval, title: 'Op tijd voor de optocht', place: 'Markt', desc: 'Prins Carnaval moet klumpkes sjmiete in de optocht. Haal zijn gevolg op, dan kan de optocht beginnen.' },
       { id: 'nachtvangulpen', npc: n.organisator, title: 'Nacht van Gulpen', place: 'Bij de Markt (alleen \'s avonds)', desc: 'Een proefrondje wandelen langs de stempelposten.', nightOnly: true },
     ].filter((m) => m.npc).concat(moreItems(n), westItems(n));
     for (const m of items) m.state = this.active?.id === m.id ? 'actief' : this.done.has(m.id) && !m.repeat ? 'klaar' : 'open';
@@ -258,8 +258,12 @@ export class Missions {
     }
     if (this.active) {
       g.ui.setQuest(this.active.title, this.active.desc, this.active.progress || '');
+      g.ui.setTally(null);
     } else {
-      g.ui.setQuest(null); // vrij rondlopen: geen tekstblok
+      g.ui.setQuest(null); // vrij rondlopen: geen tekstblok, wel de teller
+      // tel alleen missies die in de lijst op de kaart staan (oude opgeslagen namen tellen niet mee)
+      const items = this.list();
+      g.ui.setTally(items.filter((m) => this.done.has(m.id)).length, items.length);
     }
     g.updateMarkers();
   }
@@ -547,8 +551,8 @@ export class Missions {
       if (a !== 0) return;
       if (!this.done.has('pils')) {
         // eerste keer: eerst de waard helpen met een overvol dienblad
-        await ui.dialog(N, ['Eerst even helpen, want het terras staat vol en ik heb veel te veel fluitjes op mijn blad...', 'Oei, daar gaan ze! Vang ze op!']);
-        this.setActive('pils', 'Fluitjes vangen', 'Vang de vallende fluitjes op met het dienblad.', '');
+        await ui.dialog(N, ['Eerst even helpen, want het terras staat vol en ik heb veel te veel glazen pils op mijn blad...', 'Oei, daar gaan ze! Vang ze op!']);
+        this.setActive('pils', 'Pils vangen', 'Vang de vallende glazen pils op met het dienblad.', '');
         const r = await startCatch(g);
         if (!r || this.active?.id !== 'pils') return;
         this.active = null;
@@ -557,7 +561,7 @@ export class Missions {
           this.refresh();
           return;
         }
-        await ui.dialog(N, [`${r.caught} van de ${r.total}! Jij mag hier zo achter de tap. Dit fluitje is van de zaak.`]);
+        await ui.dialog(N, [`${r.caught} van de ${r.total}! Jij mag hier zo achter de tap. Deze pils is van de zaak.`]);
       }
       await g.drinkPils();
       await ui.dialog(N, ['Proost! Op Gulpen!']);
@@ -1070,27 +1074,29 @@ export class Missions {
 
     async carnaval(npc, N, ui, g) {
       if (this.active?.id === 'polonaise') {
-        await ui.dialog(N, [`Nog ${g.followers.length - g.followersJoined()} feestgangers te gaan. Schiet op, de finale begint zo!`]);
+        await ui.dialog(N, [`Nog ${g.followers.length - g.followersJoined()} van mijn gevolg te gaan. Schiet op, de optocht vertrekt zo en de klumpkes moeten gesjmete worden!`]);
         return;
       }
       const a = await ui.dialog(N, [
-        G('Alaaf! Ee cramignon door Gullepe!', 'Alaaf! Achter elkaar springen op muziek door Gulpen!'),
-        'De Vastelaovesfinale op de Markt begint zo, maar de helft van het gezelschap is zoek!',
-        'Ze lopen verspreid door het dorp. Haal ze op en kom met een polonaise terug naar de Markt. Te voet natuurlijk!',
+        'Alaaf! Ik heb haast: zo vertrekt de optocht en dan moet ik vanaf de wagen het hele dorp vol snoep gooien.',
+        G('Klumpkes sjmiete!', 'Snoepjes gooien!'),
+        'Maar mijn gevolg is zoek, en zij hebben de zakken met snoep! Haal ze op en kom met een polonaise terug naar de Markt. Te voet natuurlijk, en snel!',
       ], ['Alaaf, ik ga!', 'Ik ben geen feestbeest']);
       if (a !== 0) return;
       if (g.mode === 'car') g.exitCar();
       g.setMode('walk');
       const n = g.world.isMobile ? 5 : 6;
       g.startPolonaise(n, { minD: 25, maxD: 120 }); // feestgangers vlak bij de Markt
-      this.setActive('polonaise', 'Polonaise door Gulpe', 'De feestgangers staan als roze punten op de kaart. Loop erheen, dan lopen ze achter je aan. Breng ze naar de Markt.', `0 / ${n} feestgangers`);
+      this.setActive('polonaise', 'Op tijd voor de optocht', 'Het gevolg van de prins staat als roze punten op de kaart. Loop erheen, dan lopen ze achter je aan. Breng ze naar de Markt voordat de optocht vertrekt.', `0 / ${n} feestgangers`);
       const markt = g.world.spotNear(20, 0);
       g.setDestination(markt, 300, async () => {
         g.fx.confetti(markt[0], g.world.groundAt(...markt) + 3, markt[1], 220);
         g.stopPolonaise();
-        await ui.dialog(N, ['Daar zijn ze allemaal! Dat wordt een fantastische finale. Alaaf!']);
-        this.complete('polonaise', 'Polonaise-koning van Gulpe!');
-      }, (msg) => { g.stopPolonaise(); this.fail(msg || 'De finale is al begonnen zonder jullie.'); }, {
+        await ui.dialog(N, ['Daar zijn ze allemaal, met de zakken snoep! Net op tijd, de optocht kan vertrekken.', 'Alaaf! Klumpkes voor iedereen!']);
+        // de prins gooit meteen een handvol snoep in het rond
+        for (let k = 0; k < 4; k++) setTimeout(() => g.fx.confetti(npc.pos.x + (Math.random() - 0.5) * 6, g.world.groundAt(npc.pos.x, npc.pos.z) + 3, npc.pos.z + (Math.random() - 0.5) * 6, 90), k * 350);
+        this.complete('polonaise', 'Op tijd voor de optocht!');
+      }, (msg) => { g.stopPolonaise(); this.fail(msg || 'De optocht is al vertrokken. Zonder snoep.'); }, {
         require: () => (g.followersJoined() >= n ? null : `Je hebt pas ${g.followersJoined()} van de ${n} feestgangers.`),
         violate: () => (g.mode !== 'walk' ? 'Een polonaise doe je te voet!' : null),
       });

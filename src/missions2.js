@@ -141,15 +141,15 @@ export const moreHandlers = {
   async athene(npc, N, ui, g) {
     const a = await ui.dialog(N, [
       'Kalimera! Mijn hulpkok is ziek. Te veel ouzo, zegt hij. Te veel ouzo bestaat niet, zeg ik.',
-      'Jij snijdt de gyros. Alleen als het vlees goudbruin bij het mes is, anders krijgen de gasten rauwe lappen.',
-      'En als het lukt, gooien we borden kapot. Opa! Dat is hier gewoon traditie, de afwasmachine is toch stuk.',
+      'Jij snijdt de gyros. Alleen het donkere, krokante vlees snijd je eraf. Het lichte vlees laat je nog even grillen, anders krijgen de gasten rauwe lappen.',
+      'En als het lukt, gooien we de stapel oude borden kapot. Tien stuks. Opa! Dat is hier gewoon traditie, de afwasmachine is toch stuk.',
     ], ['Opa! Geef dat mes', 'Ik ben vegetariër']);
     if (a !== 0) { await ui.dialog(N, ['Vegetariër? Dan krijg jij een bord met tzatziki. Met extra knoflook. Je vriendin slaapt vannacht toch op de bank.']); return; }
-    this.setActive('gyros', 'Gyros en Opa!', 'Snijd zes goede plakjes gyros en gooi daarna zo veel mogelijk borden kapot.', '');
+    this.setActive('gyros', 'Gyros en Opa!', 'Snijd zes keer het donkere vlees eraf en gooi daarna de stapel van tien borden kapot, binnen zes seconden.', '');
     const r = await startGyros(g);
     if (!r || this.active?.id !== 'gyros') return;
     if (r.ok) {
-      await ui.dialog(N, [`${r.good} perfecte plakjes en ${r.plates} kapotte borden! Opa!`, 'Hier, een gyrosschotel van het huis. Met zoveel knoflook dat de vampiers van Valkenburg tot Vaals uit je buurt blijven.']);
+      await ui.dialog(N, [r.all ? `${r.good} perfecte plakjes en alle ${r.plates} borden kapot! Opa!` : `${r.good} perfecte plakjes en ${r.plates} van de tien borden kapot. De rest gebruiken we morgen weer. Opa!`, 'Hier, een gyrosschotel van het huis. Met zoveel knoflook dat de vampiers van Valkenburg tot Vaals uit je buurt blijven.']);
       await g.eat(makePuntzak(), 3);
       this.complete('gyros', 'Gyrosmeester van Athene!');
     } else {

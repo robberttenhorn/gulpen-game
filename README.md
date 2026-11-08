@@ -35,7 +35,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | In beslag genomen: skateboard ophalen met een overhoring | Sophianum, Landsraderweg 7 |
 | Ringweg Race: skatewedstrijd | Ringweg |
 | Vers van 't vat: een vat naar de Zwarte Ruiter brengen | Gulpener Bierbrouwerij, Rijksweg 16 |
-| Pilsje: eerst vallende fluitjes vangen met het dienblad, daarna wordt het avond (of weer ochtend) | Herberg De Zwarte Ruiter, Markt 4 |
+| Pilsje: eerst vallende glazen pils vangen met het dienblad, daarna wordt het avond (of weer ochtend) | Herberg De Zwarte Ruiter, Markt 4 |
 | Penalty's: scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
 | Een schimmig zaakje: een pakketje snel bezorgen | Mariabeeld, top van de Gulperberg |
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
@@ -44,7 +44,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
 | Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
 | Vissen in de Gulp: vang drie vissen | Oever van de Gulp |
-| Polonaise door Gulpe: verzamel feestgangers voor de Vastelaovesfinale | Markt |
+| Op tijd voor de optocht: haal het gevolg van Prins Carnaval op, want hij moet klumpkes sjmiete (snoepjes gooien) | Markt |
 | Nacht van Gulpen (alleen 's avonds): wandelen langs drie stempelposten | Bij de Markt |
 | Plat kalle: opa overhoort je in het Gulpens | Benkske bij de Markt |
 | Kroegentocht op de Hubertusmarkt: vier cafés, vier verhalen en een live interview met De Razende Reporter | Markt, De Kroon, De Zwarte Ruiter, Neubourg en De Poort |

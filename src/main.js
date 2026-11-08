@@ -341,7 +341,7 @@ class Game {
     this.player.group.add(this.bike, this.board);
     this.scene.add(this.player.group);
     this.camYaw = 0.6;
-    this.camPitch = 0.3;
+    this.camPitch = 0.17; // laag achter de speler: je kijkt vooruit en houdt overzicht
     this.camDist = innerWidth < innerHeight ? 9 : 7;
     this.lastManualLook = -10;
   }
@@ -1100,7 +1100,7 @@ class Game {
         if (this.mode === 'walk' && Math.hypot(p.x - f.x, p.z - f.z) < 2.6) {
           f.joined = true;
           f.marker.done = true;
-          const lines = this.joinLines || ['Alaaf!', 'Ik doe mee!', 'Cramignon!', 'Hup, achter je aan!'];
+          const lines = this.joinLines || ['Alaaf!', 'Ik doe mee!', 'Klumpkes sjmiete!', 'Hup, achter je aan!'];
           this.ui.toast(lines[Math.floor(Math.random() * lines.length)], 1200);
           this.sfx?.play('pop');
           this.missions.progress(`${this.followersJoined()} / ${this.followers.length} ${this.missions.active?.followerWord || 'feestgangers'}`);
@@ -1257,7 +1257,7 @@ class Game {
     this.player.lockedFor = false;
   }
 
-  // Proost! Met een fluitje bier in de hand.
+  // Proost! Met een pils in de hand.
   async drinkPils() {
     if (this.mode === 'car') this.exitCar();
     const glass = makeFluitje();
@@ -1622,7 +1622,9 @@ class Game {
     const fov = 60 + (inCar ? Math.min(14, p.speed * 0.45) : 0);
     if (Math.abs(this.camera.fov - fov) > 0.05) { this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); }
     this.camera.up.set(0, 1, 0);
-    this.camera.lookAt(p.x, p.y + (inCar ? 1.2 : 1.5), p.z);
+    // kijk een stukje voor de speler uit (in de kijkrichting van de camera), zodat je meer van de weg ziet
+    const ahead = (inCar ? 6 + Math.min(6, p.speed * 0.2) : this.mode === 'walk' ? 3.5 : 5) * (occ < 1 ? 0.4 : 1);
+    this.camera.lookAt(p.x - Math.sin(this.camYaw) * ahead, p.y + (inCar ? 1.3 : 1.6), p.z - Math.cos(this.camYaw) * ahead);
     if (this.wobble > 0) {
       this.wobble -= dt;
       this.camera.rotateZ(Math.sin(this.time * 1.3) * Math.min(1, this.wobble / 5) * 0.06 * (1 + (this.drunk || 0) * 0.6));
