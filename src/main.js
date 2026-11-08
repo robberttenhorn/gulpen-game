@@ -290,12 +290,12 @@ class Game {
     }
 
     const dusk = THREE.MathUtils.smoothstep(elev, -4, 6) * (1 - THREE.MathUtils.smoothstep(elev, 6, 22));
-    this.sun.intensity = 3.0 * day + 0.6 * night;
+    this.sun.intensity = 3.0 * day + 0.95 * night; // maanlicht: 's nachts net iets lichter
     this.sun.color.setRGB(1, 0.95 - dusk * 0.3, 0.86 - dusk * 0.45);
     if (night > 0.5) this.sun.color.setRGB(0.55, 0.65, 1);
-    this.hemi.intensity = 0.7 * day + 0.45 * night;
+    this.hemi.intensity = 0.7 * day + 0.68 * night;
     this.hemi.color.setRGB(0.75 * day + 0.25 * night, 0.85 * day + 0.3 * night, 1 * day + 0.55 * night);
-    this.renderer.toneMappingExposure = 0.55 * day + 0.9 * night;
+    this.renderer.toneMappingExposure = 0.55 * day + 1.02 * night;
     if (this.bloom) { this.bloom.strength = 0.18 + night * 0.55; this.bloom.threshold = 0.92 - night * 0.3; }
 
     const fogDay = new THREE.Color(0xc9d8e6).lerp(new THREE.Color(0xe8b98a), dusk * 0.6);
@@ -368,6 +368,7 @@ class Game {
   setupPlayer() {
     const model = makeCharacter({ shirt: 0xe8a33d, pants: 0x2e3f5c, hair: 0x3b2a1a });
     const start = this.world.spotNear(5, 25);
+    this.startPos = start;
     this.player = { group: new THREE.Group(), model, x: start[0], z: start[1], y: 0, heading: Math.PI, speed: 0, boost: 0, lockedFor: false };
     this.player.group.add(model);
     this.bike = makeBike(0xff9800);
@@ -376,7 +377,7 @@ class Game {
     this.board.visible = false;
     this.player.group.add(this.bike, this.board);
     this.scene.add(this.player.group);
-    this.camYaw = 0.6;
+    this.camYaw = 0.2; // bij de start iets naar rechts: je kijkt de Dorpsstraat in
     this.camPitch = 0.24; // iets boven en achter de speler: vooruit kijken met overzicht
     this.camDist = innerWidth < innerHeight ? 9 : 7;
     this.lastManualLook = -10;
@@ -710,7 +711,9 @@ class Game {
 
   updateMarkers() {
     if (!this.minimap) return;
-    this.minimap.markers = this.mapItems().filter((i) => i.state !== '' || i.key === 'tractor');
+    // tijdens een missie alleen wat bij die missie hoort (de missiepunten zelf tekent de minikaart apart)
+    const busy = this.missions.active;
+    this.minimap.markers = this.mapItems().filter((i) => (busy ? i.state === 'actief' : i.state !== '' || i.key === 'tractor'));
     for (const m of this.missions.list()) {
       const night = this.night > 0.5;
       m.npc.marker.visible = m.state === 'open' && (!m.nightOnly || night) && !this.missions.active;

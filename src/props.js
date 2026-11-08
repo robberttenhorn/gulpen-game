@@ -338,7 +338,9 @@ export class Effects {
     this.puffs.push({ s, t: 0, size, vx: (Math.random() - 0.5) * 0.6, vz: (Math.random() - 0.5) * 0.6, rot: (Math.random() - 0.5) * 2 });
   }
 
-  confetti(x, y, z, n = 140) {
+  // Confetti is er alleen bij het slotfeest op de Markt (finale.js geeft dan finale = true).
+  confetti(x, y, z, n = 140, finale = false) {
+    if (!finale) return;
     const geo = new THREE.PlaneGeometry(0.12, 0.07);
     const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true });
     const inst = new THREE.InstancedMesh(geo, m, n);
