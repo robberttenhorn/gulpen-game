@@ -107,6 +107,19 @@ export function makeShadyPackage() {
   return shadows(g);
 }
 
+// Blikken doosje sjnoef (snuiftabak), uitvergroot zodat je het in de hand ziet.
+export function makeSnuifdoos() {
+  const g = new THREE.Group();
+  const tin = mat(0x8d1c1c, { metalness: 0.6, roughness: 0.35 });
+  g.add(cyl(0.09, 0.09, 0.035, tin, 0, 0.018, 0, 24));
+  g.add(cyl(0.093, 0.093, 0.02, mat(0xd4af37, { metalness: 0.9, roughness: 0.25 }), 0, 0.045, 0, 24));
+  g.add(cyl(0.05, 0.05, 0.005, mat(0xfff3e0), 0, 0.057, 0, 20)); // etiketje
+  // een wolkje bruin poeder bovenop
+  g.add(cyl(0.035, 0.05, 0.02, mat(0x6d4c41, { roughness: 1 }), 0.03, 0.068, 0.01, 12));
+  g.scale.setScalar(1.8);
+  return shadows(g);
+}
+
 // Limburgse kersenvlaai met roosterwerk.
 export function makeVlaai() {
   const g = new THREE.Group();

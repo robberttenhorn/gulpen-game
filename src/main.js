@@ -317,11 +317,14 @@ class Game {
     await wait(30);
     el.style.opacity = 1;
     await wait(1050);
-    await mid();
-    await wait(300);
-    el.style.opacity = 0;
-    await wait(1050);
-    el.remove();
+    // ook als er tijdens de overgang iets misgaat, moet het zwarte scherm weer weg
+    try { await mid(); } catch (e) { console.error('overgang', e); }
+    finally {
+      await wait(300);
+      el.style.opacity = 0;
+      await wait(1050);
+      el.remove();
+    }
   }
 
   // ------------------------------------------------------------ speler
@@ -756,7 +759,7 @@ class Game {
     const d = this.destination;
     if (!d) return;
     d.left -= dt;
-    this.ui.timer(Math.max(0, d.left).toFixed(0) + ' s');
+    if (!d.opts.noTimer) this.ui.timer(Math.max(0, d.left).toFixed(0) + ' s');
     d.ring.rotation.z += dt;
     const bad = d.opts.violate?.();
     if (bad) {
@@ -1728,6 +1731,19 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
+
+// Raakt de telefoon de 3D-weergave kwijt (te weinig geheugen), dan wordt het beeld zwart.
+// Laat dan een duidelijke melding zien; de voortgang is bewaard.
+document.getElementById('scene').addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  if (document.querySelector('[data-id="ctx-lost"]')) return;
+  const b = document.createElement('button');
+  b.id = 'update-bar'; b.type = 'button';
+  b.innerHTML = '<b>Het beeld is even weggevallen</b><span>Tik om GTA Gullepe opnieuw te laden. Je missies blijven bewaard.</span>';
+  b.addEventListener('click', () => location.reload());
+  b.dataset.id = 'ctx-lost';
+  document.body.appendChild(b);
+});
 
 const game = new Game();
 document.fonts.ready.then(() => game.init()).catch((e) => {

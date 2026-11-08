@@ -39,7 +39,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Penalty's: scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
 | Een schimmig zaakje: een pakketje snel bezorgen | Mariabeeld, top van de Gulperberg |
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
-| Gulperberg op!: fietstijdrit naar het Mariabeeld | Voet van de Gulperberg |
+| Gulperberg op!: fietswedstrijd tegen de wielrenner, wie het eerst bij het Mariabeeld is | Voet van de Gulperberg |
 | De ontsnapte geit: ren de zigzaggende geit achterna en tik hem drie keer aan | Boerenland aan de rand van het dorp |
 | Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
 | Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
