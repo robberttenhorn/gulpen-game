@@ -98,6 +98,19 @@ Texturen opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-textures.py` (P
 Luchtfoto opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-ortho.py` (Python met Pillow).
 Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `node tools/bake-trees.cjs` (Playwright). Zonder `public/data/trees/` maakt de game de bomen zelf, maar laadt dan ~4 MB extra.
 
+## Bezoekers tellen
+
+`src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. De telling staat uit totdat je in `src/stats.js` je GoatCounter-code invult (`GOATCOUNTER_CODE`).
+
+| In het GoatCounter-dashboard | Betekenis |
+|---|---|
+| `speler-nieuw` | één keer per apparaat of browser: ongeveer het aantal verschillende spelers |
+| `spel-gestart` | elke keer dat iemand op Speel drukt |
+| `speelminuut` | elke minuut dat het spel in beeld is: het totaal is de speeltijd in minuten |
+| `drie-missies` | één keer per apparaat: hoeveel spelers drie missies halen |
+
+Niet geteld: lokaal testen, adressen met `?dev` of `?nostats`, en apparaten waar in de browserconsole `localStorage.setItem('skipgc', 't')` is gedaan (handig voor je eigen telefoon).
+
 ## Naar een ander dorp of andere stad
 
 Het concept is herbruikbaar. In `tools/fetch-data.mjs` pas je aan:

@@ -8,6 +8,7 @@ import { makeCharacter, makeKeg, makeBike } from './character.js';
 import { runTikTok, ORDERS, formatViews } from './tiktok.js';
 import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } from './skills.js';
 import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
+import { statsMissions } from './stats.js';
 import { setupWest, setupGroeneweg, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
@@ -282,6 +283,7 @@ export class Missions {
   complete(id, toast) {
     this.done.add(id);
     this.save();
+    statsMissions(this.list().filter((m) => this.done.has(m.id)).length);
     this.active?.cleanup?.();
     this.active = null;
     this.g.setTarget(null);
