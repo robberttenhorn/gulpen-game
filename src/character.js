@@ -238,7 +238,15 @@ export function makeCharacter(opts = {}) {
     b.rigid(T(back, 0, HY - 0.12, -0.022, 0.08, 0, 0, 1, 1, 0.75), B.head, hair);
     b.rigid(T(sphere(0.112, 14, 8, 0, Math.PI * 2, Math.PI * 0.4, Math.PI * 0.25), 0, HY - 0.005, -0.012, 0, 0, 0, 0.98, 1, 1.0), B.head, hair);
   } else if (hairStyle === 'bun') {
-    b.rigid(T(sphere(0.05, 10, 8), 0, HY + 0.07, -0.085), B.head, hair);
+    b.rigid(T(sphere(0.05, 10, 8), 0, HY + 0.07, -0.085), B.head, hair);  } else if (hairStyle === 'curly') {
+    // krullen: een bos kleine bolletjes over de hele schedel
+    for (let i = 0; i < 26; i++) {
+      const th = (i / 26) * Math.PI * 2 * 3.7, ph = 0.15 + (i / 26) * 1.25;
+      const r = 0.112;
+      const x = Math.sin(ph) * Math.cos(th) * r, y = Math.cos(ph) * r * 1.05, z = Math.sin(ph) * Math.sin(th) * r - 0.012;
+      if (z > 0.07 && y < 0.06) continue; // gezicht vrijhouden
+      b.rigid(T(sphere(0.042, 8, 6), x, HY + 0.02 + y, z), B.head, hair);
+    }
   }
 
   // --- kleding en accessoires ---
@@ -451,6 +459,12 @@ export function makeCharacter(opts = {}) {
       if (mode === 'wave') {
         set('uaR', -0.2, 0, 2.5); set('faR', 0, 0, 0.4 + Math.sin(t * 7) * 0.45);
       }
+    }
+    if (mode === 'push') {
+      // kruiwagen duwen: beide armen schuin naar voren en omlaag, licht voorovergebogen
+      set('uaL', -0.55, 0, -0.12); set('uaR', -0.55, 0, 0.12);
+      set('faL', -0.25); set('faR', -0.25);
+      add('spine', 0.12);
     }
     // iets vasthouden
     const prop = root.userData.handProp;

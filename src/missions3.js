@@ -1,10 +1,13 @@
 // Missies in de bloemenwijk aan de westkant van Gulpen (Akelei, Heggerank, Bosrank, Aardaker...).
 // Alle personen en de "Mooiste Voortuin"-wedstrijd zijn verzonnen.
 import * as THREE from 'three';
-import { startHedge, startGnomes, startBBQ } from './skills3.js';
+import { startHedge, startGnomes, startBBQ, startBarrow } from './skills3.js';
+import { makeKruiwagen, makeSchep } from './props.js';
 
 // Aardaker 43 (PDOK Locatieserver, RD 189534.701 314005.2) in spelcoördinaten
 const AARDAKER_43 = [189534.701 - 190531, -(314005.2 - 314058)];
+// Groeneweg 65 (PDOK Locatieserver, RD 190419.491 314258.471)
+const GROENEWEG_65 = [190419.491 - 190531, -(314258.471 - 314058)];
 
 // punt halverwege een straat, een paar meter opzij (in de voortuin of op de stoep)
 function streetSpot(g, name, at = 0.5, side = 3.2) {
@@ -64,17 +67,120 @@ export function setupWest(m, g, add) {
   ].map(([n, at, s]) => streetSpot(g, n, at, s)).filter(Boolean);
 }
 
+// Groeneweg 65: krullebol in zijn voortuin, met een berg grond verderop aan de straat
+export function setupGroeneweg(m, g, add) {
+  const w = g.world;
+  const [ax, az] = GROENEWEG_65;
+  const st = w.nearestStreet(ax, az, 'Groeneweg');
+  if (!st) return;
+  // van de straat naar het huis lopen tot aan de gevel; de tuin ligt een paar meter voor de gevel
+  const dx = ax - st.x, dz = az - st.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d;
+  let fx = st.x, fz = st.z, dist = 0;
+  for (let t = 0; t < d; t += 0.25) { const px = st.x + ux * t, pz = st.z + uz * t; if (w.insideBuilding(px, pz)) break; fx = px; fz = pz; dist = t; }
+  const back = Math.min(3, dist * 0.4);
+  const [gx, gz] = w.resolve(fx - ux * back, fz - uz * back, 0.8);
+  m.groenewegDrop = [gx, gz];
+  const npcSpot = w.resolve(gx + uz * 1.8, gz - ux * 1.8, 0.5);
+  const npc = add('krullebol', 'Krullebol in de tuin', npcSpot, { shirt: 0x8d6e63, pants: 0x3e4a5a, hair: 0x5b3a1e, hairStyle: 'curly', sleeves: 'short', shoes: 0x4e342e });
+  g.attachToHand(npc.model, makeSchep(), { offset: [0, -0.55, 0.07] });
+  // plantvak in de tuin: hier komt de grond, de berg groeit met elke kruiwagen
+  const bed = new THREE.Group();
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 1.6), new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 1 }));
+  edge.position.y = 0.04; edge.receiveShadow = true;
+  bed.add(edge);
+  const mound = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3e2a1a, roughness: 1 }));
+  mound.scale.set(1.0, 0.06, 0.65); mound.position.y = 0.06; mound.castShadow = true; mound.receiveShadow = true;
+  bed.add(mound);
+  bed.position.set(gx, w.groundAt(gx, gz), gz);
+  bed.rotation.y = Math.atan2(ux, uz);
+  g.scene.add(bed);
+  m.groenewegMound = mound;
+  // berg grond aan de straat, ongeveer 20 meter verderop langs de Groeneweg
+  const path = w.streetPath('Groeneweg');
+  let heap = null;
+  if (path && path.length > 1) {
+    let bi = 0, bd = Infinity;
+    path.forEach(([x, z], i) => { const dd = Math.hypot(x - st.x, z - st.z); if (dd < bd) { bd = dd; bi = i; } });
+    for (const dir of [1, -1]) {
+      let acc = 0, i = bi;
+      while (acc < 20 && path[i + dir]) { acc += Math.hypot(path[i + dir][0] - path[i][0], path[i + dir][1] - path[i][1]); i += dir; }
+      if (acc < 14) continue;
+      const [px, pz] = path[i];
+      // aan de kant van het huis, op de stoeprand
+      // liefst naast de rijbaan (stoep, berm of oprit), zodat de auto's er niet doorheen rijden
+      const [qx, qz] = path[Math.max(0, Math.min(path.length - 1, i + dir))];
+      const tx = qx - px, tz = qz - pz, tl = Math.hypot(tx, tz) || 1;
+      const cands = [4.5, -4.5, 6, -6, 3.5, -3.5, 7.5, -7.5].map((off) => [px - (tz / tl) * off, pz + (tx / tl) * off])
+        .filter(([hx, hz]) => !w.insideBuilding(hx, hz) && !w.blocked(hx, hz));
+      const pick = cands.find(([hx, hz]) => w.classAt(hx, hz) !== 'rijbaan') || cands[0];
+      if (pick) heap = w.resolve(pick[0], pick[1], 1.2);
+      if (heap) break;
+    }
+  }
+  if (!heap) heap = w.resolve(st.x + uz * 6, st.z - ux * 6, 1.2);
+  m.groenewegHeap = heap;
+  const pile = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.1, 16, 2), new THREE.MeshStandardMaterial({ color: 0x4a3220, roughness: 1, flatShading: true }));
+  pile.scale.set(1, 1, 0.8);
+  pile.position.set(heap[0], w.groundAt(...heap) + 0.5, heap[1]);
+  pile.castShadow = true; pile.receiveShadow = true;
+  g.scene.add(pile);
+  m.groenewegPile = pile;
+}
+
 export function westItems(n) {
   return [
     { id: 'heg', npc: n.heggenman, title: 'De strakste heg van de Heggerank', place: 'Heggerank', desc: 'De jury van de Mooiste Voortuin komt eraan. Knip de heg kaarsrecht langs de lijn.' },
     { id: 'kabouters', npc: n.kabouter, title: 'Kabouters ontvoerd', place: 'Akelei', desc: 'Vijf tuinkabouters zijn verstopt in de bloemenwijk. Zoek ze met de warm-koudmeter.' },
     { id: 'bbq', npc: n.bbqjongen, title: 'Burendag-BBQ', place: 'Aardaker 43', desc: 'De barbecuemeester is zoek. Draai de burgers op tijd om en serveer de hele straat.' },
+    { id: 'grond', npc: n.krullebol, title: 'Grond sjouwen', place: 'Groeneweg 65', desc: 'Help de krullebol: rij drie kruiwagens grond van de straat naar zijn tuin, zonder te morsen.' },
   ].filter((x) => x.npc);
 }
 
-export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq' };
+export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond' };
 
 export const westHandlers = {
+  // ------------------------------------------------------------ Groeneweg 65: grond sjouwen
+  async krullebol(npc, N, ui, g) {
+    const a = await ui.dialog(N, [
+      'Hé, kom je even helpen? Ik leg een nieuwe border aan, maar de vrachtwagen heeft de grond verderop aan de straat gestort in plaats van in mijn tuin.',
+      'Drie kruiwagens moeten erin. En niet rennen met die kruiwagen, en niet te scherp de bocht om, anders ligt de helft op straat.',
+      'Mijn krullen zitten al vol zand. Pak jij de kruiwagen?',
+    ], ['Geef die kruiwagen maar', 'Ik heb net schone schoenen aan']);
+    if (a !== 0) { await ui.dialog(N, ['Schone schoenen? Kom maar terug als ze vies mogen worden.']); return; }
+    if (g.mode === 'car') g.exitCar();
+    g.setMode('walk');
+    const heap = this.groenewegHeap, drop = this.groenewegDrop;
+    const dist = Math.hypot(heap[0] - drop[0], heap[1] - drop[1]);
+    const limit = Math.round(3 * (2 * dist / 3.4 + 3) + 25);
+    this.setActive('grond', 'Grond sjouwen', 'Loop naar de berg grond, rij de volle kruiwagen naar de tuin en kiep hem in het plantvak. Drie ritten. Niet rennen en geen scherpe bochten, anders mors je.', '');
+    this.active.noVehicles = true;
+    const mound = this.groenewegMound, pile = this.groenewegPile;
+    mound.scale.y = 0.06; pile.scale.set(1, 1, 0.8); // opnieuw beginnen na een afgebroken poging
+    const r = await startBarrow(g, {
+      heap, drop, trips: 3, need: 2.1, limit, makeBarrow: makeKruiwagen,
+      onDeliver: (total) => {
+        // de berg in de tuin groeit, die aan de straat krimpt
+        mound.scale.y = 0.06 + total * 0.13;
+        pile.scale.set(Math.max(0.35, 1 - total * 0.22), Math.max(0.3, 1 - total * 0.24), Math.max(0.3, 0.8 - total * 0.18));
+      },
+    });
+    if (!r || this.active?.id !== 'grond') return;
+    const pct = Math.round((r.delivered / 3) * 100);
+    if (r.ok) {
+      await ui.dialog(N, [
+        pct >= 95 ? 'Alles erin en niks gemorst! Jij kunt zo bij een hovenier aan de slag.' : `${pct} procent van de grond ligt in de tuin. Die paar kluitjes op straat? Die zijn voor de mussen.`,
+        'Mijn rug is je eeuwig dankbaar. Mijn krullen ook, er zit nu iets minder zand in.',
+      ]);
+      g.fx?.confetti(drop[0], g.world.groundAt(...drop) + 2, drop[1], 90);
+      this.complete('grond', 'Grondwerker van de Groeneweg!');
+    } else {
+      await ui.dialog(N, [r.late ? 'De tijd is om, en de berg ligt er nog half. Morgen weer een dag. Of nu meteen nog een keer?' : `Maar ${pct} procent in de tuin? Er ligt meer grond op straat dan in mijn border. Nog een keer, en dan rustig aan!`]);
+      // berg weer vol voor een nieuwe poging
+      mound.scale.y = 0.06; pile.scale.set(1, 1, 0.8);
+      this.fail(r.late ? 'Te laat.' : 'Te veel gemorst.');
+    }
+  },
+
   // ------------------------------------------------------------ heg knippen
   async heggenman(npc, N, ui, g) {
     const a = await ui.dialog(N, [

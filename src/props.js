@@ -450,3 +450,54 @@ export function makeOfferblok() {
   g.add(note);
   return shadows(g);
 }
+
+// Kruiwagen: bak, wiel voorop, twee handvatten achter. Lokaal kijkt hij naar +z (het wiel).
+// userData.soil = de berg grond in de bak (schaal y = hoe vol), userData.tray = de bak (om te kiepen).
+export function makeKruiwagen() {
+  const g = new THREE.Group();
+  const green = mat(0x2e7d32, { metalness: 0.4, roughness: 0.45 });
+  const metal = mat(0x9e9e9e, { metalness: 0.7, roughness: 0.35 });
+  const tray = new THREE.Group();
+  tray.position.set(0, 0.55, 0.35);
+  // bak: bodem en schuine wanden
+  tray.add(box(0.5, 0.03, 0.7, green, 0, 0, 0));
+  const side = (w, h, d, x, y, z, rx, rz) => { const o = box(w, h, d, green, x, y, z); o.rotation.set(rx, 0, rz); tray.add(o); };
+  side(0.03, 0.3, 0.8, -0.3, 0.13, 0, 0, 0.35);
+  side(0.03, 0.3, 0.8, 0.3, 0.13, 0, 0, -0.35);
+  side(0.64, 0.3, 0.03, 0, 0.13, 0.42, -0.45, 0);
+  side(0.6, 0.28, 0.03, 0, 0.12, -0.37, 0.2, 0);
+  const soil = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x4a3220, { roughness: 1 }));
+  soil.scale.set(0.85, 0.001, 1.15);
+  soil.position.y = 0.03;
+  tray.add(soil);
+  g.add(tray);
+  // wiel voorop
+  const wheel = cyl(0.17, 0.17, 0.08, mat(0x222222, { roughness: 0.9 }), 0, 0.17, 0.85, 18);
+  wheel.rotation.z = Math.PI / 2;
+  g.add(wheel);
+  const hub = cyl(0.05, 0.05, 0.1, metal, 0, 0.17, 0.85, 8);
+  hub.rotation.z = Math.PI / 2;
+  g.add(hub);
+  // frame en handvatten (naar achteren en omhoog)
+  for (const x of [-0.24, 0.24]) {
+    const bar = box(0.035, 0.035, 1.25, metal, x, 0.5, 0.25);
+    bar.rotation.x = -0.32;
+    g.add(bar);
+    g.add(box(0.045, 0.045, 0.16, mat(0x222222), x, 0.72, -0.38)); // handvat
+    const leg = box(0.03, 0.42, 0.03, metal, x, 0.25, 0.05);
+    g.add(leg);
+  }
+  g.userData.soil = soil;
+  g.userData.tray = tray;
+  return shadows(g);
+}
+
+// Schep met houten steel.
+export function makeSchep() {
+  const g = new THREE.Group();
+  g.add(cyl(0.018, 0.018, 1.0, mat(0x8d6e63), 0, 0, 0, 8));
+  const blade = box(0.2, 0.26, 0.02, mat(0x78909c, { metalness: 0.6, roughness: 0.4 }), 0, -0.6, 0);
+  g.add(blade);
+  g.add(box(0.14, 0.03, 0.03, mat(0x5d4037), 0, 0.5, 0));
+  return shadows(g);
+}
