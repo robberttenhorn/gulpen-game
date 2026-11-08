@@ -14,7 +14,7 @@ import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
-import { statsStart } from './stats.js';
+import { statsStart, statsPageview } from './stats.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
@@ -66,6 +66,7 @@ class Game {
   }
 
   async init() {
+    statsPageview(); // anonieme telling: game geopend
     const bar = document.getElementById('loading-bar');
     const txt = document.getElementById('loading-text');
     this.world = new World(this.scene, (p, t) => { bar.style.width = `${Math.round(p * 90)}%`; txt.textContent = t; });
