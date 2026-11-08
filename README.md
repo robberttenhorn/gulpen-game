@@ -39,7 +39,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Penalty's: scoor er 3 van de 5 | Sportpark FC Gulpen, Ringweg 14 |
 | Een schimmig zaakje: een pakketje snel bezorgen | Mariabeeld, top van de Gulperberg |
 | De Nachtburgemeester (alleen 's avonds): zoek zijn ambtsketen | Markt |
-| Gulperberg op!: fietstijdrit naar het Mariabeeld | Voet van de Gulperberg |
+| Gulperberg op!: fietswedstrijd tegen de wielrenner, wie het eerst bij het Mariabeeld is | Voet van de Gulperberg |
 | De ontsnapte geit: ren de zigzaggende geit achterna en tik hem drie keer aan | Boerenland aan de rand van het dorp |
 | Inparkeren bij de PLUS: vijf keer netjes in een vak in twee minuten, botsen kost tijd | Parkeerplaats PLUS |
 | Vogelschieten: met de buks de houten vogel stukje voor stukje van de paal schieten | Bij het sportpark (de schutter is verzonnen) |
@@ -65,8 +65,6 @@ Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
 **Besturing**: fiets, skateboard en auto sturen zoals een voertuig: vooruit is gas (of trappen), achteruit is remmen, links en rechts is sturen. Met toetsen lopen gas en sturen geleidelijk op; de joystick heeft een dode zone in het midden en stuurt bij een kleine uitslag maar een klein beetje.
-
-**Snelreismodus (voor de maker)**: tik op de grote kaart 7 keer snel op het woord 'Gulpen' bovenaan. Dan staat bij elke missie een knop 'Ga erheen'. Nog eens 7 keer tikken zet het weer uit. De keuze blijft bewaard op dat apparaat.
 
 **Auto kapen**: ga voor of naast een rijdende auto staan, dan stopt hij en toetert hij. Bij het portier kun je de chauffeur eruit trekken (knop **Kapen** of E) en zelf verder rijden. De chauffeur valt op straat en rent scheldend weg.
 

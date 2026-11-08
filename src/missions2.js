@@ -71,7 +71,7 @@ export const moreHandlers = {
       'Vang ze allemaal. Gewoon er bovenop springen, ze zijn sneller dan je denkt. Doe je mee?',
     ], ['Ik ben de muizenmepper', 'Ik ben bang voor muizen']);
     if (a !== 0) { await ui.dialog(N, ['Bang voor muizen? Jij bent een grotere bangerik dan een vlaai zonder bodem.']); return; }
-    this.setActive('muizen', 'Muizen in de bakkerij', 'Ren de muizen achterna en spring erbovenop. Binnen 60 seconden!', '0 / 6 muizen');
+    this.setActive('muizen', 'Muizen in de bakkerij', 'Ren de muizen achterna en spring erbovenop. Binnen 1 minuut!', '0 / 6 muizen');
     const room = g.interiors.room('pijls');
     await g.enterInterior(room);
     if (this.active?.id !== 'muizen') return;

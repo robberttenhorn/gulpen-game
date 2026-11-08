@@ -347,10 +347,24 @@ export class Vehicles {
     // naast de weg (gras, akker) iets langzamer, maar nooit ineens: geleidelijk afremmen
     const vmax = onRoad || car.type === 'tractor' ? top : Math.min(top, 20);
     // optrekken wordt rustiger naarmate je harder gaat
-    const accel = throttle > 0 ? (car.speed < 0 ? 16 : 6.5 * (1 - 0.55 * Math.min(1, car.speed / top))) : throttle < 0 ? (car.speed > 0 ? 14 : 4.5) : 0;
+    // remmen gaat flink harder dan optrekken
+    const accel = throttle > 0 ? (car.speed < 0 ? 22 : 6.5 * (1 - 0.55 * Math.min(1, car.speed / top))) : throttle < 0 ? (car.speed > 0 ? 20 : 4.5) : 0;
     car.speed += throttle * accel * dt;
     if (!throttle) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), (onRoad ? 2.2 : 6) * dt);
-    if (handbrake) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 10 * dt);
+    if (handbrake) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 16 * dt);
+    // hard remmen: rookwolkjes bij de achterwielen en een piepend geluid
+    const hardBrake = ((throttle < -0.35 && car.speed > 5) || (throttle > 0.35 && car.speed < -5) || (handbrake && Math.abs(car.speed) > 4)) && car.type !== 'tractor';
+    if (hardBrake && this.g.fx) {
+      car.smokeT = (car.smokeT || 0) - dt;
+      if (car.smokeT <= 0) {
+        car.smokeT = 0.05;
+        const fx = Math.sin(car.heading), fz = Math.cos(car.heading), sx = Math.cos(car.heading), sz = -Math.sin(car.heading);
+        const back = -car.t.L * 0.33, y = (car.y ?? this.world.groundAt(car.x, car.z)) + 0.25;
+        const k = Math.min(1.6, Math.abs(car.speed) / 12);
+        for (const side of [-1, 1]) this.g.fx.smoke(car.x + fx * back + sx * side * car.t.W * 0.42, y, car.z + fz * back + sz * side * car.t.W * 0.42, 0.6 + k * 0.6);
+      }
+      if (!car.braking) { car.braking = true; this.g.sfx?.play('skid'); }
+    } else car.braking = false;
     car.speed -= car.speed * Math.abs(car.speed) * 0.0009 * dt * 60 * (onRoad ? 1 : 2.5) * 0.02;
     if (car.speed > vmax) car.speed -= (car.speed - vmax) * Math.min(1, dt * 1.2);
     car.speed = THREE.MathUtils.clamp(car.speed, -8, top);

@@ -107,6 +107,19 @@ export function makeShadyPackage() {
   return shadows(g);
 }
 
+// Blikken doosje sjnoef (snuiftabak), uitvergroot zodat je het in de hand ziet.
+export function makeSnuifdoos() {
+  const g = new THREE.Group();
+  const tin = mat(0x8d1c1c, { metalness: 0.6, roughness: 0.35 });
+  g.add(cyl(0.09, 0.09, 0.035, tin, 0, 0.018, 0, 24));
+  g.add(cyl(0.093, 0.093, 0.02, mat(0xd4af37, { metalness: 0.9, roughness: 0.25 }), 0, 0.045, 0, 24));
+  g.add(cyl(0.05, 0.05, 0.005, mat(0xfff3e0), 0, 0.057, 0, 20)); // etiketje
+  // een wolkje bruin poeder bovenop
+  g.add(cyl(0.035, 0.05, 0.02, mat(0x6d4c41, { roughness: 1 }), 0.03, 0.068, 0.01, 12));
+  g.scale.setScalar(1.8);
+  return shadows(g);
+}
+
 // Limburgse kersenvlaai met roosterwerk.
 export function makeVlaai() {
   const g = new THREE.Group();
@@ -226,6 +239,26 @@ export class Effects {
     this.scene = scene;
     this.bursts = [];
     this.rings = [];
+    this.puffs = [];
+  }
+
+  // Rookwolkje (bijv. bij de wielen tijdens hard remmen): groeit, stijgt een beetje en vervaagt.
+  smoke(x, y, z, size = 1) {
+    if (!this.smokeTex) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d');
+      const grd = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+      grd.addColorStop(0, 'rgba(235,235,235,0.9)'); grd.addColorStop(0.5, 'rgba(210,210,210,0.45)'); grd.addColorStop(1, 'rgba(200,200,200,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+      this.smokeTex = new THREE.CanvasTexture(c);
+    }
+    if (this.puffs.length > 80) { const old = this.puffs.shift(); this.scene.remove(old.s); }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, transparent: true, depthWrite: false, opacity: 0.75 }));
+    s.position.set(x, y, z);
+    s.scale.setScalar(0.4 * size);
+    this.scene.add(s);
+    this.puffs.push({ s, t: 0, size, vx: (Math.random() - 0.5) * 0.6, vz: (Math.random() - 0.5) * 0.6, rot: (Math.random() - 0.5) * 2 });
   }
 
   confetti(x, y, z, n = 140) {
@@ -278,6 +311,14 @@ export class Effects {
       r.m.material.opacity = Math.max(0, 0.7 - r.t * 0.8);
     }
     this.rings = this.rings.filter((r) => { if (r.t > 0.9) { this.scene.remove(r.m); return false; } return true; });
+    for (const p of this.puffs) {
+      p.t += dt;
+      p.s.position.x += p.vx * dt; p.s.position.z += p.vz * dt; p.s.position.y += dt * 0.5;
+      p.s.scale.setScalar((0.4 + p.t * 2.2) * p.size);
+      p.s.material.rotation += p.rot * dt;
+      p.s.material.opacity = Math.max(0, 0.75 * (1 - p.t / 1.3));
+    }
+    this.puffs = this.puffs.filter((p) => { if (p.t > 1.3) { this.scene.remove(p.s); p.s.material.dispose(); return false; } return true; });
   }
 }
 

@@ -4,11 +4,11 @@
 // De Nachtburgemeester en de man bij het Mariabeeld zijn verzonnen figuren.
 
 import * as THREE from 'three';
-import { makeCharacter, makeKeg } from './character.js';
+import { makeCharacter, makeKeg, makeBike } from './character.js';
 import { runTikTok, ORDERS, formatViews } from './tiktok.js';
 import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } from './skills.js';
 import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
-import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
+import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
 
@@ -599,10 +599,13 @@ export class Missions {
       this.deliveries('deal', 1, async () => {
         await ui.dialog('Bij de deur', ['Ah, eindelijk! Laat eens kijken...']);
         // het pakketje gaat open...
-        g.holdProp(makeVlaai());
-        await ui.dialog('Bij de deur', ['Perfect. Een verse kersenvlaai, precies op tijd voor de verjaardag van oma. Bedankt!']);
+        g.holdProp(makeSnuifdoos());
+        await ui.dialog('Bij de deur', [
+          'Perfect. Echte sjnoef! Precies op tijd voor het kaartavondje van opa.',
+          'Die mannen snuiven er al sinds 1962 van. Ze worden er niet slimmer van, wel vrolijker. Niks tegen de pliesie zeggen, hè!',
+        ]);
         g.dropProp();
-        this.complete('deal', 'Het was... vlaai.');
+        this.complete('deal', 'Het was... sjnoef.');
       }, 0.85, [150, 350]);
     },
 
@@ -916,28 +919,113 @@ export class Missions {
 
     async wielrenner(npc, N, ui, g) {
       if (!g.vehicles.bike) {
-        await ui.dialog(N, ['Te voet de Gulperberg op? Dat gaat je niet lukken binnen de tijd. Laat eerst je fiets maken bij Jef Abels.']);
+        await ui.dialog(N, ['Te voet tegen mij de Gulperberg op? Dat wordt niks. Laat eerst je fiets maken bij Jef Abels.']);
         return;
       }
       const a = await ui.dialog(N, [
-        'Hé! De Gulperberg, dat is hier dé klim. Met steile stukken, en bovenaan een prachtig uitzicht over het Heuvelland.',
-        'Mijn record naar het Mariabeeld op de top staat al jaren. Durf jij het aan, op de fiets?',
+        'Hé! De Gulperberg, dat is hier dé klim. Steile stukken, en bovenaan het Mariabeeld.',
+        'Wedstrijdje? Wie het eerst bij het Mariabeeld is. Ik win altijd, maar je mag het proberen.',
       ], ['Kom maar op!', 'Mijn benen zijn nog moe']);
       if (a !== 0) return;
-      await ui.dialog(N, [G('Bis bôäve!', 'Tot boven!')]);
       if (g.mode === 'car') g.exitCar();
       g.setMode('bike');
       const p = g.world.meta.pois.find((q) => q.id === 'mariabeeld').pos;
       const dest = g.world.resolve(p[0] + 7, p[1] + 3, 0.5);
-      const dist = g.distOutside(dest);
-      const limit = Math.round(dist * 1.5 / 8 + 20);
-      this.setActive('gulperberg', 'Gulperberg op!', `Fiets naar het Mariabeeld op de top binnen ${limit} seconden. Alleen op de fiets!`);
-      g.setDestination(dest, limit, async () => {
-        await ui.dialog('Bovenop de Gulperberg', ['Wat een uitzicht! Daar ligt het hele dorp. En het record is gebroken!']);
-        this.complete('gulperberg', 'Koning van de Gulperberg!');
-      }, (msg) => this.fail(msg || 'Te langzaam. De wielrenner wacht beneden op een herkansing.'), {
-        violate: () => (g.mode !== 'bike' ? 'Valsspelen! Dit is een fietsrit.' : null),
+      // route van de wielrenner: de Gulperbergweg omhoog, dan naar het Mariabeeld
+      let route = g.world.streetPath('Gulperbergweg').map(([x, z]) => [x, z]);
+      if (route.length < 2) route = [[npc.pos.x, npc.pos.z]];
+      if (g.world.heightAt(...route[0]) > g.world.heightAt(...route.at(-1))) route.reverse();
+      route.unshift([npc.pos.x, npc.pos.z]);
+      route.push(dest);
+      const lens = [0];
+      for (let k = 1; k < route.length; k++) lens.push(lens[k - 1] + Math.hypot(route[k][0] - route[k - 1][0], route[k][1] - route[k - 1][1]));
+      const total = lens.at(-1);
+      const at = (s) => {
+        s = Math.max(0, Math.min(total, s));
+        let k = 1; while (k < lens.length - 1 && lens[k] < s) k++;
+        const f = (s - lens[k - 1]) / Math.max(0.001, lens[k] - lens[k - 1]);
+        const [ax, az] = route[k - 1], [bx, bz] = route[k];
+        return [ax + (bx - ax) * f, az + (bz - az) * f, Math.atan2(bx - ax, bz - az)];
+      };
+      // tegenstander op de fiets; de 'gewone' wielrenner verdwijnt even
+      const rider = makeCharacter({ shirt: 0xfdd835, pants: 0x111111, hair: 0x5d4037, hat: 'helmet', hatColor: 0xe53935 });
+      const bike = makeBike(0xe53935);
+      const rg = new THREE.Group();
+      rg.add(bike, rider);
+      rider.position.y = 0.35;
+      g.scene.add(rg);
+      npc.group.visible = false;
+      // samen aan de start, jij naast hem
+      const [sx, sz, sh] = at(0);
+      const [px, pz] = g.world.resolve(sx + Math.cos(sh) * 1.8, sz - Math.sin(sh) * 1.8, 0.5);
+      g.player.x = px; g.player.z = pz; g.player.heading = sh; g.player.speed = 0;
+      g.camYaw = sh + Math.PI;
+      const marker = { x: sx, z: sz, color: '#fdd835', glyph: 'W', done: false };
+      g.tempMarkers = [marker];
+      this.setActive('gulperberg', 'Gulperberg op!', 'Race tegen de wielrenner naar het Mariabeeld op de top. Wie het eerst boven is wint. Alleen op de fiets!', '');
+      let s = 0, t = 0, speed = 0, finished = false, lastGap = null;
+      const base = Math.max(7.5, (g.bikeSpeed || 12.5) * 0.86);
+      const cleanup = () => { g.scene.remove(rg); npc.group.visible = true; g.tempMarkers = []; if (g.minigame?.race) g.minigame = null; };
+      this.active.cleanup = cleanup;
+      const go = (fn) => { if (!finished) { finished = true; cleanup(); fn(); } };
+      g.setDestination(dest, 900, async () => {
+        go(async () => {
+          await ui.dialog(N, ['Wat?! Jij was eerder boven? Ik had... eh... een lekke band. Bijna.', 'Respect. Jij bent de nieuwe Koning van de Gulperberg.']);
+          this.complete('gulperberg', 'Koning van de Gulperberg!');
+        });
+      }, (msg) => go(() => this.fail(msg || 'Opgegeven.')), {
+        noTimer: true,
+        violate: () => (t > 3 && g.mode !== 'bike' ? 'Valsspelen! Dit is een fietswedstrijd.' : null),
       });
+      g.ui.toast('3...', 800);
+      g.minigame = {
+        race: true, actionLabel: null,
+        stop: () => { finished = true; cleanup(); },
+        update: (dt) => {
+          t += dt;
+          const pl = g.player;
+          // aftellen: iedereen staat stil
+          if (t < 3) {
+            pl.lockedFor = true; pl.speed = 0;
+            const c = Math.ceil(3 - t);
+            if (c !== this._count) { this._count = c; if (t > 0.05) g.ui.toast(`${c}...`, 700); g.sfx?.play('tally'); }
+          } else {
+            if (this._count !== 0) { this._count = 0; g.ui.toast('Gaan!', 900); g.sfx?.play('whistle'); }
+            pl.lockedFor = false;
+            // snelheid van de wielrenner: langzamer op steile stukken, een beetje bijsturen zodat het spannend blijft
+            const [x0, z0] = at(s), [x1, z1] = at(s + 4);
+            const slope = (g.world.heightAt(x1, z1) - g.world.heightAt(x0, z0)) / 4;
+            let want = base * THREE.MathUtils.clamp(1 - slope * 2.2, 0.5, 1.25);
+            // jouw voortgang: dichtstbijzijnde punt op dezelfde route
+            let playerS = 0, bd = Infinity;
+            for (let k = 1; k < route.length; k++) {
+              const [ax, az] = route[k - 1], [bx, bz] = route[k];
+              const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+              const f = Math.max(0, Math.min(1, ((pl.x - ax) * dx + (pl.z - az) * dz) / l2));
+              const d = Math.hypot(pl.x - ax - dx * f, pl.z - az - dz * f);
+              if (d < bd) { bd = d; playerS = lens[k - 1] + f * (lens[k] - lens[k - 1]); }
+            }
+            // ver van de route af (binnendoor): dan telt de afstand tot de top
+            if (bd > 25) playerS = Math.max(playerS, total - Math.hypot(dest[0] - pl.x, dest[1] - pl.z));
+            const gap = s - playerS; // positief: wielrenner voor
+            if (gap > 40) want *= 0.9; else if (gap < -25) want *= 1.12;
+            speed += (want - speed) * Math.min(1, dt * 1.5);
+            s += speed * dt;
+            const lead = Math.abs(gap) < 5 ? 'Zij aan zij!' : gap > 0 ? `Wielrenner ligt ${Math.round(gap)} m voor` : `Jij ligt ${Math.round(-gap)} m voor`;
+            if (lead !== lastGap) { lastGap = lead; this.progress(lead); }
+            if (s >= total) go(async () => {
+              g.clearDestination();
+              await ui.dialog(N, ['Haha! Eerst boven! Ik heb hier al tien jaar niet verloren.', 'Volgende keer beter. Of laat je fiets nog eens opvoeren bij Jef Abels.']);
+              this.fail('De wielrenner was eerder boven.');
+            });
+          }
+          const [x, z, h] = at(s);
+          rg.position.set(x, g.world.groundAt(x, z), z);
+          rg.rotation.y = h;
+          rider.userData.animate(dt, speed, 'bike');
+          marker.x = x; marker.z = z;
+        },
+      };
     },
 
     async boer(npc, N, ui, g) {
