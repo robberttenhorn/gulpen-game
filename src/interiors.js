@@ -539,7 +539,7 @@ export class Interiors {
   update(dt) {
     const room = this.g.interior;
     if (!room) return;
-    for (const p of room.people) p.m.userData.animate(dt, 0, p.pose);
+    for (const p of room.people) p.m.userData.animate(dt, p.speed || 0, p.pose);
   }
 }
 

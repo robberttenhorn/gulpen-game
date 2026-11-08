@@ -144,6 +144,8 @@ export class Sound {
       case 'honk': this.tone(415, 0.22, { type: 'square', vol: 0.09 }); this.tone(349, 0.22, { type: 'square', vol: 0.07 }); this.tone(415, 0.35, { type: 'square', vol: 0.09, at: 0.3 }); this.tone(349, 0.35, { type: 'square', vol: 0.07, at: 0.3 }); break;
       case 'launch': this.hiss(0.9, { vol: 0.07, filter: 'bandpass', freq: 3000, q: 1.5, attack: 0.3 }); this.tone(500, 0.9, { vol: 0.02, slide: 1800, type: 'sine' }); break;
       case 'boom': this.tone(70, 0.7, { vol: 0.3, type: 'triangle', slide: 35 }); this.hiss(1.1, { vol: 0.22, freq: 1600 }); for (let i = 0; i < 5; i++) this.hiss(0.05, { vol: 0.06, filter: 'highpass', freq: 5000, at: 0.25 + i * 0.09 + Math.random() * 0.05 }); break;
+      case 'squeak': { const f = 900 + Math.random() * 500; this.tone(f, 0.18, { type: 'sawtooth', vol: 0.035, slide: f * 1.35 }); this.tone(f * 1.5, 0.12, { type: 'square', vol: 0.015, at: 0.05, slide: f * 1.1 }); break; }
+      case 'creak': this.tone(140 + Math.random() * 60, 0.32, { type: 'sawtooth', vol: 0.05, slide: 95 }); this.hiss(0.25, { vol: 0.05, filter: 'bandpass', freq: 600, q: 4 }); break;
       case 'cart': this.hiss(0.2, { vol: 0.08, filter: 'bandpass', freq: 3000, q: 3 }); break;
       default: break;
     }

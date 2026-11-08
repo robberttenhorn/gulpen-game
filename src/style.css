@@ -528,3 +528,14 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 #dialog-choices button:nth-child(2) { animation-delay: 0.08s; }
 #dialog-choices button:nth-child(3) { animation-delay: 0.16s; }
 @keyframes choice-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* SixSense-flyer die even groot in beeld komt */
+.six-card { position: absolute; left: 50%; top: 22%; transform: translateX(-50%) rotate(-4deg); width: min(240px, 62vw); padding: 14px 16px 16px; border-radius: 10px; background: #111; color: #fff; text-align: center; font-family: Inter, sans-serif; box-shadow: 0 0 0 3px #ff3d9a, 0 18px 40px rgba(0,0,0,.55), 0 0 40px rgba(255,61,154,.45); animation: six-in .35s cubic-bezier(.2,1.4,.4,1) both; pointer-events: none; z-index: 6; }
+.six-card.out { animation: six-out .5s ease-in both; }
+.six-6 { font: 900 72px/0.9 "Baloo 2", sans-serif; color: #ff3d9a; text-shadow: 0 0 18px #ff3d9a; }
+.six-name { font: 800 22px "Baloo 2", sans-serif; letter-spacing: .04em; }
+.six-deal { font-size: 14px; opacity: .85; margin-top: 2px; }
+.six-code { margin: 8px auto 6px; padding: 6px 10px; border: 2px dashed #ff3d9a; border-radius: 6px; font: 800 20px ui-monospace, Menlo, monospace; letter-spacing: .08em; display: inline-block; }
+.six-count { font-size: 13px; color: #ffb3d6; }
+@keyframes six-in { from { opacity: 0; transform: translateX(-50%) rotate(-12deg) scale(.6); } to { opacity: 1; transform: translateX(-50%) rotate(-4deg) scale(1); } }
+@keyframes six-out { to { opacity: 0; transform: translateX(-50%) rotate(6deg) scale(.8) translateY(-20px); } }

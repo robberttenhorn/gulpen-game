@@ -10,7 +10,7 @@ import { startSlalom, startCatch, startGoat, startParking, startVogelschieten } 
 import { setupMore, moreItems, moreHandlers, MORE_MISSION_OF } from './missions2.js';
 import { statsMissions } from './stats.js';
 import { inviteFinale } from './finale.js';
-import { setupWest, setupGroeneweg, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
+import { setupWest, setupGroeneweg, setupFitness, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
@@ -233,6 +233,7 @@ export class Missions {
     // bloemenwijk (missions3.js)
     setupWest(this, g, add);
     setupGroeneweg(this, g, add);
+    setupFitness(this, g, add);
     Object.assign(this.extra, westHandlers);
 
     Object.values(this.npcs).forEach((n) => { n.active = true; });

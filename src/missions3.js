@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { startHedge, startGnomes, startBBQ, startBarrow } from './skills3.js';
 import { makeKruiwagen, makeSchep } from './props.js';
+import { startCurls } from './fitness.js';
 
 // Aardaker 43 (PDOK Locatieserver, RD 189534.701 314005.2) in spelcoördinaten
 const AARDAKER_43 = [189534.701 - 190531, -(314005.2 - 314058)];
@@ -133,18 +134,64 @@ export function setupGroeneweg(m, g, add) {
   m.groenewegPile = pile;
 }
 
+// Anytime Fitness: personal trainer bij de ingang
+export function setupFitness(m, g, add) {
+  const fit = g.facades.fitness;
+  if (!fit) return;
+  const [x, z] = g.world.resolve(...fit.entrance, 0.5);
+  add('pt', 'Personal trainer', [x, z], { shirt: 0x5b2a86, pants: 0x111111, hair: 0x2b1d14, sleeves: 'short', shoes: 0xffffff });
+}
+
 export function westItems(n) {
   return [
     { id: 'heg', npc: n.heggenman, title: 'De strakste heg van de Heggerank', place: 'Heggerank', desc: 'De jury van de Mooiste Voortuin komt eraan. Knip de heg kaarsrecht langs de lijn.' },
     { id: 'kabouters', npc: n.kabouter, title: 'Kabouters ontvoerd', place: 'Akelei', desc: 'Vijf tuinkabouters zijn verstopt in de bloemenwijk. Zoek ze met de warm-koudmeter.' },
     { id: 'bbq', npc: n.bbqjongen, title: 'Burendag-BBQ', place: 'Aardaker 43', desc: 'De barbecuemeester is zoek. Draai de burgers op tijd om en serveer de hele straat.' },
+    { id: 'biceps', npc: n.pt, title: 'Biceps pompen', place: 'Anytime Fitness, Nieuwstraat 8', desc: 'Zaterdag naar Mosaqua. Pomp je biceps op in de sportschool, zodat je niet uitgelachen wordt op de glijbaan.' },
     { id: 'grond', npc: n.krullebol, title: 'Grond sjouwen', place: 'Groeneweg 65', desc: 'Help de krullebol zijn voortuin op te hogen: rij drie kruiwagens grond van de straat naar zijn tuin, zonder te morsen.' },
   ].filter((x) => x.npc);
 }
 
-export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond' };
+export const WEST_MISSION_OF = { heggenman: 'heg', kabouter: 'kabouters', bbqjongen: 'bbq', krullebol: 'grond', pt: 'biceps' };
 
 export const westHandlers = {
+  // ------------------------------------------------------------ Anytime Fitness: biceps pompen
+  async pt(npc, N, ui, g) {
+    const a = await ui.dialog(N, [
+      'Hé jij! Ik hoorde dat je zaterdag naar Mosaqua gaat. Met die armpjes? Op de glijbaan lachen ze je uit.',
+      'We gaan je biceps oppompen. Ingedrukt houden om te curlen, bovenin aanspannen tot de ring vol is, en dan pas loslaten.',
+      'Niet te vroeg loslaten en niet te lang blijven hangen, anders verzuurt je arm. Klaar voor de pomp?',
+    ], ['Pompen maar!', 'Ik heb al spierballen']);
+    if (a !== 0) { await ui.dialog(N, ['Spierballen? Dat zijn botten met een beetje vel eromheen. Kom terug als je durft.']); return; }
+    this.setActive('biceps', 'Biceps pompen', 'Loop naar de paarse mat bij de spiegel en pak de dumbbells. Pomp je biceps naar 100 procent: Mosaqua-klaar!', '');
+    const room = g.interiors.room('fitness');
+    let go;
+    const ready = new Promise((r) => { go = r; });
+    const spot = room.curlSpot;
+    await g.enterInterior(room, { triggers: [{ x: spot.x, z: spot.z, r: 1.4, label: 'Pak de dumbbells', action: () => go(true) }] });
+    if (this.active?.id !== 'biceps') return;
+    g.ui.toast('Loop naar de paarse mat bij de spiegel', 2200);
+    const watch = setInterval(() => { if (this.active?.id !== 'biceps') { clearInterval(watch); go(false); } }, 400);
+    const ok = await ready;
+    clearInterval(watch);
+    if (!ok || this.active?.id !== 'biceps') return;
+    room.activeTriggers = [];
+    const r = await startCurls(g, { limit: 50, shirt: 0xe8a33d }); // zelfde shirt als je poppetje
+    if (!r || this.active?.id !== 'biceps') return;
+    if (r.ok) {
+      await ui.dialog(N, [
+        `Kijk die pomp! ${r.perfect} strakke herhalingen. Daar kun je zaterdag mee van de wildwaterbaan.`,
+        'Regel van Mosaqua: wie op de springplank zijn armen laat zien, wint. Die regel heb ik net verzonnen.',
+      ]);
+      if (g.interior) await g.exitInterior();
+      g.fx?.confetti(g.player.x, g.world.groundAt(g.player.x, g.player.z) + 2.2, g.player.z, 100);
+      this.complete('biceps', 'Mosaqua-klaar! Biceps gepompt.');
+    } else {
+      await ui.dialog(N, [`${Math.round(r.pump * 100)} procent pomp. Nog steeds spaghetti-armpjes. Even een slokje water en dan nog een setje!`]);
+      this.fail('Nog niet Mosaqua-klaar.');
+    }
+  },
+
   // ------------------------------------------------------------ Groeneweg 65: grond sjouwen
   async krullebol(npc, N, ui, g) {
     const a = await ui.dialog(N, [
