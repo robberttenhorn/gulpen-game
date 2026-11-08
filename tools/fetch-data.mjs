@@ -67,6 +67,7 @@ const POIS = [
   { id: 'plankeukens', name: "Plan Keukens", address: 'Rijksweg 21', x: 190564.118, y: 314019.806, shop: true },
   { id: 'pannekoekenmolen', name: "De Pannekoekenmolen", address: 'Molenweg 2A', x: 190369.248, y: 313667.69, shop: true },
   { id: 'mosaqua', name: "Mosaqua", address: 'Landsraderweg 11', x: 190401.358, y: 313520.682, shop: true },
+  { id: 'anytime', name: "Anytime Fitness", address: 'Nieuwstraat 8', x: 190659.163, y: 314284.961, shop: true },
   { id: 'gemeentehuis', name: "Gemeentehuis Gulpen-Wittem", address: 'Willem Vliegenstraat 12', x: 190323.202, y: 314076.821, shop: true },
   // Joods monument aan de Beversbergweg: herdenkingsmonument volgens de BGT (buiten het gedetailleerde dorpsgebied)
   { id: 'joodsmonument', name: "Joods monument", address: 'Beversbergweg', x: 188914.8, y: 314574.6, memorial: true },

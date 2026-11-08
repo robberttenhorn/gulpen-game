@@ -15,6 +15,7 @@ import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { statsStart, statsPageview, statsError } from './stats.js';
+import { SixSense } from './sixsense.js';
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
@@ -27,6 +28,7 @@ const SPEED = { walk: 4.0, run: 6.5, bike: 12.5, skate: 9.5, keg: 2.8 };
 
 class Game {
   constructor() {
+    this.updaters = new Set(); // losse onderdelen die elk beeld iets doen (flyers, bus)
     this.canvas = document.getElementById('scene');
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.5 : 2));
@@ -92,6 +94,8 @@ class Game {
     this.bigmap.secret = setupSecret(this.bigmap, this);
     this.missions = new Missions(this);
     this.missions.setup();
+    this.sixsense = new SixSense(this);
+    this.sixsense.setup();
     this.setupPoiLabels(); // na de missies: plekken met een missie krijgen een groot bord
     if (this.missions.done.has('fiets')) this.tuneBike();
     this.updateVehicleButton();
@@ -660,6 +664,7 @@ class Game {
       }
       items.push({ key: m.id, x: m.npc.pos.x, z: m.npc.pos.z, title: m.title, place: m.best ? `${m.place} · beste: ${m.best}` : m.place, color: colors[m.state], glyph: m.state === 'klaar' ? '✓' : '!', state: m.state, stateLabel: labels[m.state] });
     });
+    for (const f of this.sixsense?.markers() || []) items.push(f);
     if (this.tractor) items.push({ key: 'tractor', x: this.tractor.x, z: this.tractor.z, title: 'Tractor', place: 'Op het boerenland', color: '#64b5f6', glyph: 'T', state: '', stateLabel: 'Voertuig' });
     return items;
   }
@@ -1373,6 +1378,8 @@ class Game {
     // een fout in een minispel mag nooit de hele game laten vastlopen
     try { this.minigame?.update(dt); } catch (e) { console.error('minispel', e); try { this.minigame?.stop?.(); } catch (e2) { /* negeren */ } this.minigame = null; this.player.lockedFor = false; }
     this.updateFollowers(dt);
+    this.facades.fitness?.tick(dt, this);
+    for (const u of this.updaters) u(dt);
     this.updateFleeing(dt);
     this.updateNpcs(dt);
     this.cars.updateTraffic(dt, this.mode === 'car' ? this.car : this.player);
@@ -1600,6 +1607,14 @@ class Game {
       this.ui.prompt(Math.abs(this.car.speed) < 3 ? 'Uitstappen' : null);
       this.ui.setActionLabel('Uit');
       if (this.input.consumeAction()) this.exitCar();
+      return;
+    }
+    // losse interactie (bijv. instappen in de SixSense-bus)
+    const xi = this.extraInteract;
+    if (xi && this.mode === 'walk' && Math.hypot(p.x - xi.x, p.z - xi.z) < xi.r) {
+      this.ui.prompt(xi.label);
+      this.ui.setActionLabel(xi.short);
+      if (this.input.consumeAction()) xi.action();
       return;
     }
     let near = null, nd = 4;
