@@ -355,16 +355,16 @@ class Game {
     if (this.nightSince == null) {
       this.nightSince = this.time;
       if (m.active?.id !== 'finale') {
-        const todo = [['nacht', 'De Nachtburgemeester'], ['nachtvangulpen', 'Nacht van Gulpen']].filter(([id]) => !m.done.has(id)).map(([, t]) => t);
+        const todo = [['nacht', 'De Nachtburgemeester'], ['nachtvangulpen', 'Nacht van Gulpen'], ['bierfeesten', 'de Gulpener Bierfeesten']].filter(([id]) => !m.done.has(id)).map(([, t]) => t);
         setTimeout(() => this.ui.toast(todo.length
-          ? `Het is avond: tijd voor ${todo.join(' en ')}. Over 2 minuten wordt het weer dag, of zodra je een andere missie begint.`
+          ? `Het is avond: tijd voor ${todo.length > 1 ? todo.slice(0, -1).join(', ') + ' en ' + todo[todo.length - 1] : todo[0]}. Over 2 minuten wordt het weer dag, of zodra je een andere missie begint.`
           : 'Het is avond. Even genieten van het donker, zo komt de zon weer op.', 5200), 600);
       }
     }
     if (m.active || this.ui.dialogOpen || this.interior || this.minigame || this.bigmap?.open) return;
     const elapsed = this.time - this.nightSince;
-    const bothDone = m.done.has('nacht') && m.done.has('nachtvangulpen');
-    if (this.morningAsap || elapsed > 120 || (bothDone && elapsed > 25)) this.dawn();
+    const allDone = m.done.has('nacht') && m.done.has('nachtvangulpen') && m.done.has('bierfeesten');
+    if (this.morningAsap || elapsed > 120 || (allDone && elapsed > 25)) this.dawn();
   }
 
   async dawn() {
