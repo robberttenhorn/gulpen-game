@@ -99,7 +99,7 @@ class Game {
     this.tractor = this.cars.cars.find((c) => c.isTractor);
     this.fishing = this.findFishingSpot();
     this.cars.spawnTraffic(isMobile ? 6 : 11);
-    this.peds = new Pedestrians(this, isMobile ? 12 : 24);
+    this.peds = new Pedestrians(this, isMobile ? 9 : 16);
     this.fx = new Effects(this.scene);
     this.interiors = new Interiors(this);
     this.minimap = new Minimap(this.world);

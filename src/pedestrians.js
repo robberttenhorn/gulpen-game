@@ -5,7 +5,7 @@ import { rng } from './world.js';
 import { makeDog } from './animals.js';
 
 // verder dan dit niet tekenen; wie nog verder weg is, verhuist (buiten beeld) naar jouw buurt
-const FAR = 170;
+const FAR = 280;
 
 const SHIRTS = [0x37474f, 0x8d6e63, 0x1565c0, 0xc62828, 0x2e7d32, 0xf9a825, 0x6a1b9a, 0xeeeeee, 0x212121, 0xad1457, 0x00838f];
 const PANTS = [0x263238, 0x1a237e, 0x3e2723, 0x424242, 0x5d4037, 0x1b1b1b];
@@ -59,22 +59,24 @@ export class Pedestrians {
       }
       this.pickRoute(p, rand, roads);
       p.dist = rand() * p.len;
+      { const q = along(p.pts, p.dist); p.x = q.x; p.z = q.z; } // meteen op de route, niet eerst op (0, 0)
       this.list.push(p);
     }
     this.roads = roads;
     this.rand = rand;
     // fietsers op de rijbaan (rechts van de wegas)
     this.cyclists = [];
-    const nc = this.world.isMobile ? 3 : 6;
+    const nc = this.world.isMobile ? 2 : 4;
     for (let i = 0; i < nc && roads.length; i++) {
       const rider = makeCharacter({ shirt: SHIRTS[Math.floor(rand() * SHIRTS.length)], pants: PANTS[Math.floor(rand() * PANTS.length)], hair: HAIR[Math.floor(rand() * 5)], skin: SKIN[Math.floor(rand() * SKIN.length)], hat: rand() < 0.3 ? 'cap' : null, hatColor: SHIRTS[Math.floor(rand() * SHIRTS.length)] });
       const bike = makeBike(SHIRTS[Math.floor(rand() * SHIRTS.length)]);
       const g = new THREE.Group();
       rider.position.set(0, 0.25, -0.25); g.add(bike, rider);
       this.g.scene.add(g);
-      const c = { model: g, rider, speed: 4 + rand() * 2, side: 1, x: 0, z: 0, heading: 0 };
+      const c = { model: g, rider, speed: 4 + rand() * 2, side: 1, x: 0, z: 0, heading: 0, cyclist: true };
       this.pickRoute(c, rand, roads);
       c.dist = rand() * c.len;
+      { const q = along(c.pts, c.dist); c.x = q.x; c.z = q.z; }
       this.cyclists.push(c);
     }
     // mensen op een bankje in het dorp (ze zitten stil, dus ze kosten bijna niets)
@@ -141,7 +143,13 @@ export class Pedestrians {
       if (Math.hypot(l[0] - ex, l[1] - ez) < 2.5) opts.push([l, false]);
       else if (Math.hypot(l[n - 2] - ex, l[n - 1] - ez) < 2.5) opts.push([l, true]);
     }
-    if (!opts.length || this.rand() < 0.25) { p.pts.reverse(); p.dist = 0; return; }
+    if (!opts.length || this.rand() < 0.25) {
+      // omdraaien: de looprichting draait om, dus de zijde ook, zodat iemand op dezelfde stoep blijft
+      p.pts.reverse(); p.dist = 0;
+      if (!p.cyclist) { p.side = -p.side; }
+      p.lat = -(p.lat || 0);
+      return;
+    }
     const [l, rev] = opts[Math.floor(this.rand() * opts.length)];
     const pts = [];
     for (let i = 0; i < l.length; i += 2) pts.push([l[i], l[i + 1]]);
@@ -174,7 +182,7 @@ export class Pedestrians {
   // rustig naar het doelpunt bewegen, nooit sneller dan een flinke pas; alleen ver weg of buiten beeld meteen neerzetten
   stepTo(p, tx, tz, maxSpeed, dt, far) {
     const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-    if (p.snap || (d > 15 && (far || !this.inView(p.x, p.z)))) { p.x = tx; p.z = tz; p.snap = false; return; }
+    if (p.snap || (d > 15 && (far || (!this.inView(p.x, p.z) && !this.inView(tx, tz))))) { p.x = tx; p.z = tz; p.snap = false; return; }
     const step = maxSpeed * dt;
     if (d <= step) { p.x = tx; p.z = tz; } else { p.x += (dx / d) * step; p.z += (dz / d) * step; }
   }
@@ -223,25 +231,36 @@ export class Pedestrians {
       if (!pushing) p.dist += p.speed * dt;
       if (p.dist >= p.len) this.nextRoute(p);
       const q = along(p.pts, p.dist);
-      // op de stoep: een stukje naast de wegas; past dat niet, dan wat dichter bij de as
+      // op de stoep: een stukje naast de wegas; past dat niet, dan wat dichter bij de as.
+      // De zijafstand en de richting veranderen geleidelijk, zodat niemand in een bocht of bij een smalle stoep verspringt.
+      p.rh = q.heading;
       const off = 3.4 * p.side;
-      let tx = q.x, tz = q.z;
+      let want = 0;
       for (const k of [1, 0.7, 0.4]) {
-        const ax = q.x - Math.cos(q.heading) * off * k, az = q.z + Math.sin(q.heading) * off * k;
-        if (!w.blocked(ax, az) && !w.insideBuilding(ax, az)) { tx = ax; tz = az; break; }
+        const ax = q.x - Math.cos(p.rh) * off * k, az = q.z + Math.sin(p.rh) * off * k;
+        if (!w.blocked(ax, az) && !w.insideBuilding(ax, az)) { want = off * k; break; }
       }
+      if (p.snap || p.lat === undefined) p.lat = want;
+      p.lat += Math.max(-0.8 * dt, Math.min(0.8 * dt, want - p.lat));
+      let tx = q.x - Math.cos(p.rh) * p.lat, tz = q.z + Math.sin(p.rh) * p.lat;
       if (!far) [tx, tz] = w.resolve(tx, tz, 0.35);
       if (pushing) {
         // opzij stappen, langs gevels en niet het water in
         const nx = p.x + p.dvx * dt, nz = p.z + p.dvz * dt;
         const [rx, rz] = w.resolve(nx, nz, 0.35);
         if (!w.blocked(rx, rz)) { p.x = rx; p.z = rz; }
-      } else this.stepTo(p, tx, tz, p.speed * 1.6 + 0.4, dt, far);
+      } else {
+        const ox = p.x, oz = p.z;
+        this.stepTo(p, tx, tz, p.speed * 1.6 + 0.4, dt, far);
+        // kijken waar je heen loopt (dus nooit zijwaarts schuiven)
+        const mx = p.x - ox, mz = p.z - oz;
+        if (Math.hypot(mx, mz) > 0.3 * dt && Math.hypot(mx, mz) < 3) p.wantH = Math.atan2(mx, mz);
+      }
       const decay = Math.exp(-dt * 5);
       p.dvx = (p.dvx || 0) * decay; p.dvz = (p.dvz || 0) * decay;
-      let dh = q.heading - p.heading;
+      let dh = (p.wantH ?? q.heading) - p.heading;
       dh = Math.atan2(Math.sin(dh), Math.cos(dh));
-      p.heading += dh * Math.min(1, dt * 5);
+      p.heading += dh * Math.min(1, dt * 8);
       if (far) continue;
       p.model.position.set(p.x, w.groundAt(p.x, p.z), p.z);
       p.model.rotation.y = p.heading;
@@ -280,10 +299,16 @@ export class Pedestrians {
       c.dist += c.speed * dt;
       if (c.dist >= c.len) this.nextRoute(c);
       const q = along(c.pts, c.dist);
-      // rechts van de wegas fietsen
-      const tx = q.x + Math.cos(q.heading) * -1.6, tz = q.z + Math.sin(q.heading) * 1.6;
+      // rechts van de wegas fietsen; na omdraaien geleidelijk naar de andere weghelft
+      if (c.snap || c.lat === undefined) c.lat = 1.6;
+      c.rh = q.heading;
+      c.lat += Math.max(-1.5 * dt, Math.min(1.5 * dt, 1.6 - c.lat));
+      const tx = q.x - Math.cos(c.rh) * c.lat, tz = q.z + Math.sin(c.rh) * c.lat;
+      const ox = c.x, oz = c.z;
       this.stepTo(c, tx, tz, c.speed * 1.4 + 1, dt, d > FAR);
-      let dh = q.heading - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 4);
+      const mx = c.x - ox, mz = c.z - oz;
+      if (Math.hypot(mx, mz) > 0.5 * dt && Math.hypot(mx, mz) < 3) c.wantH = Math.atan2(mx, mz);
+      let dh = (c.wantH ?? q.heading) - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 6);
       c.model.visible = d < FAR;
       if (d > FAR) continue;
       c.model.position.set(c.x, w.groundAt(c.x, c.z), c.z);

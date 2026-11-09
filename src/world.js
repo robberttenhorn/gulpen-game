@@ -1219,71 +1219,47 @@ export class World {
       const far = new THREE.Group(), near = new THREE.Group();
       const trunk = new THREE.InstancedMesh(trunkGeo, trunkMat, list.length);
       const canopy = new THREE.InstancedMesh(canopyGeo, canopyMat, list.length);
-      // per variant de straatbomen voor dichtbij
-      const byVar = variants.map(() => []);
-      let farCount = 0;
-      list.forEach(([x, z, sc, kind]) => {
+      // per boom de stand voor veraf (grove boom) en dichtbij (echte boom); welke getekend wordt kiest updateTrees per boom
+      const recs = [];
+      const perVar = variants.map(() => 0);
+      list.forEach(([x, z, sc, kind], i) => {
         const yaw = rand() * Math.PI * 2;
         const sy = 0.9 + rand() * 0.3;
         p.set(x, this.heightAt(x, z) - 0.1, z);
         q.setFromAxisAngle(up, yaw);
         s.set(sc, sc * sy, sc);
         m.compose(p, q, s);
-        trunk.setMatrixAt(farCount, m);
-        canopy.setMatrixAt(farCount, m);
+        trunk.setMatrixAt(i, m);
+        canopy.setMatrixAt(i, m);
+        const fm = m.toArray();
         if (kind === 1) col.setHSL(0.26 + rand() * 0.05, 0.45, 0.2 + rand() * 0.07);
         else col.setHSL(0.22 + rand() * 0.08, 0.45 + rand() * 0.15, 0.26 + rand() * 0.1);
-        canopy.setColorAt(farCount, col);
-        farCount++;
-        if (variants.length) byVar[Math.floor(rand() * variants.length)].push([x, z, sc * sy, yaw]);
+        canopy.setColorAt(i, col);
+        let vi = -1, nm = null;
+        if (variants.length) {
+          vi = Math.floor(rand() * variants.length);
+          perVar[vi]++;
+          p.set(x, this.heightAt(x, z) - 0.15, z);
+          s.setScalar(variants[vi].scale * sc * sy);
+          m.compose(p, q, s);
+          nm = m.toArray();
+        }
+        recs.push({ x, z, fm, c: [col.r, col.g, col.b], vi, nm });
       });
       for (const im of [trunk, canopy]) { im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; far.add(im); }
-      variants.forEach((v, vi) => {
-        const l = byVar[vi];
-        if (!l.length) return;
-        const br = new THREE.InstancedMesh(v.branchGeo, v.barkMat, l.length);
-        const lf = new THREE.InstancedMesh(v.leafGeo, v.leafMat, l.length);
-        l.forEach(([x, z, sc, yaw], i) => {
-          p.set(x, this.heightAt(x, z) - 0.15, z);
-          q.setFromAxisAngle(up, yaw);
-          s.setScalar(v.scale * sc);
-          m.compose(p, q, s);
-          br.setMatrixAt(i, m); lf.setMatrixAt(i, m);
-        });
-        for (const im of [br, lf]) { im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; near.add(im); }
+      const nearMeshes = variants.map((v, vi) => {
+        if (!perVar[vi]) return null;
+        const br = new THREE.InstancedMesh(v.branchGeo, v.barkMat, perVar[vi]);
+        const lf = new THREE.InstancedMesh(v.leafGeo, v.leafMat, perVar[vi]);
+        let k = 0;
+        for (const r of recs) if (r.vi === vi) { m.fromArray(r.nm); br.setMatrixAt(k, m); lf.setMatrixAt(k, m); k++; }
+        for (const im of [br, lf]) { im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; im.count = 0; near.add(im); }
+        return { br, lf };
       });
       near.visible = false;
       this.scene.add(far, near);
-      this.treeTiles.push({ cx: (tx + 0.5) * T, cz: (tz + 0.5) * T, far, near, hasNear: near.children.length > 0 });
+      this.treeTiles.push({ minX: tx * T, minZ: tz * T, maxX: (tx + 1) * T, maxZ: (tz + 1) * T, far, near, trunk, canopy, nearMeshes, recs, mode: 'far', hasNear: near.children.length > 0 });
     }
-  }
-
-  // Bomen tijdelijk verbergen waar test(x, z) waar is (bijv. tussen camera en podium bij een feest).
-  // Geeft een functie terug die ze weer terugzet.
-  hideTrees(test, near = [0, 0], radius = 120) {
-    const saved = [];
-    const m = new THREE.Matrix4(), p = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
-    for (const t of this.treeTiles || []) {
-      if (Math.hypot(t.cx - near[0], t.cz - near[1]) > radius + 150) continue;
-      for (const grp of [t.far, t.near]) for (const im of grp.children) {
-        if (!im.isInstancedMesh) continue;
-        let changed = false;
-        for (let i = 0; i < im.count; i++) {
-          im.getMatrixAt(i, m);
-          p.setFromMatrixPosition(m);
-          if (!test(p.x, p.z)) continue;
-          saved.push([im, i, m.clone()]);
-          im.setMatrixAt(i, zero);
-          changed = true;
-        }
-        if (changed) im.instanceMatrix.needsUpdate = true;
-      }
-    }
-    return () => {
-      const touched = new Set();
-      for (const [im, i, mm] of saved) { im.setMatrixAt(i, mm); touched.add(im); }
-      touched.forEach((im) => { im.instanceMatrix.needsUpdate = true; });
-    };
   }
 
   // Boomsoorten: vooraf gemaakt met ez-tree (tools/bake-trees.cjs) en als klein bestand geladen.
@@ -1406,13 +1382,47 @@ export class World {
   updateTrees(cam, time) {
     if (!this.treeTiles) return;
     if (this.treeTime) this.treeTime.value = time;
-    const R = this.isMobile ? 150 : 230;
+    // per boom kiezen: binnen R de echte boom, daarbuiten de grove. Alleen opnieuw indelen als de camera een paar meter verplaatst is.
+    const R = this.isMobile ? 120 : 200;
+    const last = this._treeCam;
+    if (last && Math.hypot(last[0] - cam.x, last[1] - cam.z) < 3) return;
+    this._treeCam = [cam.x, cam.z];
     for (const t of this.treeTiles) {
       if (!t.hasNear) continue;
-      const near = Math.hypot(t.cx - cam.x, t.cz - cam.z) < R;
-      t.near.visible = near;
-      t.far.visible = !near;
+      const dx = Math.max(t.minX - cam.x, 0, cam.x - t.maxX), dz = Math.max(t.minZ - cam.z, 0, cam.z - t.maxZ);
+      const minD = Math.hypot(dx, dz);
+      const maxD = Math.hypot(Math.max(Math.abs(cam.x - t.minX), Math.abs(cam.x - t.maxX)), Math.max(Math.abs(cam.z - t.minZ), Math.abs(cam.z - t.maxZ)));
+      const mode = minD >= R ? 'far' : maxD < R ? 'near' : 'mix';
+      if (mode === t.mode && mode !== 'mix') continue;
+      t.mode = mode;
+      this.splitTreeTile(t, cam, R);
     }
+  }
+
+  splitTreeTile(t, cam, R) {
+    let fc = 0;
+    const nc = t.nearMeshes.map(() => 0);
+    const tm = t.trunk.instanceMatrix.array, cm = t.canopy.instanceMatrix.array, cc = t.canopy.instanceColor?.array;
+    for (const r of t.recs) {
+      const nm = r.vi >= 0 ? t.nearMeshes[r.vi] : null;
+      if (nm && Math.hypot(r.x - cam.x, r.z - cam.z) < R) {
+        const i = nc[r.vi]++;
+        nm.br.instanceMatrix.array.set(r.nm, i * 16); nm.lf.instanceMatrix.array.set(r.nm, i * 16);
+      } else {
+        tm.set(r.fm, fc * 16); cm.set(r.fm, fc * 16); if (cc) cc.set(r.c, fc * 3);
+        fc++;
+      }
+    }
+    t.trunk.count = t.canopy.count = fc;
+    t.trunk.instanceMatrix.needsUpdate = t.canopy.instanceMatrix.needsUpdate = true;
+    if (t.canopy.instanceColor) t.canopy.instanceColor.needsUpdate = true;
+    t.nearMeshes.forEach((nm, vi) => {
+      if (!nm) return;
+      nm.br.count = nm.lf.count = nc[vi];
+      nm.br.instanceMatrix.needsUpdate = nm.lf.instanceMatrix.needsUpdate = true;
+    });
+    t.far.visible = fc > 0;
+    t.near.visible = nc.some((n) => n > 0);
   }
 
   buildProps() {
