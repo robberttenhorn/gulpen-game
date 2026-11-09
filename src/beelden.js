@@ -138,6 +138,39 @@ function limburger() {
   return { g, r: 0.75 };
 }
 
+// Twee Stromen (Arthur Spronken, 1992), bij de Gulp tegenover Café Neubourg: twee krachtige bogen
+// (de samenvloeiing van Gulp en Geul) met daarvoor een bronzen torso die lijkt te bewegen
+function tweeStromen() {
+  const g = new THREE.Group();
+  const m = bronze();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x4a3c2c, metalness: 0.6, roughness: 0.5 });
+  // twee bogen die elkaar kruisen, elk iets anders gedraaid en van een andere grootte
+  const arc = (R, t, mat, x, ry) => { const a = new THREE.Mesh(new THREE.TorusGeometry(R, t, 10, 40, Math.PI), mat); a.scale.z = 1.6; return at(a, x, 0, 0, 0, ry, 0); };
+  g.add(arc(1.75, 0.2, m, -0.35, 0.28));
+  g.add(arc(1.35, 0.17, dark, 0.45, -0.32));
+  // voetstukken van de bogen
+  const feet = [];
+  for (const [R, x, ry] of [[1.75, -0.35, 0.28], [1.35, 0.45, -0.32]]) for (const s of [-1, 1]) {
+    const fx = x + Math.cos(ry) * R * s, fz = -Math.sin(ry) * R * s;
+    g.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.6), stoneMat(0x8a857d)), fx, 0.06, fz, 0, ry, 0));
+    feet.push([fx, fz, 0.35]);
+  }
+  // torso op een lage sokkel, voor de bogen, schuin gedraaid alsof hij in beweging is
+  const t = new THREE.Group();
+  t.position.set(0.1, 0, 1.6);
+  t.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.6), stoneMat(0x8a857d)), 0, 0.35, 0));
+  const body = new THREE.Group(); body.position.y = 0.7; body.rotation.set(0.12, 0.5, -0.15); t.add(body);
+  body.add(seg(m, [0, 0.05, 0], [0, 0.55, 0.02], 0.2)); // buik en heupen
+  body.add(seg(m, [0, 0.55, 0.02], [0, 0.95, 0.06], 0.25)); // borst
+  body.add(seg(m, [-0.28, 0.95, 0.04], [0.28, 0.98, 0.08], 0.13)); // schouders
+  body.add(seg(m, [0.32, 0.95, 0.06], [0.42, 0.75, 0.2], 0.08)); // armstomp
+  body.add(seg(m, [-0.32, 0.93, 0.02], [-0.4, 1.12, -0.05], 0.08)); // armstomp omhoog
+  body.add(seg(m, [0, 1.05, 0.06], [0, 1.2, 0.08], 0.08)); // hals
+  g.add(t);
+  feet.push([0.1, 1.6, 0.45]);
+  return { g, r: 0, feet };
+}
+
 // Zet de beelden neer. pois: id -> poi; artPts: punten uit de BGT.
 export function buildStatues(fac) {
   const w = fac.world;
@@ -147,12 +180,13 @@ export function buildStatues(fac) {
     const o = w.offRoad ? w.offRoad(x, z, 4) : [x, z];
     if (!o) return;
     [x, z] = o;
-    const { g, r } = make();
+    const { g, r, feet } = make();
     g.position.set(x, w.groundAt(x, z), z);
     g.rotation.y = yaw;
     fac.scene.add(g);
-    const ring = []; for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; ring.push([x + Math.sin(a) * r, z + Math.cos(a) * r]); }
-    w.addObstacle(ring);
+    const circle = (cx, cz, rr) => { const ring = []; for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; ring.push([cx + Math.sin(a) * rr, cz + Math.cos(a) * rr]); } w.addObstacle(ring); };
+    if (feet) { const c = Math.cos(yaw), sn = Math.sin(yaw); for (const [fx, fz, rr] of feet) circle(x + fx * c + fz * sn, z - fx * sn + fz * c, rr); }
+    else circle(x, z, r);
     placed.push({ name, x, z, yaw });
   };
   const faceStreet = (x, z) => { const s = w.nearestStreet(x, z); return s ? Math.atan2(s.x - x, s.z - z) : 0; };
@@ -162,20 +196,33 @@ export function buildStatues(fac) {
   // Kapelaan Pendersplein: midden op het plein (benadering)
   const kp = w.streetPath?.('Kapelaan Pendersplein');
   if (kp?.length) { const cx = kp.reduce((s, p) => s + p[0], 0) / kp.length, cz = kp.reduce((s, p) => s + p[1], 0) / kp.length; put(jozef, cx, cz, faceStreet(cx, cz), 'Sint Jozef'); }
-  // Markt: op het plein (benadering), een open plek weg van bloembakken, gevels en de rijbaan
-  const mk = w.streetPath?.('Markt');
-  if (mk?.length) {
-    const cx = mk.reduce((s, p) => s + p[0], 0) / mk.length, cz = mk.reduce((s, p) => s + p[1], 0) / mk.length;
-    let best = null;
-    for (let r = 0; r <= 14 && !best; r += 1) for (let k = 0; k < 16; k++) {
-      const a = (k / 16) * Math.PI * 2, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-      if (w.classAt(x, z) === 'rijbaan' || w.insideBuilding(x, z) || w.nearestWall(x, z, 4)) continue;
-      if ((w.planterSpots || []).some(([px, pz]) => Math.hypot(px - x, pz - z) < 3)) continue;
-      if ((w.benchSpots || []).some((b) => Math.hypot(b.x - x, b.z - z) < 3)) continue;
-      best = [x, z]; break;
+  // vrije plek voor een gevel: 'out' meter van de gevel af, zo dicht mogelijk bij het midden ervan
+  const bad = new Set(['rijbaan', 'fietspad', 'parkeer', 'water']);
+  const freeAt = (x, z, r) => {
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 8) * Math.PI * 2, px = x + (k ? Math.sin(a) * r : 0), pz = z + (k ? Math.cos(a) * r : 0);
+      if (w.insideBuilding(px, pz) || w.blocked(px, pz) || bad.has(w.classAt(px, pz))) return false;
     }
-    if (best) put(limburger, best[0], best[1], Math.atan2(cx - best[0], cz - best[1]), 'De Limburger');
-  }
+    if ((w.planterSpots || []).some(([px, pz]) => Math.hypot(px - x, pz - z) < r + 1.2)) return false;
+    if ((w.benchSpots || []).some((b) => Math.hypot(b.x - x, b.z - z) < r + 1.2)) return false;
+    return true;
+  };
+  const before = (f, outs, r) => {
+    if (!f) return null;
+    for (const out of outs) for (const along of [0, 1, -1, 2, -2, 3, -3, 4, -4]) {
+      const x = f.x + f.nx * out + f.ux * along, z = f.z + f.nz * out + f.uz * along;
+      if (freeAt(x, z, r)) return [x, z];
+    }
+    return null;
+  };
+  // De Limburger: op de Markt, recht voor Herberg De Zwarte Ruiter (voorbij het terras)
+  const zr = fac.frames.zwarteruiter;
+  const pl = before(zr, [8.5, 9, 9.5, 10, 11], 1.1);
+  if (pl) put(limburger, pl[0], pl[1], Math.atan2(zr.nx, zr.nz), 'De Limburger');
+  // Twee Stromen: tegenover Café Neubourg, aan de kant van de Gulp
+  const nb = fac.frames.neubourg;
+  const ts = before(nb, [8, 8.5, 9, 7.5, 9.5, 10, 7], 2.0);
+  if (ts) put(tweeStromen, ts[0], ts[1], Math.atan2(nb.nx, nb.nz) + Math.PI, 'Twee Stromen');
   fac.statues = placed;
   return placed;
 }
