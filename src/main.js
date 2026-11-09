@@ -14,6 +14,7 @@ import { Missions } from './missions.js';
 import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { buildStatues } from './beelden.js';
+import { buildTuin38, volvoSpot38 } from './tuin38.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { statsStart, statsPageview, statsError, statsPerf } from './stats.js';
@@ -92,6 +93,7 @@ class Game {
     this.facades = new Facades(this);
     this.facades.build();
     try { buildStatues(this.facades); } catch (e) { console.warn('beelden', e); }
+    try { buildTuin38(this); } catch (e) { console.warn('tuin Ringweg 38', e); }
     this.cars = new Vehicles(this);
     this.spawnVolvo();
     this.farm = this.findFarm();
@@ -599,10 +601,8 @@ class Game {
   spawnVolvo() {
     const p = this.world.meta.pois.find((q) => q.id === 'volvo');
     if (!p) return;
-    const [x, z] = this.world.spotNear(...p.pos);
-    const s = this.world.nearestStreet(x, z);
-    // met de neus naar de straat, zoals op een oprit
-    const heading = s ? Math.atan2(s.x - x, s.z - z) : 0;
+    // op de oprit (plek volgens de luchtfoto), met de neus naar de straat
+    const { x, z, heading } = volvoSpot38();
     this.volvo = this.cars.addCar('suv', x, z, heading, VOLVO_GREY, { isVolvo: true });
     // zwart dak, zoals vaak bij de XC40
     const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.04, 2.0), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3, clearcoat: 1 }));

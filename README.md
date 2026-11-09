@@ -18,7 +18,7 @@ Open daarna de link die Vite toont (meestal http://localhost:5173).
 - Mobiel: joystick links, slepen op de rechterhelft om te kijken, knoppen rechtsonder. Tik op de minikaart voor de grote kaart.
 
 **Vervoer**: lopen (ongeveer 15 km/u, rennen 23 km/u), skateboard (34 km/u), fiets (45 km/u, na het afstellen bij Jef Abels sneller) en auto's (tot 120 km/u). De fiets heb je altijd bij je: druk op de knop Fiets (of F).
-Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart).
+Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart). Ringweg 38 heeft een voor- en achtertuin die zijn nagebouwd naar de luchtfoto (PDOK, 8 cm per pixel), het kadaster en de BGT (src/tuin38.js): een oprit van rode klinkers, een plantvak met buxushaagje, een boom met roodbruin blad, een berging, een vijver met stenen rand, twee terrassen, een gazon, moestuinbakken, een bakstenen muur langs de wei en een haag aan de westkant. Welke plant of welk meubel het precies is, is een interpretatie van de luchtfoto.
 Water kun je niet in. Er rijdt verkeer over het echte wegennet en er lopen dorpsbewoners rond.
 
 ## Missies
