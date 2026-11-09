@@ -15,7 +15,7 @@ import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
-import { statsStart, statsPageview, statsError } from './stats.js';
+import { statsStart, statsPageview, statsError, statsPerf } from './stats.js';
 import { SixSense } from './sixsense.js';
 import { startPenalty as startPenaltyGame } from './penalty.js';
 
@@ -286,6 +286,14 @@ class Game {
     if (q.t < 2) return;
     q.t = 0;
     const fps = 1 / q.avg;
+    // meting (anoniem): lang haperend, of na twee minuten soepel
+    if (this.started && document.getElementById('hud') && !document.getElementById('hud').hidden) {
+      q.play = (q.play || 0) + 2;
+      q.low = fps < 40 ? (q.low || 0) + 2 : 0;
+      const device = isMobile ? 'mobiel' : 'computer';
+      if (q.low >= 10) statsPerf('haperend', device, fps);
+      else if (q.play >= 120) statsPerf('soepel', device, fps);
+    }
     if (fps < 48) {
       q.good = 0;
       if (this.resScale > 0.62) { this.resScale = Math.max(0.6, this.resScale - 0.12); this.applyResolution(); }

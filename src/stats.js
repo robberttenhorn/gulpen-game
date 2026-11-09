@@ -5,6 +5,8 @@
 //   spel-gestart   elke keer op "Speel"      = hoeveel keer er gespeeld is
 //   speelminuut    elke gespeelde minuut     = totale speeltijd in minuten
 //   drie-missies   1x per apparaat           = hoeveel spelers er 3 missies halen
+//   haperend/...   1x per sessie             = het spel liep een tijdje schokkerig (onder 40 beelden/s), per soort apparaat
+//   soepel/...     1x per sessie             = na 2 minuten spelen liep het soepel (ter vergelijking)
 //
 //   (pagina)       elke keer dat iemand de game opent = bezoekers, ook wie niet op "Speel" drukt
 //
@@ -76,4 +78,13 @@ export function statsError(kind, msg = '') {
   if (reported.has(key) || reported.size > 20) return;
   reported.add(key);
   send(key);
+}
+
+// Hoe soepel loopt het spel? Eén keer per sessie: 'haperend' als het een tijdje onder 40 beelden per seconde zat,
+// anders na twee minuten 'soepel'. Per soort apparaat (mobiel/computer), zodat we zien of nieuwe dingen te zwaar zijn.
+let perfSent = false;
+export function statsPerf(kind, device, fps) {
+  if (perfSent) return;
+  perfSent = true;
+  send(`${kind}/${device}/${Math.round(fps / 5) * 5}fps`);
 }
