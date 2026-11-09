@@ -231,15 +231,15 @@ export function buildTuin38(g) {
   // ---------------- VOORTUIN (v 0 - 8) ----------------
   patch(3.9, 10.1, 0.15, 9.9, mats.klinker, 0.08, 0.8); // oprit van rode klinkers tot aan de gevel en de berging
   patch(10.1, 14.0, 0.8, 8.0, mats.aarde, 0.11, 1.5); // border onder de boom
-  patch(0.3, 3.9, 0.4, 7.6, mats.aarde, 0.11, 1.5); // plantvak links
-  // plantvak links met een laag buxushaagje eromheen
+  patch(0.75, 3.9, 1.0, 7.6, mats.aarde, 0.11, 1.5); // plantvak links
+  // plantvak links met een laag buxushaagje eromheen (binnen de hoge haag langs de stoep en de westgrens)
   const box = { tile: 1, jitter: 0.6, segs: 3 };
-  block(0.3, 3.9, 0.4, 0.75, 0.38, mats.haag, box);
-  block(0.3, 3.9, 7.25, 7.6, 0.38, mats.haag, box);
-  block(0.3, 0.65, 0.75, 7.25, 0.38, mats.haag, box);
-  block(3.55, 3.9, 0.75, 7.25, 0.38, mats.haag, box);
-  solid(0.3, 3.9, 0.4, 7.6);
-  for (let k = 0; k < 7; k++) blob(1 + rand() * 2.2, 1.4 + k * 0.85, 0.25, 0.45 + rand() * 0.3, [0x3f6b34, 0x5d7f3a, 0x7a4a6a, 0x4a6e3f][k % 4], 3);
+  block(0.75, 3.9, 1.0, 1.35, 0.38, mats.haag, box);
+  block(0.75, 3.9, 7.25, 7.6, 0.38, mats.haag, box);
+  block(0.75, 1.1, 1.35, 7.25, 0.38, mats.haag, box);
+  block(3.55, 3.9, 1.35, 7.25, 0.38, mats.haag, box);
+  solid(0.75, 3.9, 1.0, 7.6);
+  for (let k = 0; k < 7; k++) blob(1.4 + rand() * 1.9, 1.9 + k * 0.78, 0.25, 0.45 + rand() * 0.3, [0x3f6b34, 0x5d7f3a, 0x7a4a6a, 0x4a6e3f][k % 4], 3);
   // grote boom met roodbruin blad (op de luchtfoto een brede roodpaarse kruin van zo'n 6 m)
   add(new THREE.CylinderGeometry(0.14, 0.22, 2.4, 7).translate(0, 1.2, 0), mats.stam, place(12.2, 6.3, 0));
   for (let k = 0; k < 22; k++) { // brede, wat platte kruin van roodpaars blad
@@ -248,9 +248,12 @@ export function buildTuin38(g) {
   }
   solid(12.0, 12.4, 6.1, 6.5);
   for (let k = 0; k < 5; k++) blob(10.6 + rand() * 2.8, 1.4 + rand() * 2.5, 0.3, 0.4 + rand() * 0.25, 0x46703a, 2);
-  // haag langs de stoep rechts van de oprit en langs de oostgrens (BGT: haag)
-  block(10.3, 13.7, 0.2, 0.8, 0.85, mats.haag, box); solid(10.3, 13.7, 0.2, 0.8);
-  block(13.6, 14.35, 0.2, 10.0, 1.35, mats.haag, box); solid(13.6, 14.35, 0.2, 10.0);
+  // hoge haag (zo hoog als een mens) langs de stoep aan beide kanten van de oprit en langs beide zijgrenzen van de voortuin
+  const tall = { tile: 1, jitter: 0.8, segs: 2 };
+  block(0.0, 3.9, 0.2, 0.85, 1.8, mats.haag, tall); solid(0.0, 3.9, 0.2, 0.85);
+  block(10.3, 13.7, 0.2, 0.85, 1.8, mats.haag, tall); solid(10.3, 13.7, 0.2, 0.85);
+  block(0.0, 0.65, 0.85, 8.0, 1.8, mats.haag, tall); solid(0.0, 0.65, 0.85, 8.0);
+  block(13.6, 14.35, 0.2, 10.0, 1.8, mats.haag, tall); solid(13.6, 14.35, 0.2, 10.0);
   // lage betonnen zitrand (lichtgrijs op de luchtfoto)
   block(10.3, 12.9, 1.0, 1.45, 0.45, mats.beton); solid(10.3, 12.9, 1.0, 1.45);
 
@@ -286,6 +289,8 @@ export function buildTuin38(g) {
   block(pu1, pu1 + rim, pv0, pv1, 0.14, mats.steen);
   solid(pu0 - rim, pu1 + rim, pv0 - rim, pv1 + rim);
   for (let k = 0; k < 4; k++) { const geo = new THREE.CircleGeometry(0.22 + rand() * 0.1, 10).rotateX(-Math.PI / 2); add(geo, mats.haag, place(pu0 + 0.4 + rand() * (pu1 - pu0 - 0.8), pv0 + 0.4 + rand() * (pv1 - pv0 - 0.8), 0.06)); }
+  // klinkerpad tussen het huis en de vijver (sluit aan op het terras, het tegelpad langs de zijkant en het plantvak)
+  patch(5.0, 12.6, 19.6, pv0 - rim - 0.02, mats.klinker, 0.1, 0.8);
   // klinkerpaadje tussen de twee terrassen, langs de vijver
   patch(6.2, 8.6, pv1 + rim + 0.1, 29.2, mats.klinker, 0.1, 0.8);
   // middelhoog plantvak rechts van de vijver met witte en gele bloemen
