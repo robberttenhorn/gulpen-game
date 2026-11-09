@@ -285,6 +285,7 @@ export const geschiedenisHandlers = {
     const restore = () => { placed.forEach((o) => g.scene.remove(o)); g.collectibles.forEach((c) => c.cleanup?.()); g.collectibles = []; };
     this.active.cleanup = restore;
     let hung = 0;
+    g.player.lockedFor = false; // het gesprek zette je vast; nu moet je het veld in kunnen lopen
     await new Promise((resolve) => {
       for (const [x, z] of spots) {
         const post = new THREE.Group();

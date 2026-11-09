@@ -27,7 +27,7 @@ export const SHOPS = {
   mosaqua: { sign: 'Mosaqua', sub: 'subtropisch zwemparadijs', bg: '#0288d1', fg: '#ffffff', type: 'zwembad' },
   gemeentehuis: { sign: 'Gemeentehuis Gulpen-Wittem', sub: '', bg: '#f5f1e6', fg: '#1b2430', type: 'gemeente' },
   decorette: { sign: 'Decorette', sub: 'verf · behang · raamdecoratie', bg: '#ef7d00', fg: '#ffffff', type: 'wonen' },
-  vvv: { sign: 'VVV · Visit Zuid-Limburg', sub: 'informatie · wandelkaarten · streekproducten', bg: '#0a5aa8', fg: '#ffffff', type: 'vvv' },
+  vvv: { sign: 'VVV · Visit Zuid-Limburg', sub: 'informatie · wandelkaarten · streekproducten', bg: '#0a5aa8', fg: '#ffffff', type: 'vvv', street: 'Dorpsstraat' }, // hoekpand, ingang aan de Dorpsstraat
   ilgusto: { sign: 'Il Gusto', sub: 'ristorante · pizzeria', bg: '#1b4d2b', fg: '#ffffff', awning: ['#1b4d2b', '#ffffff', '#c62828', '#ffffff'], type: 'restaurant' },
   mezzaluna: { sign: 'IJssalon Mezzaluna', sub: 'ijs · koffie', bg: '#f7c6d9', fg: '#7a1f4a', awning: ['#f7c6d9', '#ffffff'], type: 'ijs' },
   atelier: { sign: 'Restaurant Atelier', sub: 'restaurant', bg: '#1d1d1b', fg: '#e3c88f', type: 'restaurant', street: 'Markt' }, // ingang aan de Markt (pand op de hoek met de Dorpsstraat)

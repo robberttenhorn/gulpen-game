@@ -86,7 +86,8 @@ function runWalk(g, update, cleanup, debug = {}) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (r) => { if (done) return; done = true; g.minigame = null; cleanup?.(); resolve(r); };
-    g.minigame = { stop: () => finish(null), update: (dt) => update(dt, finish), debug: { label: null, ...debug } };
+    // het gesprek dat de missie start zet de speler vast; hier loop je juist rond
+    g.minigame = { stop: () => finish(null), update: (dt) => { g.player.lockedFor = false; update(dt, finish); }, debug: { label: null, ...debug } };
   });
 }
 
