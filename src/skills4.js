@@ -197,13 +197,14 @@ const KINDS = [
   { id: 'puur', name: 'Puur', c: '#3e2316', top: '#5d3a26' },
   { id: 'melk', name: 'Melk', c: '#8d5a3b', top: '#a9714c' },
   { id: 'wit', name: 'Wit', c: '#f3e5c8', top: '#fff6e0' },
+  { id: 'praline', name: 'Praliné', c: '#8d5a3b', top: '#a9714c', nut: true }, // lijkt op melk, maar met een hazelnoot erop
 ];
 
 // Bonbons komen over de band. Stuur elke bonbon naar de goede doos (tik op de doos, of toets 1, 2, 3).
 // Een gebroken bonbon mag je opeten: tik erop (of spatie). Geeft { ok, sorted, mistakes } terug.
-export function startBonbons(g, { need = 20, maxMistakes = 4, limit = 70 } = {}) {
+export function startBonbons(g, { need = 25, maxMistakes = 3, limit = 60 } = {}) {
   const ui = overlay(g, 'Bonbons sorteren', '<canvas class="mini-canvas"></canvas>',
-    g.input.isTouch ? 'Tik op de doos die past bij de voorste bonbon. Gebroken? Tik op de bonbon en eet hem op!' : 'Toets 1, 2, 3 (of klik op een doos) voor de voorste bonbon. Gebroken? Spatie (of klik erop) en eet hem op!');
+    g.input.isTouch ? 'Tik op de doos die past bij de voorste bonbon. Let op: praliné heeft een hazelnoot. Gebroken? Tik op de bonbon en eet hem op!' : 'Toets 1 t/m 4 (of klik op een doos) voor de voorste bonbon. Let op: praliné heeft een hazelnoot. Gebroken? Spatie (of klik erop) en eet hem op!');
   const cv = ui.ov.querySelector('canvas');
   const ctx = cv.getContext('2d');
   fitCanvas(cv);
@@ -211,12 +212,12 @@ export function startBonbons(g, { need = 20, maxMistakes = 4, limit = 70 } = {})
   const combo = makeCombo(ui.ov);
   let t = 0, sorted = 0, eaten = 0, mistakes = 0, end = 0, ok = null, spawn = 0.4;
   const belt = []; // { kind, broken, x (0..1), fly }
-  const boxes = [0, 0, 0];
+  const boxes = [0, 0, 0, 0];
   const layout = () => {
     const W = cv.width, H = cv.height, u = H / 100;
     const r = Math.min(W * 0.045, 6 * u);
-    const bw = Math.min(W * 0.26, 30 * u);
-    return { W, H, u, r, beltY: H * 0.36, zoneX: W * 0.62, endX: W * 0.92, box: (i) => ({ x: W / 2 + (i - 1) * bw * 1.12, y: H * 0.72, w: bw, h: 17 * u }) };
+    const bw = Math.min(W * 0.21, 26 * u);
+    return { W, H, u, r, beltY: H * 0.36, zoneX: W * 0.62, endX: W * 0.92, box: (i) => ({ x: W / 2 + (i - 1.5) * bw * 1.1, y: H * 0.72, w: bw, h: 17 * u }) };
   };
   const front = () => belt.filter((b) => !b.fly).sort((a, b) => b.x - a.x)[0];
   const send = (i) => {
@@ -249,13 +250,12 @@ export function startBonbons(g, { need = 20, maxMistakes = 4, limit = 70 } = {})
   cv.addEventListener('pointerdown', (e) => {
     const [mx, my] = canvasPos(cv, e);
     const L = layout();
-    for (let i = 0; i < 3; i++) { const bx = L.box(i); if (Math.abs(mx - bx.x) < bx.w / 2 && Math.abs(my - bx.y) < bx.h) { send(i); return; } }
+    for (let i = 0; i < KINDS.length; i++) { const bx = L.box(i); if (Math.abs(mx - bx.x) < bx.w / 2 && Math.abs(my - bx.y) < bx.h) { send(i); return; } }
     if (Math.abs(my - L.beltY) < L.r * 2.5) eat(); // tik op de band: de voorste bonbon proeven
   });
   const onKey = (e) => {
     const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= 3) send(n - 1);
-    else if (e.key === 'ArrowLeft') send(0); else if (e.key === 'ArrowDown') send(1); else if (e.key === 'ArrowRight') send(2);
+    if (n >= 1 && n <= KINDS.length) send(n - 1);
     else if (e.code === 'Space' || e.key === 'e' || e.key === 'E') { e.preventDefault(); eat(); }
   };
   addEventListener('keydown', onKey);
@@ -267,12 +267,12 @@ export function startBonbons(g, { need = 20, maxMistakes = 4, limit = 70 } = {})
     const L = layout(), { W, H, u, r } = L;
     if (ok !== null) { end -= dt; if (end <= 0) { finish({ ok, sorted, mistakes, eaten }); return; } }
     else t += dt;
-    const speed = 0.13 + Math.min(0.17, t * 0.0035); // band gaat steeds iets sneller
+    const speed = 0.17 + Math.min(0.25, t * 0.006); // band gaat steeds sneller
     if (ok === null) {
       spawn -= dt;
       if (spawn <= 0) {
-        spawn = Math.max(0.75, 1.5 - t * 0.012) * (0.8 + Math.random() * 0.4);
-        belt.push({ kind: KINDS[Math.floor(Math.random() * 3)], broken: Math.random() < 0.13, x: 0 });
+        spawn = Math.max(0.5, 1.15 - t * 0.014) * (0.7 + Math.random() * 0.5);
+        belt.push({ kind: KINDS[Math.floor(Math.random() * KINDS.length)], broken: Math.random() < 0.18, x: 0 });
       }
     }
     for (const b of belt) {
@@ -312,17 +312,18 @@ export function startBonbons(g, { need = 20, maxMistakes = 4, limit = 70 } = {})
       ctx.shadowBlur = 0;
       ctx.strokeStyle = b.kind.top; ctx.lineWidth = 0.5 * u;
       ctx.beginPath(); for (let k = -2; k <= 2; k++) { ctx.moveTo(k * r * 0.35 - r * 0.15, -r * 0.4); ctx.lineTo(k * r * 0.35 + r * 0.15, -r * 0.1); } ctx.stroke();
+      if (b.kind.nut) { ctx.fillStyle = '#c68e4e'; ctx.beginPath(); ctx.ellipse(0, -r * 0.55, r * 0.35, r * 0.28, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#7a4a1e'; ctx.lineWidth = 0.3 * u; ctx.beginPath(); ctx.moveTo(0, -r * 0.8); ctx.lineTo(0, -r * 0.3); ctx.stroke(); }
       if (b.broken) { ctx.strokeStyle = '#111'; ctx.lineWidth = 0.6 * u; ctx.beginPath(); ctx.moveTo(-r * 0.2, -r * 0.8); ctx.lineTo(r * 0.1, -r * 0.1); ctx.lineTo(-r * 0.15, r * 0.3); ctx.lineTo(r * 0.2, r * 0.8); ctx.stroke(); }
       ctx.restore();
     }
     // dozen
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < KINDS.length; i++) {
       const bx = L.box(i), k = KINDS[i];
       ctx.fillStyle = '#5d3a26'; ctx.fillRect(bx.x - bx.w / 2, bx.y - bx.h / 2, bx.w, bx.h);
       ctx.fillStyle = '#e8c48a'; ctx.fillRect(bx.x - bx.w / 2 + 0.8 * u, bx.y - bx.h / 2 + 0.8 * u, bx.w - 1.6 * u, bx.h - 1.6 * u);
       // gevulde vakjes
-      for (let j = 0; j < Math.min(12, boxes[i]); j++) { ctx.fillStyle = k.c; ctx.beginPath(); ctx.arc(bx.x - bx.w * 0.36 + (j % 6) * bx.w * 0.145, bx.y + (Math.floor(j / 6) - 0.2) * 4 * u, 1.6 * u, 0, 7); ctx.fill(); }
-      ctx.fillStyle = '#3e2316'; ctx.font = `800 ${3 * u}px Inter, sans-serif`; ctx.textAlign = 'center';
+      for (let j = 0; j < Math.min(12, boxes[i]); j++) { const jx = bx.x - bx.w * 0.36 + (j % 6) * bx.w * 0.145, jy = bx.y + (Math.floor(j / 6) - 0.2) * 4 * u; ctx.fillStyle = k.c; ctx.beginPath(); ctx.arc(jx, jy, 1.5 * u, 0, 7); ctx.fill(); if (k.nut) { ctx.fillStyle = '#c68e4e'; ctx.beginPath(); ctx.arc(jx, jy - 0.8 * u, 0.6 * u, 0, 7); ctx.fill(); } }
+      ctx.fillStyle = '#3e2316'; ctx.font = `800 ${2.7 * u}px Inter, sans-serif`; ctx.textAlign = 'center';
       ctx.fillText(`${g.input.isTouch ? '' : `${i + 1}  `}${k.name}`, bx.x, bx.y - bx.h * 0.18);
     }
     parts.draw(ctx);

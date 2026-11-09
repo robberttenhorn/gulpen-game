@@ -123,23 +123,23 @@ export const marktHandlers = {
   async chocolatier(npc, N, ui, g) {
     const a = await ui.dialog(N, [
       'Goedendag! Mijn hulp is er vandaag niet en de lopende band stopt niet vanzelf.',
-      'Puur, melk en wit, elk in de eigen doos. Zie je een gebroken bonbon? Die mag je opeten. Kwaliteitscontrole noemen we dat.',
-      G('Kun je me even uithelpen? Twintig bonbons in de goede doos.', 'Kun je me even helpen? Twintig bonbons in de goede doos.'),
+      'Puur, melk, wit en praliné, elk in de eigen doos. Praliné lijkt op melk, maar heeft een hazelnoot erop. Zie je een gebroken bonbon? Die mag je opeten. Kwaliteitscontrole noemen we dat.',
+      G('Kun je me even uithelpen? Vijfentwintig bonbons in de goede doos, en de band gaat steeds sneller.', 'Kun je me even helpen? Vijfentwintig bonbons in de goede doos, en de band gaat steeds sneller.'),
     ], ['Ik help je!', 'Ik eet ze liever allemaal op']);
     if (a !== 0) { await ui.dialog(N, ['Dat zeggen ze allemaal. En dan staan ze na tien bonbons groen en geel om de hoek.']); return; }
     if (g.mode === 'car') g.exitCar();
     g.setMode('walk');
-    this.setActive('bonbons', 'Bonbons sorteren', 'Stuur de voorste bonbon naar de goede doos: puur, melk of wit. Gebroken bonbons eet je op.', '0 / 20 bonbons');
-    const r = await startBonbons(g, { need: 20, maxMistakes: 4, limit: 70 });
+    this.setActive('bonbons', 'Bonbons sorteren', 'Stuur de voorste bonbon naar de goede doos: puur, melk, wit of praliné (met hazelnoot). Gebroken bonbons eet je op. Drie fouten en je bent af.', '0 / 25 bonbons');
+    const r = await startBonbons(g, { need: 25, maxMistakes: 3, limit: 60 });
     if (!r || this.active?.id !== 'bonbons') return;
     if (r.ok) {
       await ui.dialog(N, [
-        `Twintig bonbons netjes gesorteerd${r.eaten ? `, en ${r.eaten} gebroken exemplaren grondig gecontroleerd` : ''}. Een echte chocolatier!`,
+        `Vijfentwintig bonbons netjes gesorteerd${r.eaten ? `, en ${r.eaten} gebroken exemplaren grondig gecontroleerd` : ''}. Een echte chocolatier!`,
         'Neem een doosje mee voor thuis. Of voor onderweg, ik zie je denken.',
       ]);
       this.complete('bonbons', 'Bonbonbaas van Gulpen!');
     } else {
-      await ui.dialog(N, [r.mistakes >= 4 ? 'Witte bonbons in de doos met puur... de klanten gaan klagen. Nog een keer?' : 'De band was sneller dan jij! Probeer het nog eens.']);
+      await ui.dialog(N, [r.mistakes >= 3 ? 'Witte bonbons in de doos met puur... de klanten gaan klagen. Nog een keer?' : 'De band was sneller dan jij! Probeer het nog eens.']);
       this.fail('Bonbons niet gesorteerd.');
     }
   },
