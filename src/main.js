@@ -1636,6 +1636,8 @@ class Game {
       if (this.input.consumeAction()) xi.action();
       return;
     }
+    // vlak na het sluiten van een gesprek: dezelfde tik/toets (of een ingedrukt gehouden E) start niet meteen weer een gesprek
+    if (performance.now() - (this.ui.closedAt || 0) < 600 || performance.now() < (this.talkCooldownUntil || 0)) { this.input.consumeAction(); this.ui.prompt(null); this.ui.setActionLabel(null); return; }
     let near = null, nd = 4;
     for (const n of this.npcs) {
       if (!n.active || !n.enabled || !n.group.visible) continue;
