@@ -41,8 +41,8 @@ export function buildHardscape(world, scene) {
     if (name === 'water') { water.push(rings); continue; }
     const layer = LAYERS[name];
     if (!layer) continue;
+    if (name === 'voetpad') { const sm = rings.map(smoothRing); (buckets[name] ||= []).push(sm); curbs.push(sm); continue; }
     (buckets[name] ||= []).push(rings);
-    if (name === 'voetpad') curbs.push(rings);
   }
 
   const meshes = [];
@@ -67,7 +67,7 @@ export function buildHardscape(world, scene) {
   // stoepranden: verticale randjes langs de stoepen
   const curbGeo = buildCurbs(world, curbs);
   if (curbGeo) {
-    const m = new THREE.Mesh(curbGeo, new THREE.MeshStandardMaterial({ map: tx.band.map, color: 0xd8d4cc, roughness: 0.7 }));
+    const m = new THREE.Mesh(curbGeo, new THREE.MeshStandardMaterial({ map: tx.band.map, color: 0xd8d4cc, roughness: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12 }));
     m.receiveShadow = true;
     m.castShadow = false;
     scene.add(m);
@@ -184,38 +184,137 @@ function drapePolys(world, polys, lift, uvSize, maxEdge) {
   return geo;
 }
 
+// gladstrijken: eerst piepkleine uitstulpingen weg (Douglas-Peucker), dan hoeken afronden (Chaikin)
+const simplify = (p, tol) => {
+  if (p.length < 3) return p;
+  const keep = new Array(p.length).fill(false); keep[0] = keep[p.length - 1] = true;
+  const st = [[0, p.length - 1]];
+  while (st.length) {
+    const [i0, i1] = st.pop();
+    const [ax, az] = p[i0], [bx, bz] = p[i1], L = Math.hypot(bx - ax, bz - az) || 1e-6;
+    let best = -1, bd = 0;
+    for (let i = i0 + 1; i < i1; i++) { const d = Math.abs((bx - ax) * (az - p[i][1]) - (ax - p[i][0]) * (bz - az)) / L; if (d > bd) { bd = d; best = i; } }
+    if (bd > tol) { keep[best] = true; st.push([i0, best], [best, i1]); }
+  }
+  return p.filter((_, i) => keep[i]);
+};
+const chaikin = (p, closed) => {
+  if (p.length < 3) return p;
+  const out = closed ? [] : [p[0]];
+  const m = closed ? p.length : p.length - 1;
+  for (let i = 0; i < m; i++) {
+    const a = p[i], b = p[(i + 1) % p.length];
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const f = Math.min(0.25, 0.6 / Math.max(L, 0.01)); // lange rechte stukken blijven recht, alleen de hoek wordt rond
+    out.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], [a[0] + (b[0] - a[0]) * (1 - f), a[1] + (b[1] - a[1]) * (1 - f)]);
+  }
+  if (!closed) out.push(p.at(-1));
+  return out;
+};
+
+// Een stoepvlak gladstrijken: de kaart heeft punten op 10 cm afgerond, waardoor randen trapjes kregen.
+// Dubbele punten weg, kleine trapjes eruit, en de hoeken licht afgerond. Gebruikt voor het vlak én de stoeprand.
+function smoothRing(ring) {
+  const pts = [];
+  for (let i = 0; i < ring.length; i += 2) {
+    const p = [ring[i], ring[i + 1]];
+    if (!pts.length || Math.hypot(p[0] - pts.at(-1)[0], p[1] - pts.at(-1)[1]) > 0.01) pts.push(p);
+  }
+  if (pts.length > 1 && Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) < 0.01) pts.pop();
+  if (pts.length < 4) return ring;
+  // Douglas-Peucker werkt op een open lijn: knip de ring bij het verste punt van het begin
+  let far = 0, fd = 0;
+  pts.forEach((p, i) => { const d = Math.hypot(p[0] - pts[0][0], p[1] - pts[0][1]); if (d > fd) { fd = d; far = i; } });
+  const A = simplify(pts.slice(0, far + 1), 0.13), B = simplify(pts.slice(far).concat([pts[0]]), 0.13);
+  let q = A.concat(B.slice(1, -1));
+  if (q.length < 3) return ring;
+  q = chaikin(chaikin(q, true), true);
+  const out = [];
+  for (const p of q) out.push(p[0], p[1]);
+  out.push(q[0][0], q[0][1]);
+  return out;
+}
+
+// Stoepranden: alleen waar de stoep aan een lager vlak grenst (weg, parkeervak, fietspad, gras, erf).
+// Geen randjes tussen twee stukken stoep of tegen een gevel. De rand volgt een gladgestreken lijn
+// (kleine hoekjes uit de kaart eruit, hoeken afgerond) en heeft een echt profiel: voorkant, afgeronde
+// bovenrand en een smal bovenvlak dat net over de stoep valt.
 function buildCurbs(world, polys) {
-  const pos = [], uv = [], nrm = [];
-  const step = 3;
+  const chains = [];
+  const side = (ax, az, bx, bz) => {
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 0.05) return 0;
+    const nx = (bz - az) / len, nz = -(bx - ax) / len, mx = (ax + bx) / 2, mz = (az + bz) / 2;
+    for (const d of [0.6, 0.9]) {
+      const ca = world.classAt(mx + nx * d, mz + nz * d), cb = world.classAt(mx - nx * d, mz - nz * d);
+      const low = (c) => c && c !== 'voetpad' && c !== 'brug' && !world.insideBuilding(mx - nx * d * Math.sign(c === cb ? 1 : -1), mz - nz * d * Math.sign(c === cb ? 1 : -1));
+      if (ca === 'voetpad' && low(cb)) return 1; // stoep aan de kant van +n, ernaast iets lagers (weg, gras, erf)
+      if (cb === 'voetpad' && low(ca)) return -1;
+    }
+    return 0;
+  };
   for (const rings of polys) {
     for (const ring of rings) {
-      for (let i = 0; i < ring.length - 2; i += 2) {
-        const ax = ring[i], az = ring[i + 1], bx = ring[i + 2], bz = ring[i + 3];
-        const len = Math.hypot(bx - ax, bz - az);
-        if (len < 0.05) continue;
-        const nx = (bz - az) / len, nz = -(bx - ax) / len;
-        const parts = Math.max(1, Math.ceil(len / step));
-        for (let k = 0; k < parts; k++) {
-          const t0 = k / parts, t1 = (k + 1) / parts;
-          const x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0;
-          const x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
-          const g0 = world.heightAt(x0, z0), g1 = world.heightAt(x1, z1);
-          const v = [
-            [x0, g0 - 0.05, z0], [x1, g1 - 0.05, z1], [x1, g1 + CURB_H, z1],
-            [x0, g0 - 0.05, z0], [x1, g1 + CURB_H, z1], [x0, g0 + CURB_H, z0],
-          ];
-          // beide kanten zichtbaar maken door dubbel te tekenen (ringen kunnen beide kanten op lopen)
-          for (const flip of [false, true]) {
-            const order = flip ? [0, 2, 1, 3, 5, 4] : [0, 1, 2, 3, 4, 5];
-            for (const o of order) {
-              pos.push(...v[o]);
-              const s = flip ? -1 : 1;
-              nrm.push(nx * s, 0, nz * s);
-              uv.push((o === 1 || o === 2 || o === 4 ? len / parts : 0) * 2, v[o][1] - g0);
-            }
-          }
-        }
+      const pts = [];
+      for (let i = 0; i < ring.length; i += 2) pts.push([ring[i], ring[i + 1]]);
+      if (pts.length > 1 && Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) < 0.01) pts.pop();
+      const n = pts.length;
+      if (n < 2) continue;
+      const sides = pts.map((p, i) => side(p[0], p[1], pts[(i + 1) % n][0], pts[(i + 1) % n][1]));
+      // ketens van opeenvolgende randen met dezelfde stoepkant
+      let start = sides.findIndex((v, i) => v !== sides[(i - 1 + n) % n]);
+      if (start < 0) { if (sides[0]) chains.push({ pts: pts.slice(), closed: true, s: sides[0] }); continue; }
+      let cur = null;
+      for (let k = 0; k < n; k++) {
+        const i = (start + k) % n;
+        if (sides[i] && (!cur || cur.s !== sides[i])) { cur = { pts: [pts[i]], closed: false, s: sides[i] }; chains.push(cur); }
+        if (!sides[i]) { cur = null; continue; }
+        cur.pts.push(pts[(i + 1) % n]);
       }
+    }
+  }
+  // profiel (dwars op de rand): [afstand naar de stoep toe, hoogte boven het maaiveld]
+  const PROF = [[0, -0.06], [0, CURB_H - 0.035], [0.012, CURB_H - 0.012], [0.035, CURB_H + 0.004], [0.16, CURB_H + 0.006]];
+  const pos = [], nrm = [], uv = [], idx = [];
+  const maxSeg = 1.5;
+  for (const c of chains) {
+    let p = simplify(c.pts, 0.03);
+    if (p.length < 2) continue;
+    // lange stukken opdelen zodat de rand het terrein volgt
+    const q = [];
+    const m = c.closed ? p.length : p.length - 1;
+    for (let i = 0; i < m; i++) {
+      const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const k = Math.max(1, Math.ceil(L / maxSeg));
+      for (let j = 0; j < k; j++) q.push([a[0] + (b[0] - a[0]) * (j / k), a[1] + (b[1] - a[1]) * (j / k)]);
+    }
+    if (!c.closed) q.push(p.at(-1)); else q.push(q[0]);
+    if (q.length < 2) continue;
+    // per punt een gemiddelde richting, zodat de rand vloeiend doorloopt (geen knikken in het licht)
+    const N = q.length, base = pos.length / 3;
+    let along = 0;
+    for (let i = 0; i < N; i++) {
+      const pa = q[Math.max(0, i - 1)], pb = q[Math.min(N - 1, i + 1)];
+      let tx = pb[0] - pa[0], tz = pb[1] - pa[1];
+      if (c.closed && (i === 0 || i === N - 1)) { tx = q[1][0] - q[N - 2][0]; tz = q[1][1] - q[N - 2][1]; }
+      const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+      // naar de stoep toe: de stoepkant van de oorspronkelijke ring
+      const ix = tz * c.s, iz = -tx * c.s;
+      if (i) along += Math.hypot(q[i][0] - q[i - 1][0], q[i][1] - q[i - 1][1]);
+      const g = world.heightAt(q[i][0], q[i][1]);
+      for (let k = 0; k < PROF.length; k++) {
+        const [o, h] = PROF[k];
+        pos.push(q[i][0] + ix * o, g + h, q[i][1] + iz * o);
+        // normaal: voorkant naar de weg, bovenvlak omhoog, de afronding ertussenin
+        const up = k <= 1 ? 0 : k === 2 ? 0.55 : k === 3 ? 0.9 : 1;
+        const out = Math.sqrt(1 - up * up);
+        nrm.push(-ix * out, up, -iz * out);
+        uv.push(along / 1.0, k / (PROF.length - 1));
+      }
+    }
+    for (let i = 0; i < N - 1; i++) for (let k = 0; k < PROF.length - 1; k++) {
+      const a = base + i * PROF.length + k, b = a + PROF.length;
+      if (c.s > 0) idx.push(a, a + 1, b, b, a + 1, b + 1); else idx.push(a, b, a + 1, b, b + 1, a + 1);
     }
   }
   if (!pos.length) return null;
@@ -223,6 +322,8 @@ function buildCurbs(world, polys) {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeBoundingSphere();
   return geo;
 }
 
