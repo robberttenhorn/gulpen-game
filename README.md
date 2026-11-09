@@ -168,6 +168,7 @@ Vite + Three.js, geen game-engine.
 - Gebouwen krijgen in een shader baksteen, mergelblokken, pleisterwerk, kozijnen met roeden, deuren en dakpannen. 's Avonds gaan ramen branden.
 - Wegen, stoepen (met stoepranden), fietspaden, parkeervakken en water zijn losse meshes uit de BGT-vlakken die het terrein volgen, met herhalende textures.
 - Omgevingsreflecties uit de lucht (auto's, ramen, water) en op de computer een lichte gloed (bloom), vooral 's avonds.
+- Automatische beeldkwaliteit: op een groot of scherp scherm rekent het spel niet met meer pixels dan nodig. Hapert het toch (minder dan ongeveer 48 beelden per seconde), dan zakt de resolutie stapsgewijs en als laatste gaat de gloed uit; loopt het weer soepel, dan wordt het beeld vanzelf weer scherper. De controle op een zwart beeld draait één keer per 10 seconden, omdat die de videokaart even laat wachten.
 - Bomen staan per vak van 200 m: dichtbij echte boommodellen (ez-tree) die zacht wiegen, veraf eenvoudige bomen. Geparkeerde auto's zijn gebundeld, zodat het ook op telefoons draait.
 - Poppetjes zijn in code gebouwd: één vloeiend model met een skelet (heupen, knieën, ellebogen, nek), gezicht, haar, kleding en hoedjes, met animaties voor lopen, rennen, fietsen, zitten, zwaaien, eten en drinken die zacht in elkaar overlopen.
 - Groen, akkers en daken krijgen hun kleur van de echte luchtfoto. Langs muren ligt een vooraf berekende zachte schaduw. Wolken drijven door de lucht en op de computer zorgt een kleurcorrectie met vignet voor een warmere sfeer.

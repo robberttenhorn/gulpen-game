@@ -32,7 +32,10 @@ class Game {
     this.updaters = new Set(); // losse onderdelen die elk beeld iets doen (flyers, bus)
     this.canvas = document.getElementById('scene');
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.5 : 2));
+    // resolutie: niet meer pixels dan nodig (een groot of scherp desktopscherm is anders miljoenen pixels per beeld)
+    this.maxRatio = () => Math.max(Math.min(1, devicePixelRatio), Math.min(devicePixelRatio, isMobile ? 1.5 : 2, Math.sqrt((isMobile ? 2.2e6 : 2.6e6) / (innerWidth * innerHeight))));
+    this.resScale = 1; // zakt automatisch als het spel hapert
+    this.renderer.setPixelRatio(this.maxRatio());
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -62,8 +65,7 @@ class Game {
     addEventListener('resize', () => {
       this.camera.aspect = innerWidth / innerHeight;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(innerWidth, innerHeight);
-      this.composer?.setSize(innerWidth, innerHeight);
+      this.applyResolution();
       if (this.bigmap?.open) { this.bigmap.resize(); this.bigmap.draw(); }
     });
   }
@@ -258,8 +260,36 @@ class Game {
     }));
   }
 
+  // pixelverhouding (en grootte) opnieuw instellen voor scherm en nabewerking
+  applyResolution() {
+    const r = Math.max(0.5, this.maxRatio() * this.resScale);
+    this.renderer.setPixelRatio(r);
+    this.renderer.setSize(innerWidth, innerHeight);
+    if (this.composer) { this.composer.setPixelRatio(r); this.composer.setSize(innerWidth, innerHeight); }
+  }
+
+  // Automatische beeldkwaliteit: hapert het (minder dan ~48 beelden per seconde), dan minder pixels;
+  // gaat het lange tijd soepel, dan weer wat scherper. Lukt het zelfs dan niet, dan gaat de gloed (bloom) uit.
+  adaptQuality(realDt) {
+    if (!(realDt > 0) || realDt > 0.5 || document.visibilityState !== 'visible') return; // tabwissel of laadpauze niet meetellen
+    const q = (this.qual ||= { avg: 1 / 60, t: 0, good: 0 });
+    q.avg += (realDt - q.avg) * 0.05;
+    q.t += realDt;
+    if (q.t < 2) return;
+    q.t = 0;
+    const fps = 1 / q.avg;
+    if (fps < 48) {
+      q.good = 0;
+      if (this.resScale > 0.62) { this.resScale = Math.max(0.6, this.resScale - 0.12); this.applyResolution(); }
+      else if (this.composer && !this.postOff) { this.postOff = true; } // laatste stap: zonder nabewerking
+    } else if (fps > 57) {
+      q.good += 2;
+      if (q.good >= 10 && this.resScale < 1) { q.good = 0; this.resScale = Math.min(1, this.resScale + 0.08); this.applyResolution(); }
+    } else q.good = 0;
+  }
+
   render() {
-    if (this.composer) this.composer.render();
+    if (this.composer && !this.postOff) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
   }
 
@@ -1302,10 +1332,10 @@ class Game {
     if (!ok(c.x) || !ok(c.y) || !ok(c.z)) { statsError('nan-camera', this.missions?.active?.id || this.lastDone || ''); try { this.updateCamera(0, true); } catch { /* negeren */ } }
   }
 
-  // Zwart beeld herkennen (een paar pixels, elke 1,5 s). Eerst zelf herstellen, anders een herlaadknop tonen.
+  // Zwart beeld herkennen (een paar pixels, elke 10 s: uitlezen laat de videokaart even wachten en geeft dan een klein schokje). Eerst zelf herstellen, anders een herlaadknop tonen.
   checkBlack() {
     const now = performance.now();
-    if (now - (this.blackCheckT || 0) < 1500 || document.visibilityState !== 'visible' || document.getElementById('hud').hidden) return;
+    if (now - (this.blackCheckT || 0) < 10000 || document.visibilityState !== 'visible' || document.getElementById('hud').hidden) return;
     this.blackCheckT = now;
     const gl = this.renderer.getContext();
     if (gl.isContextLost()) { statsError('webgl-weg', this.lastDone || ''); showReloadBar('Het beeld is even weggevallen'); return; }
@@ -1322,15 +1352,16 @@ class Game {
       // herstelpoging: camera opnieuw achter de speler, en het beeld opnieuw opbouwen
       try {
         this.updateCamera(0, true);
-        this.renderer.setSize(innerWidth, innerHeight);
-        this.composer?.setSize(innerWidth, innerHeight);
+        this.applyResolution();
       } catch { /* negeren */ }
     }
     if (this.blackCount === 5) { statsError('zwart-blijft', this.lastDone || ''); showReloadBar('Het beeld is zwart geworden'); }
   }
 
   tickInner() {
-    const dt = Math.min(0.05, this.clock.getDelta());
+    const realDt = this.clock.getDelta();
+    this.adaptQuality(realDt);
+    const dt = Math.min(0.05, realDt);
     this.time += dt;
     this.input.update(dt);
     if (this.bigmap.open) { this.render(); return; }

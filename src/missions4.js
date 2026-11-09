@@ -82,11 +82,11 @@ function makeTeddy() {
 }
 
 // Eigen minispel-lus voor missies waarin je gewoon rondloopt (zoals de kabouterjacht).
-function runWalk(g, update, cleanup) {
+function runWalk(g, update, cleanup, debug = {}) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (r) => { if (done) return; done = true; g.minigame = null; cleanup?.(); resolve(r); };
-    g.minigame = { stop: () => finish(null), update: (dt) => update(dt, finish), debug: { label: null } };
+    g.minigame = { stop: () => finish(null), update: (dt) => update(dt, finish), debug: { label: null, ...debug } };
   });
 }
 
@@ -97,13 +97,13 @@ export const marktHandlers = {
   async ijsjuf(npc, N, ui, g) {
     const a = await ui.dialog(N, [
       G('Enne? Zie je die rij? Half Gullepe wil een ijsje en mijn collega is aangefietst naar de tandarts.', 'En? Zie je die rij? Half Gulpen wil een ijsje en mijn collega is naar de tandarts.'),
-      'Kun jij scheppen? Precies zoals besteld, van onder naar boven. De hoorn wiebelt een beetje, dus mik goed: scheef is splat.',
+      'Kun jij scheppen? Precies zoals besteld, van onder naar boven. De schep zwiert een beetje, dus laat los als hij boven het ijsje hangt: scheef is splat.',
       'Vijf klanten blij maken. Lukt dat, dan mag jij er zelf ook een.',
     ], ['Ik schep!', 'Ik ben op dieet']);
     if (a !== 0) { await ui.dialog(N, ['Op dieet? Bij dertig graden? Dan heb je hier niks te zoeken, jong.']); return; }
     if (g.mode === 'car') g.exitCar();
     g.setMode('walk');
-    this.setActive('ijsjes', 'IJsjes scheppen', 'Tik op de juiste smaak als de hoorn eronder staat. Bolletjes in de volgorde van het bonnetje, en recht op elkaar.', '0 / 5 klanten');
+    this.setActive('ijsjes', 'IJsjes scheppen', 'Tik op de juiste smaak als de zwierende schep boven het ijsje hangt (de stippellijn wordt groen). Bolletjes in de volgorde van het bonnetje.', '0 / 5 klanten');
     const r = await startIjs(g, { need: 5, maxMistakes: 4, limit: 80 });
     if (!r || this.active?.id !== 'ijsjes') return;
     if (r.ok) {
@@ -180,6 +180,7 @@ export const marktHandlers = {
     const lostMarker = { x: tour.x, z: tour.z, color: '#ff7043', glyph: '!', done: true };
     g.tempMarkers = [lostMarker];
     let idx = 0, right = 0, t = 0, busy = false;
+    const trail = []; // jouw looproute: de toerist loopt precies daarover, zo blijft hij niet achter een hoek hangen
     const limit = 75 + ordered.length * 55;
     g.setTarget({ pos: new THREE.Vector3(ordered[0].pos[0], 0, ordered[0].pos[1]) });
     const restore = () => { g.scene.remove(model); npc.group.visible = true; g.tempMarkers = []; g.setTarget(null); g.ui.timer(null); };
@@ -192,12 +193,19 @@ export const marktHandlers = {
       const d = Math.hypot(p.x - tour.x, p.z - tour.z);
       let sp = 0;
       if (d > 18 && !tour.lost) { tour.lost = true; lostMarker.done = false; g.ui.toast('"Wacht even! Ik ben geen marathonloper!" Ga terug naar de toerist.', 2600); g.sfx?.play('fail'); }
-      if (tour.lost && d < 7) { tour.lost = false; lostMarker.done = true; g.ui.toast('"Daar ben je! Rustig aan, hè."', 1600); }
+      if (tour.lost && d < 7) { tour.lost = false; lostMarker.done = true; trail.length = 0; g.ui.toast('"Daar ben je! Rustig aan, hè."', 1600); }
+      const last = trail[trail.length - 1];
+      if (!last || Math.hypot(p.x - last[0], p.z - last[1]) > 0.6) trail.push([p.x, p.z]);
       if (!tour.lost && !busy && d > 2.4) {
+        // volgende punt van het spoor (of rechtstreeks naar je toe als het spoor op is)
+        while (trail.length > 1 && Math.hypot(trail[0][0] - tour.x, trail[0][1] - tour.z) < 0.5) trail.shift();
+        const [gx, gz] = trail.length > 1 ? trail[0] : [p.x, p.z];
         sp = Math.min(5.2, (d - 2.2) * 2.2);
-        tour.heading = Math.atan2(p.x - tour.x, p.z - tour.z);
-        [tour.x, tour.z] = w.resolve(tour.x + Math.sin(tour.heading) * sp * dt, tour.z + Math.cos(tour.heading) * sp * dt, 0.4);
+        tour.heading = Math.atan2(gx - tour.x, gz - tour.z);
+        const step = Math.min(sp * dt, Math.hypot(gx - tour.x, gz - tour.z));
+        [tour.x, tour.z] = w.resolve(tour.x + Math.sin(tour.heading) * step, tour.z + Math.cos(tour.heading) * step, 0.4);
       }
+      if (trail.length > 400) trail.splice(0, trail.length - 400);
       lostMarker.x = tour.x; lostMarker.z = tour.z;
       model.position.set(tour.x, w.groundAt(tour.x, tour.z), tour.z);
       model.rotation.y = busy ? Math.atan2(ordered[Math.max(0, idx - 1)]?.pos[0] - tour.x || 0, ordered[Math.max(0, idx - 1)]?.pos[1] - tour.z || 1) : tour.heading;
@@ -211,7 +219,8 @@ export const marktHandlers = {
         (async () => {
           g.sfx?.play('camera');
           g.ui.toast('Klik! De toerist maakt een selfie.', 1400);
-          const ans = await ui.dialog(N, [s.q], s.options);
+          const order = s.options.map((o, i) => i).sort(() => Math.random() - 0.5);
+          const ans = order[await ui.dialog(N, [s.q], order.map((i) => s.options[i]))];
           if (!g.minigame) return;
           if (ans === s.good) { right++; await ui.dialog(N, [s.line]); }
           else await ui.dialog(N, [`Echt waar? Dat schrijf ik op... Hoewel, op het bordje staat iets anders. Nou ja.`]);
@@ -225,7 +234,7 @@ export const marktHandlers = {
           busy = false;
         })();
       }
-    }, restore);
+    }, restore, { tour, trail });
     if (!r || this.active?.id !== 'toerist') return;
     this.active.cleanup = null;
     if (r.ok) {
@@ -261,7 +270,7 @@ export const marktHandlers = {
     const pois = (w.meta.pois || []).map((p) => ({ name: p.name, d: Math.hypot(p.pos[0] - bx, p.pos[1] - bz) })).filter((p) => p.d < 45).sort((p, q) => p.d - q.d);
     const hints = [
       `Ja! Een hond met iets bruins in zijn bek. Hij rende naar ${compass(dx, dz)}, gezien vanaf de speelgoedwinkel.`,
-      street ? `Een beertje met een rood strikje? Volgens mij lag er zoiets aan de ${street}.` : 'Een beertje? Ik zag de hond de straat oversteken, die kant op.',
+      street ? `Een beertje met een rood strikje? Volgens mij lag er zoiets aan ${/(plein|veld|hof|park)$/i.test(street) ? 'het' : 'de'} ${street}.` : 'Een beertje? Ik zag de hond de straat oversteken, die kant op.',
       pois.length ? `Ik zag die hond bij ${pois[0].name}. Daar liet hij iets vallen, geloof ik.` : `Die hond? Die liep een meter of ${Math.round(Math.hypot(dx, dz) / 10) * 10} van de speelgoedwinkel weg.`,
     ];
     const looks = [
@@ -318,21 +327,21 @@ export const marktHandlers = {
           g.scene.remove(teddy);
           g.holdProp?.(teddy);
           teddy.rotation.set(0, 0, 0);
-          teddy.scale.setScalar(1.2);
+          teddy.scale.setScalar(0.75);
           g.sfx?.play('coin');
           g.ui.toast('Bobbie gevonden! Breng hem terug naar het jongetje.', 2200);
           g.setTarget({ pos: new THREE.Vector3(npc.pos.x, 0, npc.pos.z) });
           status();
         }
       } else if (Math.hypot(p.x - npc.pos.x, p.z - npc.pos.z) < 3) finish({ ok: true, asked, found, time: t });
-    }, restore);
+    }, restore, { teddy: [bx, bz] });
     if (!r || this.active?.id !== 'knuffel') return;
     this.active.cleanup = null;
     if (r.ok) {
       g.dropProp?.();
       await ui.dialog(N, [
         'BOBBIE! Je bent terug!',
-        r.asked < 3 ? 'En je wist hem te vinden zonder iedereen te vragen. Ben jij een detective?' : 'Dank je wel! Mama, mag deze meneer of mevrouw een ijsje? Ze heeft Bobbie gered!',
+        r.asked < 3 ? 'En je wist hem te vinden zonder iedereen te vragen. Ben jij een detective?' : 'Dank je wel! Mama, mag die een ijsje? Die heeft Bobbie gered!',
       ]);
       this.complete('knuffel', 'Knuffelheld van Gulpen!');
     } else {

@@ -31,12 +31,12 @@ export const FLAVORS = [
   { id: 'stracciatella', name: 'stracciatella', c: '#fafafa', dots: true },
 ];
 
-// De hoorn schuift heen en weer onder de schep. Tik op een bak: die smaak valt naar beneden.
+// De schep zwiert heen en weer boven de hoorn. Tik op een bak: die smaak valt recht naar beneden.
 // Bolletjes moeten in de volgorde van de bestelling, en recht op elkaar, anders valt het bolletje eraf.
 // Geeft { ok, served, mistakes } terug.
 export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
   const ui = overlay(g, 'IJsjes scheppen', '<canvas class="mini-canvas"></canvas>',
-    g.input.isTouch ? 'Tik op een bak: dat bolletje valt op de hoorn. Volg de bestelling en stapel recht!' : 'Klik op een bak of toets 1 t/m 6: dat bolletje valt op de hoorn. Volg de bestelling en stapel recht!');
+    g.input.isTouch ? 'De schep zwiert heen en weer. Tik op de goede smaak als hij boven het ijsje hangt!' : 'De schep zwiert heen en weer. Klik op de goede smaak (of toets 1 t/m 6) als hij boven het ijsje hangt!');
   const cv = ui.ov.querySelector('canvas');
   const ctx = cv.getContext('2d');
   fitCanvas(cv);
@@ -44,7 +44,7 @@ export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
   const combo = makeCombo(ui.ov);
   const names = ['Mevrouw met hondje', 'Fietser in lycra', 'Opa met pet', 'Meisje met vlechten', 'Toerist met zonnehoed', 'Jongen van de voetbal', 'Moeder met kinderwagen'];
   let t = 0, served = 0, mistakes = 0, end = 0, ok = null;
-  let order = null, stack = [], falling = null, coneX = 0, phase = Math.random() * 6, happy = 0;
+  let order = null, stack = [], falling = null, coneX = 0, holdX = 0, phase = Math.random() * 6, happy = 0, nextIn = 0;
   const newOrder = () => {
     const n = Math.min(4, 2 + Math.floor(served / 2)); // eerst 2 bolletjes, later tot 4
     const fl = [];
@@ -65,9 +65,10 @@ export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
     popText(ui.ov, txt, x, y, 'bad big');
   };
   const pick = (i) => {
-    if (ok !== null || falling || !order) return;
+    if (ok !== null || falling || !order || !FLAVORS[i] || stack.length >= order.fl.length) return; // tussen twee klanten: even wachten
     const L = layout();
-    falling = { f: FLAVORS[i], x: L.W / 2, y: L.dropY, v: 0 };
+    // het bolletje valt recht naar beneden vanaf waar de schep nu hangt
+    falling = { f: FLAVORS[i], x: holdX, y: L.dropY, v: (L.coneY - L.dropY) / 0.3 };
     g.sfx?.play('pop');
     bump(cv);
   };
@@ -85,14 +86,15 @@ export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
     const L = layout(), { W, H, u, r } = L;
     if (ok !== null) { end -= dt; if (end <= 0) { finish({ ok, served, mistakes }); return; } }
     else t += dt;
-    // de hoorn schuift heen en weer, sneller bij een hogere toren en latere klanten
-    const sp = 1.1 + served * 0.12 + stack.length * 0.18;
+    // de schep zwiert heen en weer, sneller bij een hogere toren en latere klanten; de hoorn staat stil
+    const sp = 1.7 + served * 0.15 + stack.length * 0.2;
     phase += dt * sp;
-    coneX = W / 2 + Math.sin(phase) * W * 0.24;
+    coneX = W / 2;
+    holdX = W / 2 + Math.sin(phase) * W * 0.2;
     happy = Math.max(0, happy - dt);
+    if (nextIn > 0) { nextIn -= dt; if (nextIn <= 0 && ok === null) newOrder(); }
     // vallend bolletje
     if (falling && ok === null) {
-      falling.v += 1400 * u / 100 * dt * 9;
       falling.y += falling.v * dt;
       const topY = L.coneY - r * 0.6 - stack.length * r * 1.45;
       if (falling.y >= topY) {
@@ -117,7 +119,7 @@ export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
             popText(ui.ov, c >= 3 ? `Hiel lekker! x${c}` : ['Hiel lekker!', 'Dank je wel!', 'Perfect ijsje!'][served % 3], 50, 44, c >= 3 ? 'gold big' : 'good big');
             flash(ui.ov, 'good'); g.sfx?.play('coin');
             parts.spawn(coneX, L.coneY - r * 3, 20, { color: '#ffd54f', speed: 220, up: 220, size: 5 * devicePixelRatio, life: 0.9, shape: 'circle' });
-            if (served < need) setTimeout(() => { if (ok === null) newOrder(); }, 700);
+            if (served < need) nextIn = 0.7; // even later de volgende klant
           }
         }
         falling = null;
@@ -139,11 +141,14 @@ export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
       ctx.fillText(tb.f.name, tb.x - tb.w * 0.03, tb.y + tb.h * 0.95);
       if (!g.input.isTouch) { ctx.fillStyle = 'rgba(122,31,74,0.6)'; ctx.fillText(String(i + 1), tb.x - tb.w * 0.03, tb.y - tb.h * 0.7); }
     });
-    // schep boven de hoorn
+    // zwierende schep met een stippellijn naar beneden: daar valt het bolletje
     ctx.strokeStyle = '#90a4ae'; ctx.lineWidth = 1.2 * u;
-    ctx.beginPath(); ctx.moveTo(W / 2, L.dropY - 6 * u); ctx.lineTo(W / 2, L.dropY - 2 * u); ctx.stroke();
-    ctx.setLineDash([1 * u, 1.5 * u]); ctx.strokeStyle = 'rgba(122,31,74,0.25)'; ctx.lineWidth = 0.4 * u;
-    ctx.beginPath(); ctx.moveTo(W / 2, L.dropY); ctx.lineTo(W / 2, L.coneY); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(holdX, L.dropY - 7 * u); ctx.lineTo(holdX, L.dropY - 1.5 * u); ctx.stroke();
+    ctx.fillStyle = '#b0bec5'; ctx.beginPath(); ctx.arc(holdX, L.dropY - 1 * u, r * 0.7, 0, Math.PI); ctx.fill();
+    const topX = coneX + (stack.length ? stack[stack.length - 1].rel : 0);
+    const lined = Math.abs(holdX - topX) < r * 0.95;
+    ctx.setLineDash([1 * u, 1.5 * u]); ctx.strokeStyle = lined ? 'rgba(67,160,71,0.8)' : 'rgba(122,31,74,0.3)'; ctx.lineWidth = (lined ? 0.7 : 0.4) * u;
+    ctx.beginPath(); ctx.moveTo(holdX, L.dropY); ctx.lineTo(holdX, L.coneY); ctx.stroke(); ctx.setLineDash([]);
     // toonbank
     ctx.fillStyle = '#7a1f4a'; ctx.fillRect(0, L.coneY + r * 1.6, W, H);
     // hoorn met toren
@@ -182,7 +187,7 @@ export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
   }, () => { ui.close(); removeEventListener('keydown', onKey); g.player.lockedFor = false; }, {
     label: null, pick, get order() { return order?.fl.map((f) => f.id); }, get stack() { return stack.length; },
     // voor tests: kies de smaak die nu nodig is, op een moment dat de hoorn onder de schep staat
-    aligned: () => !falling && Math.abs(coneX - cv.width / 2) < layout().r * 0.5, need: () => FLAVORS.findIndex((f) => f.id === order?.fl[stack.length]?.id),
+    aligned: () => !falling && Math.abs(holdX - (coneX + (stack.length ? stack[stack.length - 1].rel : 0))) < layout().r * 0.4, need: () => FLAVORS.findIndex((f) => f.id === order?.fl[stack.length]?.id),
   });
 }
 
