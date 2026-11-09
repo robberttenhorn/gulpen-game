@@ -191,6 +191,7 @@ export class UI {
     document.body.classList.remove('dialog-open');
     this.dialogOpen = false;
     this.input.actionPressed = false;
+    this.closedAt = performance.now(); // de tik of toets die het gesprek sloot, mag niet meteen een nieuw gesprek starten
   }
 
   typeText(text, gen = this.gen || 0) {

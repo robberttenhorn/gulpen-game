@@ -395,6 +395,8 @@ export class Missions {
       if (this.talkToken === token) this.talking = false;
       g.player.lockedFor = false;
       npc.lookAtPlayer = false;
+      g.talkCooldownUntil = performance.now() + 600;
+      g.input.actionPressed = false;
     }
   }
 

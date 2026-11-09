@@ -12,8 +12,9 @@ export class Input {
 
     addEventListener('keydown', (e) => {
       this.keys.add(e.code);
-      if (e.code === 'KeyE' || e.code === 'Enter') this.actionPressed = true;
-      if (e.code === 'Space') this.spacePressed = true;
+      // ingedrukt houden telt niet als nog een keer drukken (anders start je meteen weer een gesprek)
+      if ((e.code === 'KeyE' || e.code === 'Enter') && !e.repeat) this.actionPressed = true;
+      if (e.code === 'Space' && !e.repeat) this.spacePressed = true;
       if (e.code === 'KeyF') this.vehiclePressed = true;
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));
