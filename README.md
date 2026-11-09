@@ -27,7 +27,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 
 | Missie | Waar |
 | --- | --- |
-| Proefrit bij Jef Abels: fiets afstellen en een slalom tussen de pionnen rijden (binnen 30 s) | Jef Abels Bikes, Rijksweg 113 |
+| Proefrit bij Jef Abels: fiets afstellen en door zes genummerde poortjes slalommen (groene pijl wijst het volgende aan), binnen 30 s inclusief strafseconden | Jef Abels Bikes, Rijksweg 113 |
 | Viraal met een frietje: in de cafetaria een POV-filmpje opnemen voor TikTok (friet bakken, snack frituren, schudden, saus, trucje) | Cafetaria Zheng (de stagiair is verzonnen) |
 | Frikandel super: alleen contant, dus eerst muntjes zoeken | Friture An + Piet, Rijksweg 60B |
 | Bezorgen voor Salma: twee bestellingen in de buurt op tijd (beloning: Broodje Gulpen) | Grillroom Pizzeria Salma, Rijksweg 60A |

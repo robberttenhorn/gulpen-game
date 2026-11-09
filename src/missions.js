@@ -320,7 +320,7 @@ export class Missions {
     // een gewone missie start in het donker: eerst weer dag (niet bij de nachtmissies, het pilsje of de finale)
     if (this.g.night > 0.5 && !['nacht', 'nachtvangulpen', 'pils', 'finale'].includes(id) && !this.g.dawning) this.g.dawn();
     // tijd meten vanaf de start van de missie (opnieuw zetten tijdens dezelfde missie telt niet)
-    if (this.runStart?.id !== id) this.runStart = { id, t: performance.now() };
+    if (this.runStart?.id !== id) { this.runStart = { id, t: performance.now() }; this.modeBefore = this.g.mode; }
     this.active = { id, title, desc, progress };
     this.refresh();
   }
@@ -403,7 +403,12 @@ export class Missions {
     g.ui.cancelDialogs();
     this.talking = false;
     this.talkToken = (this.talkToken || 0) + 1;
+    const modeBefore = this.modeBefore;
     this.abort(); // gaat ook naar buiten als je binnen bent
+    // terug naar hoe je de missie begon (de proefrit zet je bijvoorbeeld op de fiets)
+    if (g.mode !== 'car' && modeBefore && modeBefore !== 'car' && g.mode !== modeBefore && g.availableModes().includes(modeBefore)) g.setMode(modeBefore);
+    g.player.speed = 0;
+    { const [rx, rz] = g.world.resolve(g.player.x, g.player.z, 0.5); g.player.x = rx; g.player.z = rz; }
     // alles wat de speler nog vasthoudt of aan zich heeft opruimen
     g.fragile = null;
     g.dropProp();
@@ -461,11 +466,12 @@ export class Missions {
         g.bikeTuned = true;
       }
       const a = await ui.dialog(N, [
-        'Nu de proefrit. Ik heb pionnen voor de zaak gezet: slalom erdoorheen, door elk poortje.',
-        'Binnen 30 seconden, en elke pion die je raakt kost een seconde. Lukt dat, dan is hij perfect afgesteld!',
+        'Nu de proefrit. Voor de zaak staan zes poortjes, elk met twee pionnen en een oranje doek erboven.',
+        'Rij zigzaggend tussen de twee pionnen van elk poortje door. De groene pijl wijst het volgende poortje aan. Daarna over de finish.',
+        'Binnen 30 seconden. Een poortje missen kost 3 strafseconden, een pion omrijden 1. Lukt dat, dan is hij perfect afgesteld!',
       ], ['Op de fiets!', 'Straks']);
       if (a !== 0) return;
-      this.setActive('fiets', 'Proefrit bij Jef Abels', 'Slalom door de poortjes tussen de pionnen. Elk geraakte pion: +1 s, poortje gemist: +3 s.', 'Binnen 30 s');
+      this.setActive('fiets', 'Proefrit bij Jef Abels', 'Rij tussen de twee pionnen van elk poortje door (volg de groene pijl) en dan over de finish. Binnen 30 s, strafseconden tellen mee: poortje gemist +3, pion om +1.', 'Poortjes 0 / 6 goed');
       const f = g.facades.frames.jefabels;
       const r = f ? await startSlalom(g, f) : { total: 10, penalty: 0 };
       if (!r || this.active?.id !== 'fiets') return;
@@ -473,7 +479,10 @@ export class Missions {
         await ui.dialog(N, [`${r.total.toFixed(1)} seconden${r.penalty ? `, inclusief ${r.penalty} strafseconden` : ''}! ${r.total < 18 ? 'Jij kunt zo de Amstel Gold Race in.' : 'Netjes gereden.'}`, 'Hij rijdt als een zonnetje. Veel plezier ermee!']);
         this.complete('fiets', 'Fiets afgesteld en proefrit gehaald!');
       } else {
-        await ui.dialog(N, [r.off ? 'Hé, de proefrit is hier, niet naar Valkenburg!' : 'Te langzaam... De fiets is wel afgesteld hoor, het ligt aan de berijder. Probeer het nog eens!']);
+        const why = r.penalty >= 9
+          ? `Je had al ${r.penalty} strafseconden. Je moet tússen de twee pionnen van elk poortje door, niet eroverheen of erlangs. Volg de groene pijl!`
+          : 'De 30 seconden waren op voordat je over de finish was. De fiets is wel afgesteld hoor, het ligt aan de berijder.';
+        await ui.dialog(N, r.off ? ['Hé, de proefrit is hier, niet naar Valkenburg!'] : [`${r.good ?? 0} van de 6 poortjes goed. ${why}`, 'Probeer het nog eens!']);
         this.fail('Proefrit niet gehaald. Praat nog eens met Jef Abels.');
       }
     },

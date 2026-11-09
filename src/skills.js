@@ -3,6 +3,7 @@
 // Elk spel geeft een Promise terug met de uitslag, of null als de klus gestopt is.
 import * as THREE from 'three';
 import { popText, flash, shake, bump, makeCombo, Particles, fitCanvas } from './minifx.js';
+import { makeFinishBanner } from './props.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
 const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; return m; };
@@ -28,9 +29,29 @@ function makeCone() {
 
 // ------------------------------------------------------------ slalom op de fiets
 
+// Een poortje: twee pionnen met elk een paaltje en een doek ertussen met het nummer.
+function makeGate(num, half) {
+  const g = new THREE.Group();
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ff6d00'; ctx.fillRect(0, 0, 256, 64);
+  ctx.fillStyle = '#fff'; ctx.font = '800 44px "Baloo 2", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`POORTJE ${num}`, 128, 34);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, 0.5), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, emissive: 0x000000 }));
+  banner.position.y = 2.1;
+  g.add(banner);
+  for (const x of [-half, half]) g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.35, 6), std(0xffffff), x, 1.18, 0));
+  g.userData.banner = banner;
+  return g;
+}
+
 // Pionnen langs de gevel f (frame van een pand). Geeft { time, penalty, total } terug.
+// Je rijdt door elk poortje (tussen de twee pionnen door), zigzaggend, en dan over de finish.
 export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
   const w = g.world;
+  const HALF = 1.6; // halve breedte van een poortje
   // een strook voor de gevel zoeken die vrij is
   let base = 5.5;
   const len = 6 + gates * spacing + 6;
@@ -43,6 +64,7 @@ export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
     if (ok) { base = b; break; }
   }
   const P = (s, l) => [f.x + f.nx * (base + l) + f.ux * (s - len / 2), f.z + f.nz * (base + l) + f.uz * (s - len / 2)];
+  const along = Math.atan2(f.ux, f.uz);
   const group = new THREE.Group();
   g.scene.add(group);
   const cones = [];
@@ -51,7 +73,7 @@ export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
     const s = 6 + i * spacing, off = i % 2 ? 1.5 : -1.5;
     const gate = { s, off, passed: false, cones: [] };
     gateList.push(gate);
-    for (const side of [-1.1, 1.1]) {
+    for (const side of [-HALF, HALF]) {
       const c = makeCone();
       gate.cones.push(c);
       const [x, z] = P(s, off + side);
@@ -59,8 +81,18 @@ export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
       group.add(c);
       cones.push({ m: c, x, z, hit: false });
     }
+    const arch = makeGate(i + 1, HALF);
+    const [ax, az] = P(s, off);
+    arch.position.set(ax, w.groundAt(ax, az), az);
+    arch.rotation.y = along + Math.PI; // doek dwars op de baan, tekst naar de fietser
+    group.add(arch);
+    gate.arch = arch;
   }
-  // start- en finishlijn
+  // groene pijl boven het volgende poortje
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 4), new THREE.MeshBasicMaterial({ color: 0x00e676 }));
+  arrow.rotation.x = Math.PI;
+  group.add(arrow);
+  // startlijn en finishboog
   const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (const s of [2, len - 3]) {
     const [x, z] = P(s, 0);
@@ -69,53 +101,68 @@ export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
     l.position.set(x, w.groundAt(x, z) + 0.05, z);
     group.add(l);
   }
+  const fin = makeFinishBanner(6.4);
+  { const [x, z] = P(len - 3, 0); fin.position.set(x, w.groundAt(x, z), z); fin.rotation.y = along + Math.PI; fin.scale.setScalar(0.8); group.add(fin); }
   // speler op de fiets bij de start
   if (g.mode === 'car') g.exitCar();
   g.setMode('bike');
   const [sx, sz] = P(-3, 0);
   g.player.x = sx; g.player.z = sz;
-  g.player.heading = Math.atan2(f.ux, f.uz);
+  g.player.heading = along;
   g.player.speed = 0;
   g.camYaw = g.player.heading + Math.PI;
-  let t = -3, started = false, penalty = 0;
+  let t = -3, started = false, penalty = 0, good = 0;
   g.ui.toast('3...', 800);
   setTimeout(() => g.minigame && g.ui.toast('2...', 800), 1000);
   setTimeout(() => g.minigame && g.ui.toast('1...', 800), 2000);
-  setTimeout(() => g.minigame && g.ui.toast('Gaan!', 800), 3000);
+  setTimeout(() => g.minigame && g.ui.toast('Gaan! Rij tussen de pionnen door', 1400), 3000);
   return runMini(g, (dt, finish) => {
     const p = g.player;
     p.lockedFor = false; // het gesprek zet de speler vast; tijdens de slalom moet je juist kunnen fietsen
     const dx = p.x - P(0, 0)[0], dz = p.z - P(0, 0)[1];
     const s = dx * f.ux + dz * f.uz, l = dx * f.nx + dz * f.nz;
     t += dt;
-    if (t < 0) { p.speed = 0; p.x = sx; p.z = sz; g.ui.timer(`${limit} s`); return; } // aftellen
+    const next = gateList.find((q) => !q.passed);
+    if (next) {
+      const [x, z] = P(next.s, next.off);
+      arrow.visible = true;
+      arrow.position.set(x, w.groundAt(x, z) + 3 + Math.sin(t * 5) * 0.2, z);
+      arrow.rotation.y += dt * 3;
+      next.arch.userData.banner.material.emissive.setHex(Math.sin(t * 8) > 0 ? 0x553300 : 0x000000);
+    } else arrow.visible = false;
+    if (t < 0) { p.speed = 0; p.x = sx; p.z = sz; g.ui.timer(`max ${limit} s`); return; } // aftellen
     if (!started && s > 2) started = true;
     const used = started ? t : 0;
-    g.ui.timer((limit - used - penalty).toFixed(1));
+    // klok telt op; strafseconden apart, zodat je ziet waar je staat
+    g.ui.timer(`${(used + penalty).toFixed(1)} / ${limit} s${penalty ? ` (+${penalty})` : ''}`);
     for (const gt of gateList) {
       if (gt.passed || s < gt.s) continue;
       gt.passed = true;
-      const good = Math.abs(l - gt.off) <= 1.15;
+      const ok = Math.abs(l - gt.off) <= HALF;
+      if (ok) good++;
+      gt.arch.userData.banner.material.emissive.setHex(0x000000);
+      gt.arch.userData.banner.material.color.set(ok ? 0x66bb6a : 0xef5350);
       // pionnen van het poortje kleuren groen (goed) of rood (gemist) en springen even op
       for (const c of gt.cones) {
-        c.traverse((o) => { if (o.isMesh && o.material.color.getHex() === 0xff6d00) { o.material = o.material.clone(); o.material.color.set(good ? 0x43a047 : 0xe53935); o.material.emissive = new THREE.Color(good ? 0x1b5e20 : 0x7f0000); } });
+        c.traverse((o) => { if (o.isMesh && o.material.color.getHex() === 0xff6d00) { o.material = o.material.clone(); o.material.color.set(ok ? 0x43a047 : 0xe53935); o.material.emissive = new THREE.Color(ok ? 0x1b5e20 : 0x7f0000); } });
         let k = 0; const y0 = c.position.y;
         const hop = () => { k += 0.08; c.position.y = y0 + Math.sin(Math.min(1, k) * Math.PI) * 0.5; if (k < 1) requestAnimationFrame(hop); };
         hop();
       }
-      if (!good) { penalty += 3; g.ui.toast('Poortje gemist! +3 s', 1000); g.sfx?.play('fail'); }
-      else { g.sfx?.play('pop'); g.ui.toast(['Mooi!', 'Strak!', 'Netjes!', 'Zo!'][gateList.filter((q) => q.passed).length % 4], 600); }
+      if (!ok) { penalty += 3; g.ui.toast('Naast het poortje! +3 s', 1200); g.sfx?.play('fail'); }
+      else { g.sfx?.play('pop'); g.ui.toast(['Mooi!', 'Strak!', 'Netjes!', 'Zo!'][good % 4], 600); }
+      g.missions.progress(`Poortjes ${good} / ${gates} goed`);
     }
     for (const c of cones) {
-      if (c.hit || Math.hypot(p.x - c.x, p.z - c.z) > 0.6) continue;
+      if (c.hit || Math.hypot(p.x - c.x, p.z - c.z) > 0.45) continue;
       c.hit = true; penalty += 1;
       c.m.rotation.z = Math.PI / 2.3; c.m.rotation.y = Math.random() * 6;
-      g.ui.toast('Pion geraakt! +1 s', 900);
+      g.ui.toast('Pion omver! +1 s', 900);
       g.sfx?.play('kick');
     }
-    if (s >= len - 3 && started) finish({ time: t, penalty, total: t + penalty });
-    else if (t + penalty > limit) finish({ time: t, penalty, total: Infinity, late: true });
-    else if (Math.abs(l) > 14 || s < -15) finish({ time: t, penalty, total: Infinity, off: true });
+    if (s >= len - 3 && started) finish({ time: t, penalty, total: t + penalty, good });
+    else if (t + penalty > limit) finish({ time: t, penalty, total: Infinity, late: true, good });
+    else if (Math.abs(l) > 14 || s < -15) finish({ time: t, penalty, total: Infinity, off: true, good });
   }, () => { g.scene.remove(group); g.ui.timer(null); }, { P, gateList, len });
 }
 
