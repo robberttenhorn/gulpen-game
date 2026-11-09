@@ -1491,16 +1491,20 @@ export class World {
       rackParts.push(g);
     }
     placeSettled(new THREE.InstancedMesh(mergeGeometries(rackParts), new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.8, roughness: 0.35 }), racks.length), racks);
-    // fietsen in de rekken: 2 tot 4 per rek, haaks op het rek, in verschillende kleuren
-    const bikeSpots = [];
+    // fietsen in de rekken: haaks in het rek (voorwiel in een beugel), hoogstens twee per rek met ruimte ertussen,
+    // en bij rekken vlak naast elkaar maar in één ervan fietsen, zodat het niet rommelig wordt
+    const bikeSpots = (this.bikeSpots = []);
+    const used = [];
     racks.forEach((r) => {
-      const n = 1 + Math.floor(rand() * 3);
-      const used = new Set();
-      for (let k = 0; k < n; k++) {
-        let slot = Math.floor(rand() * 5); while (used.has(slot)) slot = (slot + 1) % 5; used.add(slot);
+      if (used.some((u) => Math.hypot(u.x - r.x, u.z - r.z) < 4)) return;
+      used.push(r);
+      const n = Math.floor(rand() * 3); // 0, 1 of 2 fietsen
+      const slots = [0, 2, 4].sort(() => rand() - 0.5).slice(0, n);
+      const ux = Math.cos(r.yaw), uz = -Math.sin(r.yaw); // langs het rek
+      const nx = Math.sin(r.yaw), nz = Math.cos(r.yaw); // van de gevel af
+      for (const slot of slots) {
         const off = -1 + slot * 0.5;
-        const ux = Math.cos(r.yaw), uz = -Math.sin(r.yaw);
-        bikeSpots.push({ x: r.x + ux * off, z: r.z + uz * off, yaw: r.yaw + Math.PI / 2 + (rand() - 0.5) * 0.12 });
+        bikeSpots.push({ x: r.x + ux * off + nx * 0.25, z: r.z + uz * off + nz * 0.25, yaw: r.yaw });
       }
     });
     const wheel = (zz) => { const g = new THREE.TorusGeometry(0.33, 0.025, 5, 18); g.rotateY(Math.PI / 2); g.translate(0, 0.35, zz); return g; };

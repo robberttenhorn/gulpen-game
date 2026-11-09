@@ -1,0 +1,181 @@
+// Beelden in Gulpen, op hun plek. Beschrijvingen uit de beeldendatabase van Van der Krogt (via zoekresultaten);
+// plekken uit de BGT (kunstobject/herdenkingsmonument) of, waar dat niet bekend is, een benadering op het genoemde plein.
+// De vormen zijn vereenvoudigd nagemaakt; het zijn geen exacte kopieën.
+import * as THREE from 'three';
+
+const bronze = () => new THREE.MeshStandardMaterial({ color: 0x5b4a36, metalness: 0.65, roughness: 0.42 });
+const stoneMat = (c = 0xb9b4aa) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
+const at = (m, x, y, z, rx = 0, ry = 0, rz = 0) => { m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = true; m.receiveShadow = true; return m; };
+
+function plinth(g, w, h, d, mat = stoneMat(0x9e9a92)) {
+  g.add(at(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat), 0, h / 2, 0));
+  return h;
+}
+
+// staafje (capsule) van punt a naar punt b
+function seg(m, a, b, r) {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A);
+  const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(r, Math.max(0.01, d.length() - r), 5, 10), m);
+  mesh.position.copy(A).add(B).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
+
+// Paard in brons (busstation): een steigerend paard op een sokkel
+function paard() {
+  const g = new THREE.Group();
+  const y0 = plinth(g, 1.2, 0.9, 2.1);
+  const m = bronze();
+  const h = new THREE.Group();
+  h.position.y = y0;
+  // achterbenen op de sokkel, romp schuin omhoog
+  for (const x of [-0.16, 0.16]) {
+    h.add(seg(m, [x, 0.05, -0.3], [x, 0.48, -0.62], 0.07)); // onderbeen
+    h.add(seg(m, [x, 0.48, -0.62], [x, 1.02, -0.42], 0.12)); // dij
+    h.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.08, 8), m).translateX(x).translateY(0.04).translateZ(-0.28)); // hoef
+  }
+  h.add(seg(m, [0, 1.08, -0.6], [0, 1.6, 0.55], 0.31)); // romp
+  h.add(seg(m, [0, 1.72, 0.6], [0, 2.25, 0.86], 0.16)); // hals
+  h.add(seg(m, [0, 2.3, 0.82], [0, 2.08, 1.28], 0.12)); // hoofd
+  h.add(seg(m, [0, 2.12, 1.2], [0, 2.02, 1.34], 0.09)); // snuit
+  for (const x of [-0.06, 0.06]) h.add(seg(m, [x, 2.35, 0.82], [x, 2.52, 0.78], 0.03)); // oren
+  h.add(seg(m, [0, 2.32, 0.74], [0, 1.82, 0.5], 0.06)); // manen
+  // voorbenen opgetrokken
+  for (const [x, k] of [[-0.15, 0], [0.15, 0.1]]) {
+    h.add(seg(m, [x, 1.45, 0.62], [x, 1.55 + k, 0.98], 0.08));
+    h.add(seg(m, [x, 1.55 + k, 0.98], [x, 1.18 + k, 1.08], 0.06));
+  }
+  // staart tot op de sokkel (zoals vaak bij steigerende paarden: een extra steunpunt)
+  h.add(seg(m, [0, 1.15, -0.85], [0, 0.55, -1.0], 0.08));
+  h.add(seg(m, [0, 0.55, -1.0], [0, 0.05, -0.92], 0.1));
+  h.traverse((o) => { o.castShadow = true; });
+  g.add(h);
+  return { g, r: 1.2 };
+}
+
+// Smeltkroes van de evolutie (Deken Schneidersstraat): granieten druppel van 3,5 m, met vissen die vogels worden
+function druppel() {
+  const g = new THREE.Group();
+  const H = 3.5, R = 0.95, pts = [];
+  // druppelvorm: rond aan de onderkant, spits aan de bovenkant
+  for (let i = 0; i <= 40; i++) {
+    const t = (i / 40) * Math.PI; // 0 = onder, PI = boven
+    const y = (H * (1 - Math.cos(t))) / 2;
+    const r = R * Math.sin(t) * Math.pow(Math.cos(t / 2), 1.3) * 1.25;
+    pts.push(new THREE.Vector2(Math.max(0.001, r), y));
+  }
+  const geo = new THREE.LatheGeometry(pts, 40);
+  // spikkelig graniet
+  const col = new Float32Array(geo.attributes.position.count * 3);
+  for (let i = 0; i < geo.attributes.position.count; i++) {
+    const n = Math.sin(i * 12.9898) * 43758.5453; const f = n - Math.floor(n);
+    const v = 0.2 + f * 0.16; col[i * 3] = v * 1.08; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.95;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.add(at(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.05 })), 0, 0.12, 0));
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.12, 24), stoneMat(0x6f6b65)), 0, 0.06, 0));
+  const rAt = (y) => { const t = Math.acos(1 - (2 * (y - 0.12)) / H); return R * Math.sin(t) * Math.pow(Math.cos(t / 2), 1.3) * 1.25; };
+  // reliëf: onderin vissen, naar boven toe vogels
+  const relief = new THREE.MeshStandardMaterial({ color: 0x4a4541, roughness: 0.4 });
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2, y = 0.75 + (k % 2) * 0.35, rr = rAt(y);
+    const fish = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 6), relief); fish.scale.set(1.7, 0.55, 0.3);
+    g.add(at(fish, Math.sin(a) * rr, y, Math.cos(a) * rr, 0, a + Math.PI / 2, 0.25));
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.16, 3), relief); tail.scale.z = 0.3;
+    g.add(at(tail, Math.sin(a - 0.3) * rr, y + 0.05, Math.cos(a - 0.3) * rr, 0, a, Math.PI / 2));
+    const b = a + 0.4, yb = 1.9 + (k % 3) * 0.3, rb = rAt(yb) + 0.02;
+    const bird = new THREE.Group();
+    bird.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.025, 0.07), relief), -0.12, 0.04, 0, 0, 0, 0.4), at(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.025, 0.07), relief), 0.12, 0.04, 0, 0, 0, -0.4));
+    g.add(at(bird, Math.sin(b) * rb, yb, Math.cos(b) * rb, Math.PI / 2, b, 0));
+  }
+  return { g, r: 1.1 };
+}
+
+// Sint Jozef (Kapelaan Pendersplein): stenen beeld van Jozef met een kind
+function jozef() {
+  const g = new THREE.Group();
+  const y0 = plinth(g, 0.9, 1.0, 0.9, stoneMat(0x8f8b84));
+  const s = stoneMat(0xcfcac0);
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.42, 1.5, 12), s), 0, y0 + 0.75, 0)); // mantel
+  g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), s), 0, y0 + 1.68, 0)); // hoofd
+  g.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.22, 10), s), 0, y0 + 1.48, 0.08, -0.3)); // baard
+  g.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.45, 4, 8), s), 0.24, y0 + 1.15, 0.12, -0.6, 0, -0.3)); // arm om het kind
+  // kind naast hem
+  g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 0.7, 10), s), 0.32, y0 + 0.35, 0.18));
+  g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), s), 0.32, y0 + 0.8, 0.18));
+  return { g, r: 0.65 };
+}
+
+// De Limburger (Markt): een figuur op een ton, met drie gezichten
+function limburger() {
+  const g = new THREE.Group();
+  const y0 = plinth(g, 1.1, 0.35, 1.1, stoneMat(0x8f8b84));
+  const m = bronze();
+  // ton met hoepels
+  const ton = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.85, 18), m);
+  g.add(at(ton, 0, y0 + 0.43, 0));
+  const ring = new THREE.MeshStandardMaterial({ color: 0x3d3125, metalness: 0.7, roughness: 0.4 });
+  for (const y of [0.12, 0.43, 0.74]) g.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.025, 6, 24), ring), 0, y0 + y, 0, Math.PI / 2));
+  // zittende figuur
+  const yb = y0 + 0.86;
+  g.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.5, 6, 10), m), 0, yb + 0.45, 0)); // romp
+  for (const x of [-0.12, 0.12]) {
+    g.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.4, 4, 8), m), x, yb + 0.1, 0.24, Math.PI / 2)); // bovenbeen
+    g.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.42, 4, 8), m), x, yb - 0.2, 0.46)); // onderbeen
+    g.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.38, 4, 8), m), x * 2.3, yb + 0.5, 0.1, 0.4)); // armen
+  }
+  // hoofd met drie gezichten (rondom, elk een neus en ogen)
+  const head = new THREE.Group();
+  head.position.set(0, yb + 1.0, 0);
+  head.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), m), 0, 0, 0));
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2;
+    head.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 6), m), Math.sin(a) * 0.2, -0.02, Math.cos(a) * 0.2, Math.PI / 2, 0, -a));
+    for (const s of [-1, 1]) { const b = a + s * 0.35; head.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 5), ring), Math.sin(b) * 0.185, 0.05, Math.cos(b) * 0.185)); }
+  }
+  g.add(head);
+  return { g, r: 0.75 };
+}
+
+// Zet de beelden neer. pois: id -> poi; artPts: punten uit de BGT.
+export function buildStatues(fac) {
+  const w = fac.world;
+  const placed = [];
+  const put = (make, x, z, yaw, name) => {
+    // niet op de rijbaan en niet in een pand
+    const o = w.offRoad ? w.offRoad(x, z, 4) : [x, z];
+    if (!o) return;
+    [x, z] = o;
+    const { g, r } = make();
+    g.position.set(x, w.groundAt(x, z), z);
+    g.rotation.y = yaw;
+    fac.scene.add(g);
+    const ring = []; for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; ring.push([x + Math.sin(a) * r, z + Math.cos(a) * r]); }
+    w.addObstacle(ring);
+    placed.push({ name, x, z, yaw });
+  };
+  const faceStreet = (x, z) => { const s = w.nearestStreet(x, z); return s ? Math.atan2(s.x - x, s.z - z) : 0; };
+  // BGT-punten (kunstobject/herdenkingsmonument): Rijksweg bij het busstation en de Deken Schneidersstraat
+  put(paard, 250.6, -54.6, faceStreet(250.6, -54.6), 'Paard in brons');
+  put(druppel, 85.5, 51.3, faceStreet(85.5, 51.3), 'Smeltkroes van de evolutie');
+  // Kapelaan Pendersplein: midden op het plein (benadering)
+  const kp = w.streetPath?.('Kapelaan Pendersplein');
+  if (kp?.length) { const cx = kp.reduce((s, p) => s + p[0], 0) / kp.length, cz = kp.reduce((s, p) => s + p[1], 0) / kp.length; put(jozef, cx, cz, faceStreet(cx, cz), 'Sint Jozef'); }
+  // Markt: op het plein (benadering), een open plek weg van bloembakken, gevels en de rijbaan
+  const mk = w.streetPath?.('Markt');
+  if (mk?.length) {
+    const cx = mk.reduce((s, p) => s + p[0], 0) / mk.length, cz = mk.reduce((s, p) => s + p[1], 0) / mk.length;
+    let best = null;
+    for (let r = 0; r <= 14 && !best; r += 1) for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
+      if (w.classAt(x, z) === 'rijbaan' || w.insideBuilding(x, z) || w.nearestWall(x, z, 4)) continue;
+      if ((w.planterSpots || []).some(([px, pz]) => Math.hypot(px - x, pz - z) < 3)) continue;
+      if ((w.benchSpots || []).some((b) => Math.hypot(b.x - x, b.z - z) < 3)) continue;
+      best = [x, z]; break;
+    }
+    if (best) put(limburger, best[0], best[1], Math.atan2(cx - best[0], cz - best[1]), 'De Limburger');
+  }
+  fac.statues = placed;
+  return placed;
+}
