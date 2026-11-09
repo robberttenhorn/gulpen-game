@@ -4,6 +4,7 @@
 // in hetzelfde model (één tekenopdracht per poppetje). De animaties worden per frame berekend
 // en zacht in elkaar overgevoegd.
 import * as THREE from 'three';
+import { CLIPS, addClip, gait } from './mocap.js';
 
 const sharedMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0 });
 
@@ -19,6 +20,9 @@ const BONES = [
 // wereldpositie van elk bot in rusthouding
 const BIND = [];
 BONES.forEach(([, p, o], i) => { BIND[i] = p < 0 ? o.slice() : [BIND[p][0] + o[0], BIND[p][1] + o[1], BIND[p][2] + o[2]]; });
+
+// elke houding een nummer (voor het herkennen van een wissel)
+const MODES = { walk: 0, idle: 0, wave: 1, bike: 2, skate: 3, sit: 4, camera: 5, eat: 6, drink: 7, push: 8 };
 
 const col = (hex) => new THREE.Color(hex);
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -374,47 +378,57 @@ export function makeCharacter(opts = {}) {
   };
 
   // --- animatie ---
-  // houding = per bot een rotatie [x, y, z], plus lichaamshoogte en -kanteling
+  // Een houding is per bot een rotatie. Die komt uit drie lagen:
+  //  1. eu: een houding in hoeken [x, y, z] per bot (stilstaan, zwaaien, eten, fietsen...);
+  //  2. mq/mw: een motion-capturehouding per bot met een gewicht (lopen, rennen, zitten);
+  //  3. ad: kleine hoeken die er bovenop komen (rondkijken, voorover leunen).
+  // Bij een wissel van houding (andere mode, iets in de hand) springt het poppetje niet: het verschil
+  // met de vorige houding blijft als 'rest' staan en dooft in een fractie van een seconde uit.
   const N = bones.length;
-  const cur = new Float32Array(N * 3), tgt = new Float32Array(N * 3);
-  let curY = 0, curPitch = 0, curYaw = 0, tgtY = 0, tgtPitch = 0, tgtYaw = 0;
-  let phase = Math.random() * 10, t = Math.random() * 100;
-  const set = (k, x = 0, y = 0, z = 0) => { const i = B[k] * 3; tgt[i] = x; tgt[i + 1] = y; tgt[i + 2] = z; };
-  const add = (k, x = 0, y = 0, z = 0) => { const i = B[k] * 3; tgt[i] += x; tgt[i + 1] += y; tgt[i + 2] += z; };
+  const eu = new Float32Array(N * 3), ad = new Float32Array(N * 3), mq = new Float32Array(N * 4), mw = new Float32Array(N);
+  const shown = bones.map(() => new THREE.Quaternion()), rest = bones.map(() => new THREE.Quaternion());
+  // lichaam: [x, y, z, kanteling, draaiing]
+  const tb = new Float32Array(5), sb = new Float32Array(5), rb = new Float32Array(5), accP = new Float32Array(3);
+  let restAmt = 0, lastKey = -1, vs = -1;
+  let phase = Math.random(), t = Math.random() * 100;
+  const set = (k, x = 0, y = 0, z = 0) => { const b = B[k], i = b * 3; eu[i] = x; eu[i + 1] = y; eu[i + 2] = z; mw[b] = 0; };
+  const add = (k, x = 0, y = 0, z = 0) => { const i = B[k] * 3; ad[i] += x; ad[i + 1] += y; ad[i + 2] += z; };
   let first = true;
 
   const pose = (dt, speed, mode) => {
-    tgt.fill(0); tgtY = 0; tgtPitch = 0; tgtYaw = 0;
+    eu.fill(0); ad.fill(0); mw.fill(0); tb.fill(0);
     t += dt;
     // armen iets van het lichaam af
     set('uaL', 0, 0, -0.07); set('uaR', 0, 0, 0.07);
     set('faL', -0.12); set('faR', -0.12);
     if (mode === 'bike') {
-      phase += dt * (1.5 + speed * 0.55);
-      const p = -phase; // de cyclus andersom: zo trap je vooruit in plaats van achteruit
-      tgtPitch = 0.0;
+      phase += dt * (1.5 + speed * 0.55) / (Math.PI * 2);
+      const p = -phase * Math.PI * 2; // de cyclus andersom: zo trap je vooruit in plaats van achteruit
       set('spine', 0.3); set('chest', 0.12); set('neck', -0.25); set('head', -0.12);
       set('uaL', -0.95, 0, -0.12); set('uaR', -0.95, 0, 0.12);
       set('faL', -0.35); set('faR', -0.35);
       set('thL', -1.05 + Math.sin(p) * 0.42); set('shL', 1.15 - Math.sin(p) * 0.25 + Math.cos(p) * 0.3); set('ftL', -0.15 + Math.cos(p) * 0.15);
       set('thR', -1.05 - Math.sin(p) * 0.42); set('shR', 1.15 + Math.sin(p) * 0.25 - Math.cos(p) * 0.3); set('ftR', -0.15 - Math.cos(p) * 0.15);
-      tgtY = -0.03;
+      tb[1] = -0.03;
     } else if (mode === 'skate') {
-      phase += dt * 1.5;
-      tgtYaw = -1.2;
+      phase += dt * 1.5 / (Math.PI * 2);
+      const ph = phase * Math.PI * 2;
+      tb[4] = -1.2;
       set('head', 0, 1.1); set('neck', 0, 0.1);
       set('thL', -0.15, 0, -0.25); set('shL', 0.35); set('ftL', -0.2);
       set('thR', -0.15, 0, 0.25); set('shR', 0.35); set('ftR', -0.2);
-      set('uaL', 0, 0, -0.9 - Math.sin(phase * 0.5) * 0.08); set('uaR', 0, 0, 0.85); set('faL', -0.3); set('faR', -0.3);
+      set('uaL', 0, 0, -0.9 - Math.sin(ph * 0.5) * 0.08); set('uaR', 0, 0, 0.85); set('faL', -0.3); set('faR', -0.3);
       set('spine', 0.08);
-      tgtY = -0.06 + Math.sin(phase * 0.6) * 0.015;
+      tb[1] = -0.06 + Math.sin(ph * 0.6) * 0.015;
     } else if (mode === 'sit') {
-      tgtY = -0.52;
-      set('thL', -1.5, 0, -0.06); set('thR', -1.5, 0, 0.06);
-      set('shL', 1.45); set('shR', 1.45); set('ftL', 0.05); set('ftR', 0.05);
-      set('uaL', -0.35, 0, -0.1); set('uaR', -0.35, 0, 0.1); set('faL', -0.9); set('faR', -0.9);
-      set('spine', -0.04 + Math.sin(t * 1.3) * 0.015);
-      set('head', Math.sin(t * 0.3) * 0.06, Math.sin(t * 0.2) * 0.35);
+      // mocap: rustig zitten, met de kleine bewegingen van een echt mens
+      const c = CLIPS.sit;
+      phase += dt / c.dur;
+      mq.fill(0); accP.fill(0);
+      addClip(c, phase, 1, mq, accP);
+      mw.fill(1);
+      tb[0] = accP[0]; tb[1] = -0.52 + accP[1]; tb[2] = accP[2];
+      add('head', Math.sin(t * 0.3) * 0.05, Math.sin(t * 0.2) * 0.3);
     } else if (mode === 'camera') {
       set('uaR', -1.6, 0, 0.45); set('faR', -1.7);
       set('uaL', -1.0, 0, -0.25); set('faL', -1.1);
@@ -429,32 +443,28 @@ export function makeCharacter(opts = {}) {
       set('neck', -0.25); set('head', -0.3); set('spine', -0.06);
       set('uaL', 0.05, 0, -0.1);
     } else {
-      // lopen en rennen
-      const run = smooth(3.6, 5.6, speed);
-      const sw = Math.min(1, speed / 1.6);
-      const cycle = 1.35 + speed * 0.26;
-      phase += dt * (speed > 0.05 ? (speed / cycle) * Math.PI * 2 : 0);
-      const p = phase, s = Math.sin(p), c = Math.cos(p);
-      const ampT = (0.42 + run * 0.28) * sw;
-      set('thL', -s * ampT - run * 0.15 * sw); set('thR', s * ampT - run * 0.15 * sw);
-      const kneeL = Math.pow(Math.max(0, Math.cos(p - 0.35)), 1.4), kneeR = Math.pow(Math.max(0, Math.cos(p + Math.PI - 0.35)), 1.4);
-      set('shL', (0.08 + kneeL * (0.85 + run * 0.75)) * sw); set('shR', (0.08 + kneeR * (0.85 + run * 0.75)) * sw);
-      set('ftL', (-0.12 * kneeL + s * 0.18) * sw); set('ftR', (-0.12 * kneeR - s * 0.18) * sw);
-      tgtY = (Math.abs(c) * 0.035 - 0.02 - run * 0.04) * sw;
-      set('hips', 0, s * 0.1 * sw, 0);
-      set('spine', (0.03 + run * 0.12) * sw, -s * 0.12 * sw);
-      set('chest', 0, -s * 0.06 * sw);
-      set('neck', -(run * 0.08) * sw);
-      const ampA = (0.38 + run * 0.35) * sw;
-      set('uaL', s * ampA, 0, -0.08 - run * 0.08); set('uaR', -s * ampA, 0, 0.08 + run * 0.08);
-      set('faL', -0.18 - (0.25 + run * 1.0) * sw * (0.6 + Math.max(0, -s) * 0.6)); set('faR', -0.18 - (0.25 + run * 1.0) * sw * (0.6 + Math.max(0, s) * 0.6));
-      if (speed < 0.1) {
-        // stilstaan: ademen en een beetje rondkijken
-        add('chest', Math.sin(t * 1.6) * 0.02);
-        add('hips', 0, 0, Math.sin(t * 0.35) * 0.025);
-        add('thL', 0, 0, -0.03); add('thR', 0, 0, 0.03);
-        add('head', Math.sin(t * 0.23) * 0.05, Math.sin(t * 0.17) * 0.3 * Math.max(0, Math.sin(t * 0.09)));
-        add('uaL', Math.sin(t * 1.6) * 0.02); add('uaR', Math.sin(t * 1.6 + 1) * 0.02);
+      // lopen en rennen: motion capture, gemengd op snelheid (stilstaan - lopen - joggen - rennen)
+      if (vs < 0) vs = speed;
+      vs += (speed - vs) * (1 - Math.exp(-dt * 8)); // snelheidssprongen uitvlakken
+      const g = gait(vs);
+      if (speed > 0.05) phase += dt * speed / Math.max(0.2, g.stride);
+      const still = 1 - g.amp;
+      // stilstaan: ademen en een beetje rondkijken
+      set('thL', 0, 0, -0.03 * still); set('thR', 0, 0, 0.03 * still);
+      set('chest', Math.sin(t * 1.6) * 0.02);
+      set('hips', 0, 0, Math.sin(t * 0.35) * 0.025);
+      set('head', Math.sin(t * 0.23) * 0.05, Math.sin(t * 0.17) * 0.3 * Math.max(0, Math.sin(t * 0.09)));
+      set('uaL', Math.sin(t * 1.6) * 0.02, 0, -0.07); set('uaR', Math.sin(t * 1.6 + 1) * 0.02, 0, 0.07);
+      if (g.amp > 0.001) {
+        mq.fill(0); accP.fill(0);
+        addClip(CLIPS.walk, phase, g.walk, mq, accP);
+        addClip(CLIPS.jog, phase, g.jog, mq, accP);
+        addClip(CLIPS.run, phase, g.run, mq, accP);
+        mw.fill(g.amp);
+        tb[0] = accP[0] * g.amp; tb[1] = accP[1] * g.amp; tb[2] = accP[2] * g.amp;
+        // harder dan de opname: iets verder voorover
+        const sprint = smooth(4.5, 6.5, vs);
+        if (sprint > 0) add('spine', sprint * 0.1);
       }
       if (mode === 'wave') {
         set('uaR', -0.2, 0, 2.5); set('faR', 0, 0, 0.4 + Math.sin(t * 7) * 0.45);
@@ -468,38 +478,61 @@ export function makeCharacter(opts = {}) {
     }
     // iets vasthouden
     const prop = root.userData.handProp;
-    if (root.userData.holdR && mode !== 'drink' && mode !== 'eat' && mode !== 'bike' && mode !== 'camera') {
+    const hold = root.userData.holdR && mode !== 'drink' && mode !== 'eat' && mode !== 'bike' && mode !== 'camera';
+    if (hold) {
       if (prop?.userData.carrySide) { set('uaR', 0.05, 0, 0.16); set('faR', -0.35); }
       else { set('uaR', -0.45, 0, 0.12); set('faR', -1.05); }
     }
+    return (MODES[mode] ?? 0) * 4 + (hold ? (prop?.userData.carrySide ? 2 : 1) : 0);
   };
 
-  const qTmp = new THREE.Quaternion(), qAcc = new THREE.Quaternion(), eTmp = new THREE.Euler();
+  const qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), qAcc = new THREE.Quaternion(), eTmp = new THREE.Euler();
   const chainR = [B.hips, B.spine, B.chest, B.uaR, B.faR, B.hR];
-  const apply = (dt) => {
-    const k = first ? 1 : 1 - Math.exp(-dt * 14);
+  const apply = (dt, key) => {
+    // andere houding dan net: het verschil onthouden en laten uitdoven
+    const changed = key !== lastKey && !first;
+    lastKey = key;
+    const k = 1 - Math.exp(-dt * 11);
+    if (!changed) restAmt *= 1 - k;
+    for (let i = 0; i < N; i++) {
+      // doelhouding van dit bot
+      const j = i * 3;
+      qA.setFromEuler(eTmp.set(eu[j], eu[j + 1], eu[j + 2]));
+      if (mw[i] > 0) {
+        const m = i * 4;
+        qB.set(mq[m], mq[m + 1], mq[m + 2], mq[m + 3]).normalize();
+        if (mw[i] >= 1) qA.copy(qB); else qA.slerp(qB, mw[i]);
+      }
+      if (ad[j] || ad[j + 1] || ad[j + 2]) qA.multiply(qB.setFromEuler(eTmp.set(ad[j], ad[j + 1], ad[j + 2])));
+      if (changed) rest[i].copy(shown[i]).multiply(qB.copy(qA).invert());
+      else if (restAmt > 0.002) rest[i].slerp(qB.identity(), k);
+      if (restAmt > 0.002 || changed) shown[i].copy(rest[i]).multiply(qA); else shown[i].copy(qA);
+      bones[i].quaternion.copy(shown[i]);
+    }
+    for (let i = 0; i < 5; i++) {
+      if (changed) rb[i] = sb[i] - tb[i]; else rb[i] *= 1 - k;
+      sb[i] = tb[i] + rb[i];
+    }
+    if (changed) restAmt = 1;
     first = false;
-    for (let i = 0; i < N * 3; i++) cur[i] += (tgt[i] - cur[i]) * k;
-    curY += (tgtY - curY) * k; curPitch += (tgtPitch - curPitch) * k; curYaw += (tgtYaw - curYaw) * k;
-    for (let i = 0; i < N; i++) bones[i].rotation.set(cur[i * 3], cur[i * 3 + 1], cur[i * 3 + 2]);
-    body.position.y = curY + 0.03; // voeten net op de grond (niet erin)
-    body.rotation.set(curPitch, curYaw, 0);
+    body.position.set(sb[0], sb[1] + 0.03, sb[2]); // voeten net op de grond (niet erin)
+    body.rotation.set(sb[3], sb[4], 0);
   };
   // voorwerp in de hand rechtop houden (behalve een glas tijdens het drinken)
   const uprightProp = (mode) => {
     const prop = root.userData.handProp;
     if (!prop || prop.parent !== parts.handR) return;
-    qAcc.setFromEuler(body.rotation);
-    for (const i of chainR) qAcc.multiply(qTmp.setFromEuler(bones[i].rotation));
+    qAcc.copy(body.quaternion);
+    for (const i of chainR) qAcc.multiply(shown[i]);
     qAcc.invert();
-    if (mode === 'drink') qAcc.premultiply(qTmp.setFromEuler(eTmp.set(-1.1, 0, 0)));
+    if (mode === 'drink') qAcc.premultiply(qA.setFromEuler(eTmp.set(-1.1, 0, 0)));
     prop.quaternion.copy(qAcc);
   };
 
-  // animatie: speed in m/s, mode 'walk' | 'bike' | 'skate' | 'idle' | 'wave' | 'drink' | 'eat' | 'sit' | 'camera'
+  // animatie: speed in m/s, mode 'walk' | 'bike' | 'skate' | 'idle' | 'wave' | 'drink' | 'eat' | 'sit' | 'camera' | 'push'
   root.userData.animate = (dt, speed, mode = 'walk') => {
-    pose(dt, speed, mode);
-    apply(dt);
+    const key = pose(dt, speed, mode);
+    apply(dt, key);
     uprightProp(mode);
   };
   root.userData.parts = parts;
