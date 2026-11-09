@@ -4,6 +4,9 @@ import { makeCharacter, makeBike } from './character.js';
 import { rng } from './world.js';
 import { makeDog } from './animals.js';
 
+// verder dan dit niet tekenen; wie nog verder weg is, verhuist (buiten beeld) naar jouw buurt
+const FAR = 170;
+
 const SHIRTS = [0x37474f, 0x8d6e63, 0x1565c0, 0xc62828, 0x2e7d32, 0xf9a825, 0x6a1b9a, 0xeeeeee, 0x212121, 0xad1457, 0x00838f];
 const PANTS = [0x263238, 0x1a237e, 0x3e2723, 0x424242, 0x5d4037, 0x1b1b1b];
 const HAIR = [0x2a1a10, 0x4a3020, 0x111111, 0x9e9e9e, 0xd7b56d, 0x7a3b1f, 0xdddddd];
@@ -97,7 +100,7 @@ export class Pedestrians {
       const i = Math.floor(this.rand() * n);
       const x = line[i * 2], z = line[i * 2 + 1];
       const d = Math.hypot(x - player.x, z - player.z);
-      if (d < 45 || d > 150) continue;
+      if (d < 45 || d > 150 || this.inView(x, z)) continue;
       const pts = [];
       for (let j = 0; j < line.length; j += 2) pts.push([line[j], line[j + 1]]);
       if (this.rand() < 0.5) pts.reverse();
@@ -108,7 +111,8 @@ export class Pedestrians {
       const ii = pts.findIndex((q) => q[0] === x && q[1] === z);
       for (let j = 1; j <= ii; j++) acc += Math.hypot(pts[j][0] - pts[j - 1][0], pts[j][1] - pts[j - 1][1]);
       p.dist = acc;
-      p.x = x; p.z = z;
+      p.line = line;
+      p.x = x; p.z = z; p.snap = true;
       return true;
     }
     return false;
@@ -120,28 +124,86 @@ export class Pedestrians {
     for (let i = 0; i < line.length; i += 2) pts.push([line[i], line[i + 1]]);
     if (rand() < 0.5) pts.reverse();
     p.pts = pts;
+    p.line = line;
     p.len = pts.reduce((s, q, i) => (i ? s + Math.hypot(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1]) : 0), 0);
     p.dist = 0;
+    p.snap = true;
+  }
+
+  // aan het eind van een straat: verder over een straat die daar begint, of omdraaien.
+  // (vroeger was dat een willekeurige straat ergens anders, en dan gleed iemand er dwars door alles heen)
+  nextRoute(p) {
+    const [ex, ez] = p.pts[p.pts.length - 1];
+    const opts = [];
+    for (const [, l] of this.roads) {
+      if (l === p.line) continue;
+      const n = l.length;
+      if (Math.hypot(l[0] - ex, l[1] - ez) < 2.5) opts.push([l, false]);
+      else if (Math.hypot(l[n - 2] - ex, l[n - 1] - ez) < 2.5) opts.push([l, true]);
+    }
+    if (!opts.length || this.rand() < 0.25) { p.pts.reverse(); p.dist = 0; return; }
+    const [l, rev] = opts[Math.floor(this.rand() * opts.length)];
+    const pts = [];
+    for (let i = 0; i < l.length; i += 2) pts.push([l[i], l[i + 1]]);
+    if (rev) pts.reverse();
+    p.pts = pts;
+    p.line = l;
+    p.len = pts.reduce((s, q, i) => (i ? s + Math.hypot(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1]) : 0), 0);
+    p.dist = 0;
+  }
+
+  // staat een punt in beeld? (binnen de kijkhoek van de camera, of heel dichtbij)
+  inView(x, z) {
+    const v = this.view;
+    if (!v) return true;
+    const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz);
+    if (d < 12) return true;
+    return (dx * v.fx + dz * v.fz) / d > v.cos;
+  }
+
+  updateView() {
+    const cam = this.g.camera;
+    if (!cam) { this.view = null; return; }
+    if (!this._dir) this._dir = new THREE.Vector3();
+    cam.getWorldDirection(this._dir);
+    const l = Math.hypot(this._dir.x, this._dir.z) || 1;
+    const half = Math.atan(Math.tan(((cam.fov || 60) * Math.PI) / 360) * (cam.aspect || 1.6));
+    this.view = { x: cam.position.x, z: cam.position.z, fx: this._dir.x / l, fz: this._dir.z / l, cos: Math.cos(Math.min(Math.PI * 0.95, half + 0.35)) };
+  }
+
+  // rustig naar het doelpunt bewegen, nooit sneller dan een flinke pas; alleen ver weg of buiten beeld meteen neerzetten
+  stepTo(p, tx, tz, maxSpeed, dt, far) {
+    const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+    if (p.snap || (d > 15 && (far || !this.inView(p.x, p.z)))) { p.x = tx; p.z = tz; p.snap = false; return; }
+    const step = maxSpeed * dt;
+    if (d <= step) { p.x = tx; p.z = tz; } else { p.x += (dx / d) * step; p.z += (dz / d) * step; }
   }
 
   update(dt, player, playerSpeed) {
     const w = this.world;
     let moved = false; // hoogstens één verhuizing per beeld
+    this.updateView();
     this.updateCyclists(dt, player);
     for (const s of this.sitters || []) { const d = Math.hypot(s.x - player.x, s.z - player.z); s.model.visible = d < 160; if (d < 60) s.model.userData.animate(dt, 0, 'sit'); }
     for (const p of this.list) {
       let dToPlayer = Math.hypot(p.x - player.x, p.z - player.z);
-      if (dToPlayer > 200 && !moved && this.relocate(p, player)) { moved = true; dToPlayer = Math.hypot(p.x - player.x, p.z - player.z); }
+      // al onzichtbaar ver weg? Dan verhuist iemand naar een straat in de buurt, buiten beeld
+      if (dToPlayer > FAR + 10 && !moved && this.relocate(p, player)) { moved = true; dToPlayer = Math.hypot(p.x - player.x, p.z - player.z); }
       // ver weg: niet tekenen en langzaam bijwerken
-      const far = dToPlayer > 220;
+      const far = dToPlayer > FAR;
       p.model.visible = !far;
       if (p.dog) { p.dog.visible = !far; p.leash.visible = !far; }
       if (p.child) p.child.visible = !far;
-      // aan de kant springen voor een snel voertuig
-      if (dToPlayer < 2.2 && playerSpeed > 4) {
-        const dx = p.x - player.x, dz = p.z - player.z, d = dToPlayer || 1;
-        const [rx, rz] = w.resolve(p.x + (dx / d) * 2.5, p.z + (dz / d) * 2.5, 0.35);
-        if (!w.blocked(rx, rz)) { p.x = rx; p.z = rz; }
+      // opzij stappen: snel bij een rennende speler of een voertuig, anders een klein stapje als je tegen iemand aan loopt.
+      // Dat gaat met een snelheid die uitdooft, zodat niemand meer verspringt.
+      const ddx = p.x - player.x, ddz = p.z - player.z, dd = dToPlayer || 1;
+      if (dToPlayer < 0.9 && !p.dodging) {
+        // zacht wegduwen, hoogstens een rustige stap (2 m/s)
+        p.dvx = (p.dvx || 0) + (ddx / dd) * 20 * dt; p.dvz = (p.dvz || 0) + (ddz / dd) * 20 * dt;
+        const v = Math.hypot(p.dvx, p.dvz); if (v > 2) { p.dvx *= 2 / v; p.dvz *= 2 / v; }
+      }
+      if (dToPlayer < 2.2 && playerSpeed > 4.2) {
+        if (!p.dodging) { const sp = playerSpeed > 8 ? 7 : 4.5; p.dvx = (ddx / dd) * sp; p.dvz = (ddz / dd) * sp; p.dodging = true; setTimeout(() => (p.dodging = false), 700); }
         p.bubble = 2;
         if (!p.said) {
           const [word, nl] = SHOUTS[Math.floor(Math.random() * SHOUTS.length)];
@@ -156,19 +218,27 @@ export class Pedestrians {
       } else if (dToPlayer < 2.5 && !p.greeted) {
         p.greeted = true; setTimeout(() => (p.greeted = false), 45000);
       }
-      p.dist += p.speed * dt;
-      if (p.dist >= p.len) {
-        // aan het eind: omdraaien of een nieuwe straat kiezen
-        if (this.rand() < 0.5) { p.pts.reverse(); p.dist = 0; } else this.pickRoute(p, this.rand, this.roads);
-      }
+      // even stilstaan na een duw, en niet verder lopen terwijl je opzij stapt
+      const pushing = Math.hypot(p.dvx || 0, p.dvz || 0) > 0.3;
+      if (!pushing) p.dist += p.speed * dt;
+      if (p.dist >= p.len) this.nextRoute(p);
       const q = along(p.pts, p.dist);
-      // op de stoep: een stukje naast de wegas
+      // op de stoep: een stukje naast de wegas; past dat niet, dan wat dichter bij de as
       const off = 3.4 * p.side;
-      let tx = q.x + Math.cos(q.heading) * -off, tz = q.z + Math.sin(q.heading) * off;
-      if (w.blocked(tx, tz) || w.insideBuilding(tx, tz)) { tx = q.x; tz = q.z; }
+      let tx = q.x, tz = q.z;
+      for (const k of [1, 0.7, 0.4]) {
+        const ax = q.x - Math.cos(q.heading) * off * k, az = q.z + Math.sin(q.heading) * off * k;
+        if (!w.blocked(ax, az) && !w.insideBuilding(ax, az)) { tx = ax; tz = az; break; }
+      }
       if (!far) [tx, tz] = w.resolve(tx, tz, 0.35);
-      p.x += (tx - p.x) * Math.min(1, dt * 4);
-      p.z += (tz - p.z) * Math.min(1, dt * 4);
+      if (pushing) {
+        // opzij stappen, langs gevels en niet het water in
+        const nx = p.x + p.dvx * dt, nz = p.z + p.dvz * dt;
+        const [rx, rz] = w.resolve(nx, nz, 0.35);
+        if (!w.blocked(rx, rz)) { p.x = rx; p.z = rz; }
+      } else this.stepTo(p, tx, tz, p.speed * 1.6 + 0.4, dt, far);
+      const decay = Math.exp(-dt * 5);
+      p.dvx = (p.dvx || 0) * decay; p.dvz = (p.dvz || 0) * decay;
       let dh = q.heading - p.heading;
       dh = Math.atan2(Math.sin(dh), Math.cos(dh));
       p.heading += dh * Math.min(1, dt * 5);
@@ -177,7 +247,7 @@ export class Pedestrians {
       p.model.rotation.y = p.heading;
       // verder weg minder vaak animeren
       p.animDt = (p.animDt || 0) + dt;
-      const every = dToPlayer > 90 ? 4 : dToPlayer > 45 ? 2 : 1;
+      const every = dToPlayer > 70 ? 2 : 1;
       p.animTick = ((p.animTick || 0) + 1) % every;
       if (p.animTick === 0) { p.model.userData.animate(p.animDt, p.speed, 'walk'); p.animDt = 0; }
       // hond loopt schuin voor of naast het baasje, aan de lijn
@@ -206,16 +276,16 @@ export class Pedestrians {
     const w = this.world;
     for (const c of this.cyclists || []) {
       let d = Math.hypot(c.x - player.x, c.z - player.z);
-      if (d > 220 && this.relocate(c, player)) d = Math.hypot(c.x - player.x, c.z - player.z);
+      if (d > FAR + 10 && this.relocate(c, player)) d = Math.hypot(c.x - player.x, c.z - player.z);
       c.dist += c.speed * dt;
-      if (c.dist >= c.len) { if (this.rand() < 0.5) { c.pts.reverse(); c.dist = 0; } else this.pickRoute(c, this.rand, this.roads); }
+      if (c.dist >= c.len) this.nextRoute(c);
       const q = along(c.pts, c.dist);
       // rechts van de wegas fietsen
       const tx = q.x + Math.cos(q.heading) * -1.6, tz = q.z + Math.sin(q.heading) * 1.6;
-      c.x += (tx - c.x) * Math.min(1, dt * 5); c.z += (tz - c.z) * Math.min(1, dt * 5);
+      this.stepTo(c, tx, tz, c.speed * 1.4 + 1, dt, d > FAR);
       let dh = q.heading - c.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); c.heading += dh * Math.min(1, dt * 4);
-      c.model.visible = d < 220;
-      if (d > 220) continue;
+      c.model.visible = d < FAR;
+      if (d > FAR) continue;
       c.model.position.set(c.x, w.groundAt(c.x, c.z), c.z);
       c.model.rotation.y = c.heading;
       if (d < 90) c.rider.userData.animate(dt, c.speed, 'bike');
