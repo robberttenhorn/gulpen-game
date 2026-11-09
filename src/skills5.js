@@ -505,7 +505,7 @@ export function startWildcamera(g, { photos = 18, wolves = 2, maxFalse = 3 } = {
 
 // Forellen zwemmen in de kweekvijver. Tik ergens: het schepnet duikt daar het water in en pakt de vissen eronder.
 // Alleen de grote forellen (met een groen randje als je goed kijkt: lang genoeg) mogen mee; kleintjes terug = fout.
-export function startForellen(g, { need = 8, maxSmall = 3, limit = 55 } = {}) {
+export function startForellen(g, { need = 10, maxSmall = 2, limit = 50 } = {}) {
   const ui = overlay(g, 'Forellen scheppen', '<canvas class="mini-canvas"></canvas>',
     g.input.isTouch ? 'Tik op een grote forel om hem te scheppen. Kleintjes laten zwemmen!' : 'Klik op een grote forel om hem te scheppen. Kleintjes laten zwemmen!');
   const cv = ui.ov.querySelector('canvas');
@@ -514,17 +514,20 @@ export function startForellen(g, { need = 8, maxSmall = 3, limit = 55 } = {}) {
   const parts = new Particles();
   const combo = makeCombo(ui.ov);
   const fish = [];
-  const spawnFish = (big) => fish.push({ x: Math.random(), y: rnd(0.2, 0.9), a: Math.random() * 6.28, v: rnd(0.08, 0.16), big, len: big ? rnd(0.11, 0.14) : rnd(0.05, 0.075), turn: 0, gone: 0 });
-  for (let k = 0; k < 7; k++) spawnFish(true);
-  for (let k = 0; k < 8; k++) spawnFish(false);
+  // grote en kleine forellen lijken meer op elkaar, en ze zwemmen sneller dan eerst
+  const spawnFish = (big) => fish.push({ x: Math.random(), y: rnd(0.2, 0.9), a: Math.random() * 6.28, v: rnd(0.12, 0.22), big, len: big ? rnd(0.098, 0.125) : rnd(0.066, 0.088), turn: 0, gone: 0, flee: 0 });
+  for (let k = 0; k < 6; k++) spawnFish(true);
+  for (let k = 0; k < 11; k++) spawnFish(false);
   let t = 0, caught = 0, small = 0, end = 0, ok = null, net = null;
   const respawn = [];
   const scoop = (rx, ry) => {
     if (ok !== null || net) return;
     net = { x: rx, y: ry, t: 0 };
     g.sfx?.play('splash');
-    const W = cv.width, H = cv.height, R = 0.07;
-    const hit = fish.filter((f) => !f.gone && Math.hypot((f.x - rx) * W / H, f.y - ry) < R + f.len * 0.4);
+    const W = cv.width, H = cv.height, R = 0.055;
+    const hit = fish.filter((f) => !f.gone && Math.hypot((f.x - rx) * W / H, f.y - ry) < R + f.len * 0.35);
+    // vissen in de buurt schrikken van de plons en schieten weg
+    for (const f of fish) { if (f.gone) continue; const d = Math.hypot((f.x - rx) * W / H, f.y - ry); if (d < 0.3) { f.a = Math.atan2(f.y - ry, (f.x - rx) * W / H); f.flee = 0.9; } }
     if (!hit.length) { popText(ui.ov, 'Mis! Alleen water.', rx * 100, ry * 100 - 6, 'small'); combo.miss(); return; }
     for (const f of hit) {
       f.gone = 1;
@@ -547,7 +550,8 @@ export function startForellen(g, { need = 8, maxSmall = 3, limit = 55 } = {}) {
       f.turn -= dt;
       if (f.turn <= 0) { f.turn = rnd(0.6, 2); f.da = rnd(-1.6, 1.6); }
       f.a += (f.da || 0) * dt;
-      f.x += Math.cos(f.a) * f.v * dt * (H / W); f.y += Math.sin(f.a) * f.v * dt;
+      const boost = f.flee > 0 ? 3 : 1; f.flee = Math.max(0, f.flee - dt);
+      f.x += Math.cos(f.a) * f.v * boost * dt * (H / W); f.y += Math.sin(f.a) * f.v * boost * dt;
       if (f.x < 0.05 || f.x > 0.95) { f.a = Math.PI - f.a; f.x = Math.max(0.05, Math.min(0.95, f.x)); }
       if (f.y < 0.18 || f.y > 0.95) { f.a = -f.a; f.y = Math.max(0.18, Math.min(0.95, f.y)); }
     }
@@ -571,7 +575,7 @@ export function startForellen(g, { need = 8, maxSmall = 3, limit = 55 } = {}) {
       ctx.fillStyle = '#222'; for (let k = 0; k < 6; k++) ctx.fillRect(-L * 0.3 + k * L * 0.1, -L * 0.1 + (k % 2) * L * 0.12, 2, 2);
       ctx.restore();
     }
-    if (net) { ctx.strokeStyle = '#eceff1'; ctx.lineWidth = 0.6 * u; ctx.beginPath(); ctx.arc(net.x * W, net.y * H, 0.07 * H * (1 + net.t), 0, 7); ctx.stroke(); }
+    if (net) { ctx.strokeStyle = '#eceff1'; ctx.lineWidth = 0.6 * u; ctx.beginPath(); ctx.arc(net.x * W, net.y * H, 0.055 * H * (1 + net.t), 0, 7); ctx.stroke(); }
     parts.draw(ctx);
     ctx.fillStyle = '#fff'; ctx.font = `700 ${3 * u}px Inter, sans-serif`; ctx.textAlign = 'center';
     ctx.fillText('Kweekvijver aan de Gulp: alleen de grote forellen!', W / 2, H * 0.08);

@@ -31,6 +31,16 @@ export const SHOPS = {
   ilgusto: { sign: 'Il Gusto', sub: 'ristorante · pizzeria', bg: '#1b4d2b', fg: '#ffffff', awning: ['#1b4d2b', '#ffffff', '#c62828', '#ffffff'], type: 'restaurant' },
   mezzaluna: { sign: 'IJssalon Mezzaluna', sub: 'ijs · koffie', bg: '#f7c6d9', fg: '#7a1f4a', awning: ['#f7c6d9', '#ffffff'], type: 'ijs' },
   atelier: { sign: 'Restaurant Atelier', sub: 'restaurant', bg: '#1d1d1b', fg: '#e3c88f', type: 'restaurant', street: 'Markt' }, // ingang aan de Markt (pand op de hoek met de Dorpsstraat)
+  // Looierstraat en Rijksweg (adressen gecontroleerd met de PDOK Locatieserver)
+  aldi: { sign: 'ALDI', sub: 'supermarkt', bg: '#0b2f6b', fg: '#ffffff', type: 'supermarkt' },
+  kruidvat: { sign: 'Kruidvat', sub: 'drogisterij', bg: '#d6001c', fg: '#ffffff', type: 'drogist' },
+  zeeman: { sign: 'Zeeman', sub: 'textiel · kleding', bg: '#0060a8', fg: '#ffffff', type: 'kleding' },
+  delooier: { sign: 'Lunchroom De Looier', sub: 'ontbijt · lunch · borrel', bg: '#3e3a2e', fg: '#f3e2b8', awning: ['#3e3a2e', '#f3e2b8'], type: 'lunchroom' },
+  mudo: { sign: 'Mudo Kappers', sub: 'kapsalon', bg: '#1b1b1b', fg: '#ffffff', type: 'kapper' },
+  primera: { sign: 'Primera', sub: 'tijdschriften · tabak · loterij', bg: '#4a2c7a', fg: '#ffffff', type: 'tijdschriften' },
+  optiekgulpen: { sign: 'Optiek Gulpen', sub: 'brillen · lenzen · hoortoestellen', bg: '#1d3557', fg: '#ffffff', type: 'opticien' },
+  moustache: { sign: 'Moustache', sub: 'damesmode', bg: '#f3e6e8', fg: '#5a2236', awning: ['#5a2236', '#f3e6e8'], type: 'damesmode' },
+  enjoy: { sign: 'Enjoy Feestballonshop', sub: 'ballonnen · feestartikelen', bg: '#ff4fa3', fg: '#ffffff', type: 'ballonnen' },
   bormans: { sign: 'Slagerij Bormans', sub: 'vlees · vleeswaren', bg: '#7a1f1f', fg: '#ffffff', awning: ['#7a1f1f', '#ffffff'], type: 'slager' },
 };
 

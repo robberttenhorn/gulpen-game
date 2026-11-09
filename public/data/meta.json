@@ -556,6 +556,114 @@
         -113.84700000000885,
         478.49300000001676
       ]
+    },
+    {
+      "id": "aldi",
+      "name": "Aldi",
+      "address": "Looierstraat 20",
+      "x": 190638.235,
+      "y": 314214.362,
+      "shop": true,
+      "pos": [
+        107.23499999998603,
+        -156.36200000002282
+      ]
+    },
+    {
+      "id": "kruidvat",
+      "name": "Kruidvat",
+      "address": "Looierstraat 17",
+      "x": 190647.512,
+      "y": 314177.41,
+      "shop": true,
+      "pos": [
+        116.51199999998789,
+        -119.40999999997439
+      ]
+    },
+    {
+      "id": "zeeman",
+      "name": "Zeeman",
+      "address": "Looierstraat 36",
+      "x": 190592.558,
+      "y": 314162.973,
+      "shop": true,
+      "pos": [
+        61.55799999998999,
+        -104.97299999999814
+      ]
+    },
+    {
+      "id": "delooier",
+      "name": "Lunchroom De Looier",
+      "address": "Looierstraat 25",
+      "x": 190629.054,
+      "y": 314162.079,
+      "shop": true,
+      "pos": [
+        98.05400000000373,
+        -104.07900000002701
+      ]
+    },
+    {
+      "id": "mudo",
+      "name": "Mudo Kappers",
+      "address": "Looierstraat 34",
+      "x": 190597.859,
+      "y": 314173.261,
+      "shop": true,
+      "pos": [
+        66.85899999999674,
+        -115.2609999999986
+      ]
+    },
+    {
+      "id": "primera",
+      "name": "Primera",
+      "address": "Looierstraat 35",
+      "x": 190601.569,
+      "y": 314130.877,
+      "shop": true,
+      "pos": [
+        70.56899999998859,
+        -72.87699999997858
+      ]
+    },
+    {
+      "id": "optiekgulpen",
+      "name": "Optiek Gulpen",
+      "address": "Rijksweg 60",
+      "x": 190731.529,
+      "y": 314078.77,
+      "shop": true,
+      "pos": [
+        200.52900000000955,
+        -20.770000000018626
+      ]
+    },
+    {
+      "id": "moustache",
+      "name": "Moustache",
+      "address": "Looierstraat 87",
+      "x": 190593.38,
+      "y": 314098.392,
+      "shop": true,
+      "pos": [
+        62.38000000000466,
+        -40.39199999999255
+      ]
+    },
+    {
+      "id": "enjoy",
+      "name": "Enjoy Feestballonshop",
+      "address": "Rijksweg 38",
+      "x": 190624.519,
+      "y": 314023.331,
+      "shop": true,
+      "pos": [
+        93.51900000000023,
+        34.66899999999441
+      ]
     }
   ],
   "generated": "2026-11-08T08:21:18.028Z",

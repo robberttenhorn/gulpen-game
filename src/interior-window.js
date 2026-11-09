@@ -52,7 +52,7 @@ function drawRoom(type, seed) {
   const rand = rnd(seed);
   const shirt = () => SHIRTS[Math.floor(rand() * SHIRTS.length)];
   c2 = b;
-  const wall = { cafe: '#6b4a32', friture: '#f3e5ab', grill: '#5d4037', bakker: '#f1e2c2', slager: '#eeeeee', ijs: '#fde4ee', choco: '#4e342e', apotheek: '#f5f5f5', drogist: '#fafafa', opticien: '#eceff1', warenhuis: '#fafafa', speelgoed: '#fff8e1', elektro: '#eceff1', ijzer: '#cfd8dc', bier: '#2e4a32', grieks: '#e3f2fd', restaurant: '#3e2f25', pannenkoek: '#f6e7c8', keukens: '#efebe9', vvv: '#e3f2fd', gemeente: '#f5f1e6', wonen: '#fff3e0', zwembad: '#b3e5fc', supermarkt: '#f5f5f5', fietsen: '#eceff1', brouwerij: '#5d4037', deli: '#f1e2c2' }[type] || '#ece5d8';
+  const wall = { cafe: '#6b4a32', friture: '#f3e5ab', grill: '#5d4037', bakker: '#f1e2c2', slager: '#eeeeee', ijs: '#fde4ee', choco: '#4e342e', apotheek: '#f5f5f5', drogist: '#fafafa', opticien: '#eceff1', warenhuis: '#fafafa', speelgoed: '#fff8e1', elektro: '#eceff1', ijzer: '#cfd8dc', bier: '#2e4a32', grieks: '#e3f2fd', restaurant: '#3e2f25', pannenkoek: '#f6e7c8', keukens: '#efebe9', vvv: '#e3f2fd', gemeente: '#f5f1e6', wonen: '#fff3e0', zwembad: '#b3e5fc', supermarkt: '#f5f5f5', fietsen: '#eceff1', brouwerij: '#5d4037', deli: '#f1e2c2', kleding: '#f5f5f5', damesmode: '#f8eef0', ballonnen: '#fff3fa', kapper: '#2b2b2b', kantoor: '#ece9e2', tijdschriften: '#f3eefb', lunchroom: '#efe3cf' }[type] || '#ece5d8';
   b.fillStyle = wall; b.fillRect(0, 0, W, H);
   b.fillStyle = 'rgba(0,0,0,0.08)'; b.fillRect(0, H * 0.75, W, H * 0.25); // plint
   for (const lx of [W * 0.25, W * 0.5, W * 0.75]) lamp(b, lx, 14);
@@ -147,6 +147,57 @@ function drawRoom(type, seed) {
       b.fillStyle = type === 'grieks' ? '#0d47a1' : '#5d4037'; b.fillRect(0, H * 0.7, W, 6);
       for (let i = 0; i < 3; i++) { const x = W * (0.2 + i * 0.3); b.fillStyle = '#fff'; b.fillRect(x - 34, H * 0.6, 68, 6); b.fillStyle = '#8d6e63'; b.fillRect(x - 3, H * 0.6, 6, 40); person(b, x - 30, H * 0.78, 70, { shirt: shirt() }); person(b, x + 30, H * 0.78, 66, { shirt: shirt() }); }
       staff = { shirt: '#111', apron: '#fff' }; customers = 0;
+      break;
+    }
+    case 'kleding': {
+      // kledingrekken met hangers en een paspop
+      for (let r = 0; r < 2; r++) { const y = H * (0.28 + r * 0.24); b.fillStyle = '#9e9e9e'; b.fillRect(W * 0.06, y, W * 0.88, 3); for (let i = 0; i < 26; i++) { b.fillStyle = ['#1565c0', '#e53935', '#fdd835', '#43a047', '#212121', '#ffffff', '#8e24aa', '#ff7043'][Math.floor(rand() * 8)]; b.fillRect(W * 0.07 + i * W * 0.033, y + 3, W * 0.026, H * 0.17); } }
+      staff = { shirt: '#0060a8' }; customers = 2;
+      break;
+    }
+    case 'damesmode': {
+      // jurken en blouses aan rekken, een paspop en een passpiegel
+      for (let r = 0; r < 2; r++) { const y = H * (0.24 + r * 0.26); b.fillStyle = '#c9a227'; b.fillRect(W * 0.05, y, W * 0.6, 3); for (let i = 0; i < 16; i++) { b.fillStyle = ['#f48fb1', '#ce93d8', '#fff59d', '#80cbc4', '#ffffff', '#5a2236', '#ffab91'][Math.floor(rand() * 7)]; b.beginPath(); b.moveTo(W * 0.06 + i * W * 0.037, y + 3); b.lineTo(W * 0.06 + i * W * 0.037 + W * 0.03, y + 3); b.lineTo(W * 0.06 + i * W * 0.037 + W * 0.036, y + H * 0.2); b.lineTo(W * 0.06 + i * W * 0.037 - W * 0.006, y + H * 0.2); b.fill(); } }
+      b.fillStyle = '#d7ccc8'; b.fillRect(W * 0.72, H * 0.15, W * 0.12, H * 0.6); b.fillStyle = 'rgba(255,255,255,0.4)'; b.fillRect(W * 0.735, H * 0.17, W * 0.04, H * 0.56); // passpiegel
+      b.fillStyle = '#5a2236'; b.beginPath(); b.ellipse(W * 0.9, H * 0.4, 18, 34, 0, 0, 7); b.fill(); b.fillRect(W * 0.9 - 2, H * 0.48, 4, H * 0.25); // paspop
+      staff = { shirt: '#5a2236' }; customers = 2;
+      break;
+    }
+    case 'ballonnen': {
+      // overal ballonnen, cijferballonnen en slingers
+      for (let i = 0; i < 40; i++) { const x = rand() * W, y = H * (0.05 + rand() * 0.5); b.strokeStyle = 'rgba(0,0,0,0.25)'; b.beginPath(); b.moveTo(x, y + 14); b.lineTo(x + (rand() - 0.5) * 10, y + 60); b.stroke(); b.fillStyle = ['#ff4fa3', '#ffd54f', '#4fc3f7', '#69f0ae', '#e040fb', '#ff7043', '#ffffff', '#c0c0c0'][Math.floor(rand() * 8)]; b.beginPath(); b.ellipse(x, y, 12, 15, 0, 0, 7); b.fill(); b.fillStyle = 'rgba(255,255,255,0.5)'; b.beginPath(); b.arc(x - 4, y - 5, 3, 0, 7); b.fill(); }
+      b.fillStyle = '#d4af37'; b.font = '900 70px sans-serif'; b.fillText('50', W * 0.65, H * 0.62);
+      b.strokeStyle = '#ff4fa3'; b.lineWidth = 3; b.beginPath(); for (let x = 0; x <= W; x += 20) b.lineTo(x, H * 0.08 + Math.sin(x * 0.05) * 6); b.stroke();
+      staff = { shirt: '#ff4fa3' }; customers = 1;
+      break;
+    }
+    case 'kapper': {
+      // spiegels met lampjes en kappersstoelen
+      for (let i = 0; i < 3; i++) { const x = W * (0.12 + i * 0.29); b.fillStyle = '#cfd8dc'; b.fillRect(x, H * 0.18, W * 0.2, H * 0.32); b.fillStyle = 'rgba(255,255,255,0.35)'; b.fillRect(x + 6, H * 0.2, W * 0.06, H * 0.28); b.fillStyle = '#fff8e1'; for (let k = 0; k < 5; k++) { b.beginPath(); b.arc(x + k * W * 0.05, H * 0.17, 4, 0, 7); b.fill(); } b.fillStyle = '#111'; b.fillRect(x + W * 0.06, H * 0.55, W * 0.08, H * 0.16); }
+      staff = { shirt: '#111' }; customers = 1; counterColor = '#111'; counterTop = '#555';
+      break;
+    }
+    case 'kantoor': {
+      // bureaus met beeldschermen, archiefkasten en een plant
+      b.fillStyle = '#b0bec5'; for (let i = 0; i < 4; i++) b.fillRect(W * (0.06 + i * 0.07), H * 0.3, W * 0.06, H * 0.45);
+      for (let i = 0; i < 2; i++) { const x = W * (0.45 + i * 0.25); b.fillStyle = '#263238'; b.fillRect(x, H * 0.4, W * 0.12, H * 0.12); b.fillStyle = '#90caf9'; b.fillRect(x + 4, H * 0.41, W * 0.12 - 8, H * 0.1); }
+      b.fillStyle = '#2e7d32'; b.beginPath(); b.arc(W * 0.92, H * 0.55, 22, 0, 7); b.fill();
+      staff = { shirt: '#37474f' }; customers = 1; counterColor = '#8d6e63'; counterTop = '#efebe9';
+      break;
+    }
+    case 'tijdschriften': {
+      // rekken met tijdschriften, sigaretten achter de toonbank, loterijbord
+      shelves(b, W * 0.05, H * 0.2, W * 0.5, H * 0.55, 4, (x, y, w, h) => { for (let cx = x; cx < x + w - 14; cx += 18) { b.fillStyle = ['#e53935', '#1e88e5', '#fdd835', '#43a047', '#8e24aa', '#ff7043', '#fafafa'][Math.floor(rand() * 7)]; b.fillRect(cx, y - h * 0.9, 15, h * 0.9); } });
+      b.fillStyle = '#4a2c7a'; b.fillRect(W * 0.6, H * 0.15, W * 0.34, H * 0.12); b.fillStyle = '#fff'; b.font = '700 18px sans-serif'; b.fillText('LOTERIJ', W * 0.66, H * 0.24);
+      tall(W * 0.6, W * 0.34, 3, ['#fafafa', '#c62828', '#212121', '#ffd54f']);
+      staff = { shirt: '#4a2c7a' }; customers = 2;
+      break;
+    }
+    case 'lunchroom': {
+      b.fillStyle = '#5d4037'; b.fillRect(0, H * 0.7, W, 6);
+      for (let i = 0; i < 3; i++) { const x = W * (0.2 + i * 0.3); b.fillStyle = '#fff'; b.fillRect(x - 30, H * 0.6, 60, 6); b.fillStyle = '#8d6e63'; b.fillRect(x - 3, H * 0.6, 6, 40); person(b, x - 26, H * 0.78, 66, { shirt: shirt() }); if (rand() < 0.6) person(b, x + 26, H * 0.78, 62, { shirt: shirt() }); b.fillStyle = '#fff'; b.beginPath(); b.arc(x - 8, H * 0.59, 6, 0, 7); b.fill(); }
+      b.fillStyle = '#263238'; b.fillRect(W * 0.35, H * 0.08, W * 0.3, H * 0.14); b.fillStyle = '#fff'; for (let i = 0; i < 3; i++) b.fillRect(W * 0.38, H * (0.11 + i * 0.035), W * 0.2, 3);
+      staff = { shirt: '#3e3a2e', apron: '#f3e2b8' }; customers = 0;
       break;
     }
     default: tall(W * 0.05, W * 0.9, 4, ['#90a4ae', '#ffcc80', '#a5d6a7', '#ef9a9a', '#fff59d']);

@@ -1509,7 +1509,7 @@ export class World {
     const bikes = new THREE.InstancedMesh(bikeGeo, new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.3 }), Math.max(1, bikeSpots.length));
     const bcol = new THREE.Color();
     bikeSpots.forEach((b, i) => {
-      p.set(b.x, this.groundAt(b.x, b.z), b.z); q.setFromAxisAngle(up, b.yaw); m.compose(p, q, one); bikes.setMatrixAt(i, m);
+      p.set(b.x, this.groundAt(b.x, b.z) + 0.04, b.z); q.setFromAxisAngle(up, b.yaw); m.compose(p, q, one); bikes.setMatrixAt(i, m); // wielen op de grond
       bikes.setColorAt(i, bcol.set([0x212121, 0x1565c0, 0xc62828, 0xeceff1, 0x2e7d32, 0x6d4c41, 0xf9a825][Math.floor(rand() * 7)]));
     });
     bikes.count = bikeSpots.length; bikes.castShadow = !this.isMobile;
