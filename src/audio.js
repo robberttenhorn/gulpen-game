@@ -63,6 +63,27 @@ export class Sound {
     src.stop(t + dur + 0.05);
   }
 
+  // ------------------------------------------------------------ omgevingsgeluid
+  // Doorlopend geluid op een plek (geroezemoes op de Markt, kabbelend water). set(v) regelt het volume (0 = stil).
+  loop(kind) {
+    if (!this.ctx || !this.noise) return null;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise; src.loop = true;
+    const f1 = this.ctx.createBiquadFilter(), f2 = this.ctx.createBiquadFilter();
+    const g = this.ctx.createGain(); g.gain.value = 0;
+    if (kind === 'markt') { f1.type = 'bandpass'; f1.frequency.value = 520; f1.Q.value = 0.9; f2.type = 'lowpass'; f2.frequency.value = 1400; }
+    else { f1.type = 'bandpass'; f1.frequency.value = 2600; f1.Q.value = 0.5; f2.type = 'highpass'; f2.frequency.value = 700; }
+    src.connect(f1).connect(f2).connect(g).connect(this.master);
+    src.start(0, Math.random() * 0.9);
+    return {
+      set: (v, wobble = 0) => {
+        if (!Number.isFinite(v)) return;
+        g.gain.setTargetAtTime(Math.max(0, v), this.ctx.currentTime, 0.5);
+        if (kind === 'markt') f1.frequency.setTargetAtTime(480 + wobble * 160, this.ctx.currentTime, 0.6); // stemmen gaan op en neer
+      },
+    };
+  }
+
   // ------------------------------------------------------------ feestmuziek (eigen deuntje, hoempa-stijl)
 
   startMusic() {
