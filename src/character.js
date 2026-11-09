@@ -482,7 +482,7 @@ export function makeCharacter(opts = {}) {
     for (let i = 0; i < N * 3; i++) cur[i] += (tgt[i] - cur[i]) * k;
     curY += (tgtY - curY) * k; curPitch += (tgtPitch - curPitch) * k; curYaw += (tgtYaw - curYaw) * k;
     for (let i = 0; i < N; i++) bones[i].rotation.set(cur[i * 3], cur[i * 3 + 1], cur[i * 3 + 2]);
-    body.position.y = curY;
+    body.position.y = curY + 0.03; // voeten net op de grond (niet erin)
     body.rotation.set(curPitch, curYaw, 0);
   };
   // voorwerp in de hand rechtop houden (behalve een glas tijdens het drinken)
@@ -531,6 +531,7 @@ export function makeBike(color = 0x1e88e5) {
   seat.position.set(0, 0.92, -0.35); g.add(seat);
   const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.55, 6), dark);
   handle.rotation.z = Math.PI / 2; handle.position.set(0, 1.0, 0.5); g.add(handle);
+  g.children.forEach((c) => { c.position.y += 0.03; }); // wielen op en niet in de grond
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
 }

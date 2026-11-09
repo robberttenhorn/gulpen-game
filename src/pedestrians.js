@@ -82,7 +82,7 @@ export class Pedestrians {
       const m = makeCharacter({ shirt: SHIRTS[Math.floor(rand() * SHIRTS.length)], pants: PANTS[Math.floor(rand() * PANTS.length)], hair: rand() < 0.5 ? 0x9e9e9e : HAIR[Math.floor(rand() * 5)], skin: SKIN[Math.floor(rand() * SKIN.length)], female: rand() < 0.5, hairStyle: rand() < 0.4 ? 'long' : 'short', glasses: rand() < 0.4 });
       const off = (rand() - 0.5) * 0.9;
       const x = b.x + Math.cos(b.yaw) * off + Math.sin(b.yaw) * 0.05, z = b.z - Math.sin(b.yaw) * off + Math.cos(b.yaw) * 0.05;
-      m.position.set(x, this.world.groundAt(x, z), z);
+      m.position.set(x, this.world.groundAt(x, z) + 0.19, z); // op de zitting (die zit op 0,48 m)
       m.rotation.y = b.yaw;
       this.g.scene.add(m);
       this.sitters.push({ model: m, x, z });

@@ -13,6 +13,7 @@ import { makeCharacter, makeBike, makeSkateboard } from './character.js';
 import { Missions } from './missions.js';
 import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
+import { buildStatues } from './beelden.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { statsStart, statsPageview, statsError, statsPerf } from './stats.js';
@@ -90,6 +91,7 @@ class Game {
     this.setupPlayer();
     this.facades = new Facades(this);
     this.facades.build();
+    try { buildStatues(this.facades); } catch (e) { console.warn('beelden', e); }
     this.cars = new Vehicles(this);
     this.spawnVolvo();
     this.farm = this.findFarm();

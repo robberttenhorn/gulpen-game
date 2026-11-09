@@ -374,22 +374,22 @@ export const geschiedenisHandlers = {
     const a = await ui.dialog(N, [
       'Hoor je dat water? Al dat stromende zoete water van de Gulp: daarom zaten hier vroeger leerlooiers, bierbrouwers en forellenkwekers.',
       'De Gulpener Bierbrouwerij is in 1825 begonnen. En ik? Ik kweek nog steeds forellen.',
-      'Er komt zo een bestelling van acht grote forellen. Help je scheppen? Alleen de grote, de kleintjes moeten nog groeien.',
+      'Er komt zo een bestelling van tien grote forellen. Help je scheppen? Alleen de grote, de kleintjes moeten nog groeien. En ze schrikken van elke plons, dus mik goed!',
     ], ['Geef mij het net!', 'Ik eet geen vis']);
     if (a !== 0) { await ui.dialog(N, ['Geen vis? Dan maar een frikandel bij An + Piet. Ieder zijn smaak.']); return; }
     if (g.mode === 'car') g.exitCar();
     g.setMode('walk');
-    this.setActive('forellen', 'Forellen scheppen', 'Schep acht grote forellen uit de kweekvijver. Kleintjes laten zwemmen: drie keer fout en je bent af.', '0 / 8 forellen');
-    const r = await startForellen(g, { need: 8, maxSmall: 3, limit: 55 });
+    this.setActive('forellen', 'Forellen scheppen', 'Schep tien grote forellen uit de kweekvijver. Kleintjes laten zwemmen: twee keer fout en je bent af. Bij een misser schieten de vissen weg.', '0 / 10 forellen');
+    const r = await startForellen(g, { need: 10, maxSmall: 2, limit: 50 });
     if (!r || this.active?.id !== 'forellen') return;
     if (r.ok) {
       await ui.dialog(N, [
-        r.small === 0 ? 'Acht joekels en geen enkel kleintje! Jij hebt een kwekersoog.' : 'Acht grote forellen, de bestelling is compleet. Die paar kleintjes zet ik wel terug.',
+        r.small === 0 ? 'Tien joekels en geen enkel kleintje! Jij hebt een kwekersoog.' : 'Tien grote forellen, de bestelling is compleet. Dat ene kleintje zet ik wel terug.',
         'Vroeger waren hier leerlooiers, nu sta jij hier met een schepnet. Zo gaat dat met de geschiedenis.',
       ]);
       this.complete('forellen', 'Forellenschepper van de Gulp!');
     } else {
-      await ui.dialog(N, [r.small >= 3 ? 'Zoveel kleintjes! Die moeten eerst nog een jaartje groeien. Kom straks nog eens.' : 'De klant staat te wachten en de bak is nog half leeg. Probeer het nog eens!']);
+      await ui.dialog(N, [r.small >= 2 ? 'Zoveel kleintjes! Die moeten eerst nog een jaartje groeien. Kom straks nog eens.' : 'De klant staat te wachten en de bak is nog half leeg. Probeer het nog eens!']);
       this.fail('Bestelling niet compleet.');
     }
   },

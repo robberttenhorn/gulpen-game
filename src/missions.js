@@ -143,9 +143,10 @@ export class Missions {
     add('organisator', 'Organisator Nacht van Gulpen', g.world.spotNear(-14, 34), { shirt: 0xff9800, pants: 0x263238, hair: 0x4e342e, coat: 0xff9800 });
 
     // opa op een bankje bij de Markt
-    const benches = (g.world.objects.furniture || []).filter((f) => f[0] === 'bank')
-      .map(([, x, z]) => [x, z, Math.hypot(x, z)]).filter((b) => b[2] < 160).sort((a, b) => a[2] - b[2]);
-    const bench = benches[0] || [10, 10];
+    // het (netjes geplaatste) bankje het dichtst bij de Markt
+    const spots = (g.world.benchSpots || []).map((b) => ({ ...b, d: Math.hypot(b.x, b.z) })).filter((b) => b.d < 160).sort((a, b) => a.d - b.d);
+    const benchSpot = spots[0] || null;
+    const bench = benchSpot ? [benchSpot.x, benchSpot.z] : [10, 10];
     add('opa', 'Opa op het benkske', g.world.resolve(bench[0] + 1.2, bench[1] + 0.6, 0.4), { shirt: 0x6d5c4b, pants: 0x4a4a4a, hair: 0xe0e0e0, hat: 'cap', hatColor: 0x3e3e3e });
 
     // De Razende Reporter op de Markt, met microfoon
@@ -224,11 +225,16 @@ export class Missions {
     // opa zit op het bankje
     if (this.npcs.opa) {
       const o = this.npcs.opa;
-      o.pos.set(bench[0], g.world.groundAt(bench[0], bench[1]), bench[1]);
-      const st = g.world.nearestStreet(bench[0], bench[1]);
-      o.heading = st ? Math.atan2(st.x - bench[0], st.z - bench[1]) : 0;
+      // midden op de zitting, met de rug naar de leuning
+      const yaw = benchSpot ? benchSpot.yaw : 0;
+      const bx = bench[0] + Math.sin(yaw) * 0.05, bz = bench[1] + Math.cos(yaw) * 0.05;
+      o.pos.set(bx, g.world.groundAt(bx, bz), bz);
+      o.heading = benchSpot ? yaw : (() => { const st = g.world.nearestStreet(bench[0], bench[1]); return st ? Math.atan2(st.x - bench[0], st.z - bench[1]) : 0; })();
       o.pose = 'sit';
+      o.model.position.y = 0.19; // op de zitting van het bankje, niet erdoorheen
     }
+    // geen dorpsbewoner op het bankje van opa
+    if (g.peds?.sitters && this.npcs.opa) g.peds.sitters = g.peds.sitters.filter((q) => { if (Math.hypot(q.x - this.npcs.opa.pos.x, q.z - this.npcs.opa.pos.z) > 1.6) return true; g.scene.remove(q.model); return false; });
     // cameraman naast De Razende Reporter
     const r = this.npcs.reporter;
     const cam = g.addNpc('Cameraman', g.world.resolve(r.pos.x + 3.4, r.pos.z + 1.6, 0.4), makeCharacter({ shirt: 0x424242, pants: 0x212121, hair: 0x111111, hat: 'cap', hatColor: 0x424242 }));

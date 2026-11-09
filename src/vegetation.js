@@ -128,6 +128,7 @@ export function buildPlanters(w, markt) {
     if (spots.some((o) => Math.hypot(o[0] - x, o[1] - z) < 6)) continue;
     spots.push([x, z]);
   }
+  w.planterSpots = spots;
   if (!spots.length) return 0;
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
   const tub = new THREE.InstancedMesh(new THREE.BoxGeometry(1.2, 0.55, 1.2).translate(0, 0.275, 0), new THREE.MeshStandardMaterial({ color: 0x6d4c33, roughness: 0.8 }), spots.length);
