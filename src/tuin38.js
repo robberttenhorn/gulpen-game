@@ -131,6 +131,8 @@ export function buildTuin38(g) {
     water: new THREE.MeshStandardMaterial({ color: 0x1b3640, roughness: 0.08, metalness: 0.2 }),
     blad: new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true, vertexColors: true }),
     stam: new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1 }),
+    wilgstam: new THREE.MeshStandardMaterial({ color: 0x5e554a, roughness: 1, flatShading: true }),
+    twijg: new THREE.MeshStandardMaterial({ color: 0x7b6a48, roughness: 0.9 }),
     metaal: new THREE.MeshStandardMaterial({ color: 0x3b3b3b, metalness: 0.6, roughness: 0.4 }),
     wit: new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.6 }),
     doek: new THREE.MeshStandardMaterial({ color: 0xe6dcc6, roughness: 0.9, side: THREE.DoubleSide }),
@@ -236,20 +238,20 @@ export function buildTuin38(g) {
   patch(9.0, 12.2, 9.9, 15.6, mats.tegel, 0.09, 1.2);
   patch(11.0, 12.2, 15.6, 21.0, mats.tegel, 0.09, 1.2);
   patch(12.2, 14.0, 12.8, 21.0, mats.aarde, 0.11, 1.5);
-  for (let k = 0; k < 6; k++) blob(12.6 + rand() * 1.1, 13.4 + k * 1.2, 0.4, 0.55 + rand() * 0.3, [0x4c6a3a, 0x6a5a3a, 0x3d5e33][k % 3], 3);
+  for (let k = 0; k < 6; k++) blob(12.6 + rand() * 0.9, 13.4 + k * 1.2, 0.4, 0.55 + rand() * 0.3, [0x4c6a3a, 0x6a5a3a, 0x3d5e33][k % 3], 3);
   // berging van baksteen met plat dak, deur aan de kant van het pad
-  block(11.3, 13.9, 10.0, 12.6, 2.4, mats.muur, { tile: 1.05 });
-  block(11.2, 14.0, 9.9, 12.7, 0.12, mats.dak, { y: 2.4 });
-  block(11.26, 11.3, 10.6, 11.5, 2.0, mats.deur);
-  solid(11.3, 13.9, 10.0, 12.6);
+  block(11.1, 13.6, 10.0, 12.6, 2.4, mats.muur, { tile: 1.05 });
+  block(11.0, 13.7, 9.9, 12.7, 0.12, mats.dak, { y: 2.4 });
+  block(11.06, 11.1, 10.6, 11.5, 2.0, mats.deur);
+  solid(11.1, 13.6, 10.0, 12.6);
 
   // ---------------- ACHTERTUIN (v 21 - 39,8) ----------------
   patch(0.2, 14.0, 20.0, 39.5, mats.gras, 0.07, 2); // gazon als ondergrond
   patch(0.6, 6.2, 22.6, 29.2, mats.tegel, 0.1, 1.2); // terras bij het huis
   patch(8.6, 13.9, 27.5, 30.6, mats.klinker, 0.1, 0.8); // strook klinkers
   patch(8.6, 13.9, 30.6, 36.8, mats.tegel, 0.1, 1.2); // terras achterin (met zweefparasol)
-  patch(13.0, 14.0, 20.5, 27.5, mats.aarde, 0.11, 1.5); // border langs de muur
-  patch(0.9, 2.4, 29.2, 39.3, mats.aarde, 0.11, 1.5); // border voor de haag
+  patch(12.6, 13.75, 20.5, 27.5, mats.aarde, 0.11, 1.5); // border langs de haag
+  patch(0.9, 2.4, 29.2, 35.6, mats.aarde, 0.11, 1.5); // border voor de haag (achterin blijft het gras open)
   // vijver: rand van lichte natuursteen rond het water uit de kaart
   let pu0 = 99, pu1 = -99, pv0 = 99, pv1 = -99;
   for (let u = 4; u <= 11; u += 0.25) for (let v = 21; v <= 30; v += 0.25) { const [x, z] = P(u, v); if (w.classAt(x, z) === 'water') { pu0 = Math.min(pu0, u); pu1 = Math.max(pu1, u); pv0 = Math.min(pv0, v); pv1 = Math.max(pv1, v); } }
@@ -287,23 +289,43 @@ export function buildTuin38(g) {
   add(boxGeo(1.8, 0.45, 0.15).translate(0, 0.5, -0.32), mats.wit, place(10.6, 34.6, 0.05));
   add(boxGeo(0.7, 0.35, 0.7).translate(0, 0.18, 0), mats.hout, place(10.6, 33.2, 0.05));
   solid(9.7, 11.5, 34.2, 35.0); solid(13.0, 13.2, 35.8, 36.0);
-  // moestuinbakken tegen de achtermuur
-  for (const [u0, u1] of [[9.0, 11.3], [11.6, 13.9]]) {
-    block(u0, u1, 37.2, 39.3, 0.4, mats.hout, { tile: 0.8 });
-    patch(u0 + 0.06, u1 - 0.06, 37.26, 39.24, mats.aarde, 0.41, 1.5);
-    for (let a = u0 + 0.35; a < u1 - 0.2; a += 0.45) for (let b = 37.6; b < 39.1; b += 0.5) blob(a, b, 0.48, 0.16 + rand() * 0.06, rand() < 0.5 ? 0x6fa04a : 0x4f8a3a, 1);
-    solid(u0, u1, 37.2, 39.3);
+  // moestuinbakken achter het terras, voor de achterhaag
+  for (const [u0, u1] of [[9.0, 11.2], [11.45, 13.6]]) {
+    block(u0, u1, 36.95, 38.85, 0.4, mats.hout, { tile: 0.8 });
+    patch(u0 + 0.06, u1 - 0.06, 37.01, 38.79, mats.aarde, 0.41, 1.5);
+    for (let a = u0 + 0.35; a < u1 - 0.2; a += 0.45) for (let b = 37.35; b < 38.7; b += 0.5) blob(a, b, 0.48, 0.16 + rand() * 0.06, rand() < 0.5 ? 0x6fa04a : 0x4f8a3a, 1);
+    solid(u0, u1, 36.95, 38.85);
   }
   // borders: struiken langs de oostmuur en voor de westhaag, met een paar bloeiers
-  for (let k = 0; k < 6; k++) blob(13.5, 21.2 + k * 1.1, 0.45, 0.5 + rand() * 0.25, [0x4a6e3a, 0x9b6b8a, 0x56783e][k % 3], 3);
-  for (let k = 0; k < 8; k++) blob(1.6 + (rand() - 0.5) * 0.6, 29.8 + k * 1.2, 0.55, 0.6 + rand() * 0.3, [0x2f4a2a, 0x3a5a30, 0x2c4426][k % 3], 3);
-  for (let k = 0; k < 10; k++) { const geo = new THREE.IcosahedronGeometry(0.07, 0); add(geo, mats.wit, place(13.3 + rand() * 0.6, 21 + rand() * 6, 0.7 + rand() * 0.3)); }
-  // bakstenen muur langs de wei (oostkant) en de achtergrens, met een rollaag erop (BGT: muur, en de schaduw op de luchtfoto)
-  block(14.0, 14.3, 10.0, 39.8, 1.9, mats.muur, { tile: 1.05 });
-  block(13.95, 14.35, 10.0, 39.8, 0.08, mats.beton, { y: 1.9 });
-  block(-0.4, 14.3, 39.5, 39.8, 1.9, mats.muur, { tile: 1.05 });
-  block(-0.4, 14.35, 39.45, 39.85, 0.08, mats.beton, { y: 1.9 });
-  solid(14.0, 14.3, 10.0, 39.8); solid(-0.4, 14.3, 39.5, 39.8);
+  for (let k = 0; k < 6; k++) blob(13.15, 21.2 + k * 1.1, 0.45, 0.5 + rand() * 0.25, [0x4a6e3a, 0x9b6b8a, 0x56783e][k % 3], 3);
+  for (let k = 0; k < 5; k++) blob(1.6 + (rand() - 0.5) * 0.6, 29.8 + k * 1.2, 0.55, 0.6 + rand() * 0.3, [0x2f4a2a, 0x3a5a30, 0x2c4426][k % 3], 3);
+  for (let k = 0; k < 10; k++) { const geo = new THREE.IcosahedronGeometry(0.07, 0); add(geo, mats.wit, place(12.8 + rand() * 0.8, 21 + rand() * 6, 0.7 + rand() * 0.3)); }
+  // groene haag langs de wei (oostkant) en achter het terras; tussen het terras en de burenhaag is de achterkant open
+  const hedge = { tile: 1, jitter: 0.8, segs: 2 };
+  block(13.75, 14.4, 10.0, 39.8, 1.8, mats.haag, hedge);
+  block(8.6, 13.75, 39.1, 39.8, 1.7, mats.haag, hedge);
+  solid(13.75, 14.4, 10.0, 39.8); solid(8.6, 13.75, 39.1, 39.8);
+  // twee knotwilgen achterin het gras, bij het open stuk
+  const knotwilg = (u, v, h) => {
+    seg([u, v, 0], [u + 0.08, v + 0.05, h * 0.55], 0.3, mats.wilgstam);
+    seg([u + 0.08, v + 0.05, h * 0.5], [u - 0.05, v + 0.1, h], 0.34, mats.wilgstam);
+    const knob = new THREE.IcosahedronGeometry(0.52, 1);
+    const kp = knob.attributes.position;
+    for (let i = 0; i < kp.count; i++) { const n = 1 + (Math.sin(kp.getX(i) * 9 + kp.getZ(i) * 7) * 0.5 + 0.5) * 0.25; kp.setXYZ(i, kp.getX(i) * n, kp.getY(i) * 0.7, kp.getZ(i) * n); }
+    knob.computeVertexNormals();
+    add(knob, mats.wilgstam, place(u - 0.05, v + 0.1, h + 0.1));
+    // rechte jonge takken die uit de knot omhoog schieten, met grijsgroen smal blad
+    for (let k = 0; k < 26; k++) {
+      const a = rand() * Math.PI * 2, tilt = 0.15 + rand() * 0.6, len = 1.5 + rand() * 1.3;
+      const su = u - 0.05 + Math.cos(a) * 0.3, sv = v + 0.1 + Math.sin(a) * 0.3, sy = h + 0.15;
+      const eu = su + Math.cos(a) * Math.sin(tilt) * len, ev = sv + Math.sin(a) * Math.sin(tilt) * len, ey = sy + Math.cos(tilt) * len;
+      seg([su, sv, sy], [eu, ev, ey], 0.022, mats.twijg);
+      for (const f of [0.55, 0.85]) blob(su + (eu - su) * f, sv + (ev - sv) * f, sy + (ey - sy) * f, 0.32 + rand() * 0.18, rand() < 0.5 ? 0x93a87e : 0x7d9468, 1);
+    }
+    solid(u - 0.35, u + 0.35, v - 0.3, v + 0.4);
+  };
+  knotwilg(3.2, 38.0, 2.3);
+  knotwilg(6.6, 38.4, 2.1);
   // donkere haag langs de westgrens van de achtertuin
   block(0.1, 0.9, 22.6, 39.5, 1.9, mats.haag, { tile: 1, jitter: 0.8, segs: 2 });
   solid(0.1, 0.9, 22.6, 39.5);
