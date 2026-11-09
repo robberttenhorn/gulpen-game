@@ -20,6 +20,17 @@ function overlay(g, title, inner, hint) {
 }
 const canvasPos = (cv, e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * devicePixelRatio, (e.clientY - r.top) * devicePixelRatio]; };
 
+
+// kleur lichter (amt > 0) of donkerder (amt < 0) maken
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, gg = (n >> 8) & 255, b = n & 255;
+  const t = amt > 0 ? 255 : 0, k = Math.abs(amt);
+  r = Math.round(r + (t - r) * k); gg = Math.round(gg + (t - gg) * k); b = Math.round(b + (t - b) * k);
+  return `rgb(${r},${gg},${b})`;
+}
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
 // ------------------------------------------------------------ ijsjes stapelen
 
 export const FLAVORS = [
@@ -127,56 +138,120 @@ export function startIjs(g, { need = 5, maxMistakes = 4, limit = 80 } = {}) {
     }
     parts.update(dt);
 
-    // ---- tekenen: toonbank van de ijssalon
-    const grd = ctx.createLinearGradient(0, 0, 0, H);
-    grd.addColorStop(0, '#fde4ee'); grd.addColorStop(1, '#f7c6d9');
-    ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
-    // vitrine met de bakken
-    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(0, H * 0.1, W, 20 * u);
+    // ---- tekenen: ijssalon met vitrine, toonbank en hoorn
+    // achterwand met pastel strepen
+    for (let k = 0; k * 6 * u < W; k++) { ctx.fillStyle = k % 2 ? '#fde7ef' : '#fbd5e3'; ctx.fillRect(k * 6 * u, 0, 6 * u, H); }
+    // markiesje bovenaan
+    for (let k = 0; k * 8 * u < W; k++) {
+      ctx.fillStyle = k % 2 ? '#ffffff' : '#7a1f4a';
+      ctx.beginPath(); ctx.moveTo(k * 8 * u, 0); ctx.lineTo((k + 1) * 8 * u, 0); ctx.lineTo((k + 1) * 8 * u, 5 * u); ctx.arc((k + 0.5) * 8 * u, 5 * u, 4 * u, 0, Math.PI); ctx.closePath(); ctx.fill();
+    }
+    // vitrine met de bakken (glas met lijst)
+    const vy = H * 0.105, vh = 21 * u;
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; roundRect(ctx, W * 0.03, vy + 1 * u, W * 0.94, vh, 2 * u); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; roundRect(ctx, W * 0.03, vy, W * 0.94, vh, 2 * u); ctx.fill();
+    ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 0.5 * u; ctx.stroke();
     L.tubs.forEach((tb, i) => {
-      ctx.fillStyle = '#cfd8dc'; ctx.fillRect(tb.x - tb.w / 2, tb.y - tb.h / 2, tb.w * 0.94, tb.h * 1.1);
-      ctx.fillStyle = tb.f.c; ctx.beginPath(); ctx.ellipse(tb.x - tb.w * 0.03, tb.y - tb.h * 0.05, tb.w * 0.42, tb.h * 0.5, 0, 0, 7); ctx.fill();
-      if (tb.f.dots) { ctx.fillStyle = '#3e2723'; for (let k = 0; k < 9; k++) ctx.fillRect(tb.x - tb.w * 0.3 + (k * 37 % 10) / 10 * tb.w * 0.55, tb.y - tb.h * 0.3 + (k * 53 % 10) / 10 * tb.h * 0.55, 2 * devicePixelRatio, 2 * devicePixelRatio); }
-      ctx.fillStyle = '#7a1f4a'; ctx.font = `700 ${2.3 * u}px Inter, sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText(tb.f.name, tb.x - tb.w * 0.03, tb.y + tb.h * 0.95);
-      if (!g.input.isTouch) { ctx.fillStyle = 'rgba(122,31,74,0.6)'; ctx.fillText(String(i + 1), tb.x - tb.w * 0.03, tb.y - tb.h * 0.7); }
+      const tx = tb.x - tb.w * 0.47, tw = tb.w * 0.94, ty = tb.y - tb.h * 0.25, th = tb.h * 0.85;
+      // metalen bak
+      const mg = ctx.createLinearGradient(tx, 0, tx + tw, 0);
+      mg.addColorStop(0, '#90a4ae'); mg.addColorStop(0.5, '#eceff1'); mg.addColorStop(1, '#90a4ae');
+      ctx.fillStyle = mg; roundRect(ctx, tx, ty, tw, th, 1 * u); ctx.fill();
+      // bergje ijs in de bak, met licht en schaduw
+      const cx = tb.x - tb.w * 0.03, cy = ty + th * 0.15;
+      ctx.save(); ctx.beginPath(); ctx.rect(tx - 2 * u, ty - tb.h, tw + 4 * u, tb.h + th * 0.3); ctx.clip();
+      const ig = ctx.createRadialGradient(cx - tw * 0.15, cy - tb.h * 0.35, tw * 0.05, cx, cy, tw * 0.55);
+      ig.addColorStop(0, shade(tb.f.c, 0.45)); ig.addColorStop(0.6, tb.f.c); ig.addColorStop(1, shade(tb.f.c, -0.3));
+      ctx.fillStyle = ig;
+      ctx.beginPath(); ctx.moveTo(tx + tw * 0.04, cy + th * 0.2);
+      for (let k = 0; k <= 8; k++) { const a = Math.PI + (k / 8) * Math.PI; ctx.lineTo(cx + Math.cos(a) * tw * 0.46, cy + Math.sin(a) * tb.h * 0.55 * (k % 2 ? 1 : 0.85)); }
+      ctx.lineTo(tx + tw * 0.96, cy + th * 0.2); ctx.closePath(); ctx.fill();
+      ctx.restore();
+      if (tb.f.dots) { ctx.fillStyle = '#3e2723'; for (let k = 0; k < 9; k++) ctx.fillRect(cx - tw * 0.3 + (k * 37 % 10) / 10 * tw * 0.6, cy - tb.h * 0.35 + (k * 53 % 10) / 10 * tb.h * 0.4, 1.6 * devicePixelRatio, 1.6 * devicePixelRatio); }
+      ctx.fillStyle = '#7a1f4a'; ctx.font = `700 ${Math.min(2.3 * u, tw / 6)}px Inter, sans-serif`; ctx.textAlign = 'center';
+      ctx.fillText(tb.f.name, cx, ty + th + 2.6 * u);
+      if (!g.input.isTouch) { ctx.fillStyle = 'rgba(122,31,74,0.55)'; ctx.font = `800 ${2 * u}px Inter, sans-serif`; ctx.fillText(String(i + 1), cx, ty - tb.h * 0.62); }
     });
     // zwierende schep met een stippellijn naar beneden: daar valt het bolletje
-    ctx.strokeStyle = '#90a4ae'; ctx.lineWidth = 1.2 * u;
-    ctx.beginPath(); ctx.moveTo(holdX, L.dropY - 7 * u); ctx.lineTo(holdX, L.dropY - 1.5 * u); ctx.stroke();
-    ctx.fillStyle = '#b0bec5'; ctx.beginPath(); ctx.arc(holdX, L.dropY - 1 * u, r * 0.7, 0, Math.PI); ctx.fill();
+    const sg = ctx.createLinearGradient(holdX - r, 0, holdX + r, 0);
+    sg.addColorStop(0, '#78909c'); sg.addColorStop(0.5, '#eceff1'); sg.addColorStop(1, '#78909c');
+    ctx.strokeStyle = '#607d8b'; ctx.lineWidth = 1.2 * u; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(holdX + 3 * u, L.dropY - 8 * u); ctx.lineTo(holdX, L.dropY - 1.5 * u); ctx.stroke();
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(holdX, L.dropY - 1 * u, r * 0.7, 0, Math.PI); ctx.closePath(); ctx.fill();
     const topX = coneX + (stack.length ? stack[stack.length - 1].rel : 0);
     const lined = Math.abs(holdX - topX) < r * 0.95;
-    ctx.setLineDash([1 * u, 1.5 * u]); ctx.strokeStyle = lined ? 'rgba(67,160,71,0.8)' : 'rgba(122,31,74,0.3)'; ctx.lineWidth = (lined ? 0.7 : 0.4) * u;
-    ctx.beginPath(); ctx.moveTo(holdX, L.dropY); ctx.lineTo(holdX, L.coneY); ctx.stroke(); ctx.setLineDash([]);
-    // toonbank
-    ctx.fillStyle = '#7a1f4a'; ctx.fillRect(0, L.coneY + r * 1.6, W, H);
-    // hoorn met toren
-    const drawScoop = (x, y, f) => {
-      ctx.fillStyle = f.c; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 0.3 * u; ctx.stroke();
-      if (f.dots) { ctx.fillStyle = '#3e2723'; for (let k = 0; k < 7; k++) ctx.fillRect(x - r * 0.6 + (k * 37 % 10) / 10 * r * 1.2, y - r * 0.6 + (k * 53 % 10) / 10 * r * 1.2, 2 * devicePixelRatio, 2 * devicePixelRatio); }
-    };
-    ctx.fillStyle = '#d7a35b';
+    ctx.setLineDash([1 * u, 1.5 * u]); ctx.strokeStyle = lined ? 'rgba(67,160,71,0.85)' : 'rgba(122,31,74,0.3)'; ctx.lineWidth = (lined ? 0.7 : 0.4) * u;
+    ctx.beginPath(); ctx.moveTo(holdX, L.dropY); ctx.lineTo(holdX, L.coneY - r); ctx.stroke(); ctx.setLineDash([]);
+    // toonbank met een glimrand
+    const cy0 = L.coneY + r * 1.6;
+    const tg = ctx.createLinearGradient(0, cy0, 0, H);
+    tg.addColorStop(0, '#9c2a5f'); tg.addColorStop(0.15, '#7a1f4a'); tg.addColorStop(1, '#5a1636');
+    ctx.fillStyle = tg; ctx.fillRect(0, cy0, W, H - cy0);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, cy0, W, 0.5 * u);
+    // hoorn: wafel met ruitjes en schaduw
+    const cg = ctx.createLinearGradient(coneX - r, 0, coneX + r, 0);
+    cg.addColorStop(0, '#b8803a'); cg.addColorStop(0.45, '#e9b871'); cg.addColorStop(1, '#a8702c');
+    ctx.fillStyle = cg;
     ctx.beginPath(); ctx.moveTo(coneX - r * 0.95, L.coneY - r * 0.4); ctx.lineTo(coneX + r * 0.95, L.coneY - r * 0.4); ctx.lineTo(coneX, L.coneY + r * 1.6); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#a8742e'; ctx.lineWidth = 0.3 * u;
-    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(coneX + k * r * 0.35, L.coneY - r * 0.4); ctx.lineTo(coneX + k * r * 0.12, L.coneY + r * 1.2); ctx.stroke(); }
-    stack.forEach((s, i) => drawScoop(coneX + s.rel, L.coneY - r * 0.6 - i * r * 1.45, s.f));
-    if (falling) drawScoop(falling.x, falling.y, falling.f);
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = 'rgba(120,70,20,0.55)'; ctx.lineWidth = 0.3 * u;
+    for (let k = -4; k <= 4; k++) {
+      ctx.beginPath(); ctx.moveTo(coneX + k * r * 0.4 - r, L.coneY - r * 0.5); ctx.lineTo(coneX + k * r * 0.4 + r, L.coneY + r * 1.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(coneX + k * r * 0.4 + r, L.coneY - r * 0.5); ctx.lineTo(coneX + k * r * 0.4 - r, L.coneY + r * 1.6); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = shade('#d7a35b', 0.2); roundRect(ctx, coneX - r * 1.0, L.coneY - r * 0.55, r * 2.0, r * 0.3, r * 0.12); ctx.fill(); // rand van de hoorn
+    // bolletjes: bol met licht van linksboven, een geribbelde onderrand en een schaduw op het bolletje eronder
+    const drawScoop = (x, y, f, below) => {
+      if (below) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x, y + r * 0.85, r * 0.9, r * 0.28, 0, 0, 7); ctx.fill(); }
+      // geribbelde rand onderaan (zoals een geschept bolletje)
+      ctx.fillStyle = shade(f.c, -0.18);
+      ctx.beginPath();
+      for (let k = 0; k <= 24; k++) { const a = (k / 24) * Math.PI * 2; const rr = r * (1.04 + (k % 2 ? 0.07 : 0)); const px = x + Math.cos(a) * rr, py = y + r * 0.12 + Math.sin(a) * rr * 0.92; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.closePath(); ctx.fill();
+      // de bol zelf
+      const bg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.45, r * 0.08, x, y, r * 1.05);
+      bg.addColorStop(0, shade(f.c, 0.5)); bg.addColorStop(0.5, f.c); bg.addColorStop(1, shade(f.c, -0.32));
+      ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y - r * 0.04, r * 0.97, 0, 7); ctx.fill();
+      // glimlichtje
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(x - r * 0.38, y - r * 0.48, r * 0.22, r * 0.13, -0.6, 0, 7); ctx.fill();
+      if (f.dots) { ctx.fillStyle = '#3e2723'; for (let k = 0; k < 9; k++) { const a = k * 2.4, d = r * 0.25 + (k * 37 % 10) / 10 * r * 0.55; ctx.fillRect(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.9, 1.8 * devicePixelRatio, 1.4 * devicePixelRatio); } }
+    };
+    stack.forEach((s2, i) => drawScoop(coneX + s2.rel, L.coneY - r * 0.6 - i * r * 1.45, s2.f, i > 0));
+    if (falling) drawScoop(falling.x, falling.y, falling.f, false);
     parts.draw(ctx);
-    // bestelbonnetje
+    // bestelbonnetje: blijft links van de baan van de schep; een lange naam loopt over twee regels,
+    // en de letters worden pas kleiner als het dan nog niet past
     if (order) {
-      const bx = W * 0.04, by = H * 0.34, bw = Math.min(W * 0.3, 34 * u);
-      ctx.fillStyle = '#fff'; ctx.fillRect(bx, by, bw, (8 + order.fl.length * 5) * u);
-      ctx.fillStyle = '#7a1f4a'; ctx.textAlign = 'left'; ctx.font = `800 ${2.8 * u}px Inter, sans-serif`;
-      ctx.fillText(happy > 0 ? 'Hiel lekker!' : order.who, bx + 1.5 * u, by + 4 * u);
+      const title = happy > 0 ? 'Hiel lekker!' : order.who;
+      const bx = W * 0.03, by = H * 0.35, pad = 1.8 * u, maxW = W * 0.27 - bx;
+      const split = (txt) => { const w = txt.split(' '); if (w.length < 2) return [txt]; let best = [txt], bestD = 1e9; for (let k = 1; k < w.length; k++) { const a1 = w.slice(0, k).join(' '), a2 = w.slice(k).join(' '); const d = Math.abs(a1.length - a2.length); if (d < bestD) { bestD = d; best = [a1, a2]; } } return best; };
+      const measure = (size, lines) => {
+        ctx.font = `800 ${size}px Inter, sans-serif`; let m = Math.max(...lines.map((l) => ctx.measureText(l).width));
+        ctx.font = `700 ${size * 0.92}px Inter, sans-serif`;
+        for (const f of order.fl) m = Math.max(m, ctx.measureText('▶ ' + f.name).width + size * 1.4);
+        return m;
+      };
+      let fs = 2.8 * u, lines = [title];
+      if (measure(fs, lines) + pad * 2 > maxW) lines = split(title);
+      while (fs > 1.5 * u && measure(fs, lines) + pad * 2 > maxW) fs -= 0.1 * u;
+      const bw = Math.min(maxW, measure(fs, lines) + pad * 2), lh = fs * 1.7, head = lines.length * fs * 1.2 + fs * 0.5;
+      const bh = pad * 2 + head + order.fl.length * lh;
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; roundRect(ctx, bx + 0.6 * u, by + 0.8 * u, bw, bh, 1.5 * u); ctx.fill();
+      ctx.fillStyle = '#fffdf8'; roundRect(ctx, bx, by, bw, bh, 1.5 * u); ctx.fill();
+      ctx.fillStyle = '#7a1f4a'; ctx.fillRect(bx + pad, by + pad + head - fs * 0.25, bw - pad * 2, 0.22 * u);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = happy > 0 ? '#2e7d32' : '#7a1f4a'; ctx.font = `800 ${fs}px Inter, sans-serif`;
+      lines.forEach((l, i) => ctx.fillText(l, bx + pad, by + pad + fs * 0.9 + i * fs * 1.2));
       order.fl.forEach((f, i) => {
-        const y = by + (8.5 + (order.fl.length - 1 - i) * 5) * u; // bovenste bolletje bovenaan
+        const y = by + pad + head + (order.fl.length - 1 - i) * lh + lh * 0.72; // bovenste bolletje bovenaan
         const done = i < stack.length;
-        ctx.fillStyle = f.c; ctx.beginPath(); ctx.arc(bx + 3.5 * u, y - 1 * u, 1.8 * u, 0, 7); ctx.fill();
+        const dg = ctx.createRadialGradient(bx + pad + fs * 0.35, y - fs * 0.5, 1, bx + pad + fs * 0.5, y - fs * 0.35, fs * 0.55);
+        dg.addColorStop(0, shade(f.c, 0.4)); dg.addColorStop(1, shade(f.c, -0.25));
+        ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(bx + pad + fs * 0.45, y - fs * 0.33, fs * 0.45, 0, 7); ctx.fill();
         ctx.fillStyle = done ? '#43a047' : i === stack.length ? '#7a1f4a' : '#9e9e9e';
-        ctx.font = `${i === stack.length ? 800 : 600} ${2.6 * u}px Inter, sans-serif`;
-        ctx.fillText(`${done ? '✓ ' : i === stack.length ? '▶ ' : ''}${f.name}`, bx + 6.5 * u, y);
+        ctx.font = `${i === stack.length ? 800 : 700} ${fs * 0.92}px Inter, sans-serif`;
+        ctx.fillText(`${done ? '✓ ' : i === stack.length ? '▶ ' : ''}${f.name}`, bx + pad + fs * 1.2, y);
       });
     }
     ui.score(`🍦 ${served} / ${need}  ·  ${'✗'.repeat(mistakes)}${'·'.repeat(Math.max(0, maxMistakes - mistakes))}  ·  ${Math.max(0, Math.ceil(limit - t))} s`);
