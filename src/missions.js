@@ -16,7 +16,7 @@ import { setupGeschiedenis, geschiedenisItems, geschiedenisHandlers, GESCHIEDENI
 import { setupKnotwilg, knotwilgItems, knotwilgHandlers, KNOTWILG_MISSION_OF } from './knotwilg.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
-const SAVE_KEY = 'gulpe-missies-v2';
+const SAVE_KEY = 'gulpehd-missies-v2';
 
 // Gulpense zin met Nederlandse vertaling. De Gulpense woorden komen uit de woordenlijst Gulpens
 // van mijnwoordenboek.nl (door bezoekers samengesteld). Laat ze nakijken door een Gulpenaar.
@@ -34,12 +34,12 @@ export class Missions {
     } catch { /* geen opslag beschikbaar */ }
     // beste tijd of score per missie: { id: { v, unit, high } }
     this.best = {};
-    try { this.best = JSON.parse(localStorage.getItem('gulpe-records')) || {}; } catch { /* geen opslag */ }
+    try { this.best = JSON.parse(localStorage.getItem('gulpehd-records')) || {}; } catch { /* geen opslag */ }
   }
 
   save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify([...this.done])); } catch { /* negeren */ }
-    try { localStorage.setItem('gulpe-records', JSON.stringify(this.best)); } catch { /* negeren */ }
+    try { localStorage.setItem('gulpehd-records', JSON.stringify(this.best)); } catch { /* negeren */ }
   }
 
   // record bijwerken; geeft 'nieuw' (eerste keer), 'record' (verbeterd) of null terug

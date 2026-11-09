@@ -4,7 +4,7 @@
 // vanzelf weer uit. Niets expliciets: je ziet alleen de bus van buiten.
 import * as THREE from 'three';
 
-const KEY = 'gulpe-sixsense';
+const KEY = 'gulpehd-sixsense';
 const CODES = ['SIX-GULPE', 'SIX-VLAAI', 'SIX-ALAAF'];
 const PINK = '#ff3d9a';
 

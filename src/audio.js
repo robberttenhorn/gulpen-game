@@ -3,7 +3,7 @@ export class Sound {
   constructor() {
     this.ctx = null;
     this.muted = false;
-    try { this.muted = localStorage.getItem('gulpe-geluid') === 'uit'; } catch { /* geen opslag */ }
+    try { this.muted = localStorage.getItem('gulpehd-geluid') === 'uit'; } catch { /* geen opslag */ }
     this.engine = null;
   }
 
@@ -46,7 +46,7 @@ export class Sound {
 
   setMuted(m) {
     this.muted = m;
-    try { localStorage.setItem('gulpe-geluid', m ? 'uit' : 'aan'); } catch { /* negeren */ }
+    try { localStorage.setItem('gulpehd-geluid', m ? 'uit' : 'aan'); } catch { /* negeren */ }
     if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.7, this.ctx.currentTime, 0.05);
   }
 

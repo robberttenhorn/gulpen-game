@@ -1,3 +1,6 @@
+> **Dit is de HD-proefversie van Locals: Gulpen.** Een kopie van [gulpen-game](https://github.com/robberttenhorn/gulpen-game) om te kijken hoe ver de game richting filmische, realistische graphics kan, terwijl hij in de browser blijft draaien. De echte game staat los hiervan en wordt hier niet door geraakt.
+> Verschillen met het origineel: de voortgang wordt apart bewaard (opslagnamen beginnen met `gulpehd-`), de anonieme telling staat uit en de titel is "Locals: Gulpen HD".
+
 # Locals: Gulpen
 
 Een browsergame die zich afspeelt in het echte Gulpen (Zuid-Limburg). Het dorp is opgebouwd uit open overheidsdata:

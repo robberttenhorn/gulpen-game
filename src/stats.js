@@ -11,9 +11,9 @@
 //   (pagina)       elke keer dat iemand de game opent = bezoekers, ook wie niet op "Speel" drukt
 //
 // Dashboard: https://10horn.goatcounter.com (de code hieronder; leeg maken zet de telling uit).
-const GOATCOUNTER_CODE = '10horn';
+const GOATCOUNTER_CODE = ''; // uit in de HD-kopie, zodat de telling van de echte game schoon blijft
 
-const KEY = 'gulpe-stats';
+const KEY = 'gulpehd-stats';
 // Niet tellen: zonder code, lokaal testen, met ?dev of ?nostats, of op een apparaat waar
 // localStorage 'skipgc' op 't' staat (zelfde schakelaar als GoatCounter zelf gebruikt; handig voor je eigen telefoon).
 const off = () => {
