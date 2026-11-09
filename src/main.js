@@ -157,6 +157,16 @@ class Game {
       b.addEventListener('click', (e) => { e.stopPropagation(); askStop(); });
     });
     addEventListener('keydown', (e) => { if (e.code === 'Escape' && !this.bigmap.open) askStop(); });
+    // terug naar start: altijd zichtbaar en altijd te gebruiken, ook als er iets is vastgelopen
+    {
+      const hb = document.getElementById('btn-home'), hc = document.getElementById('home-confirm');
+      let hcTimer = null;
+      const hide = () => { hc.hidden = true; clearTimeout(hcTimer); };
+      for (const el of [hb, hc]) for (const ev of ['pointerdown', 'touchstart']) el.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
+      hb.addEventListener('click', (e) => { e.stopPropagation(); hc.hidden = !hc.hidden; clearTimeout(hcTimer); if (!hc.hidden) hcTimer = setTimeout(hide, 8000); });
+      document.getElementById('home-yes').addEventListener('click', (e) => { e.stopPropagation(); hide(); this.goHome(); });
+      document.getElementById('home-no').addEventListener('click', (e) => { e.stopPropagation(); hide(); });
+    }
     const sb = document.getElementById('btn-sound');
     const syncSound = () => { sb.classList.toggle('off', this.sfx.muted); sb.setAttribute('aria-label', this.sfx.muted ? 'Geluid aanzetten' : 'Geluid uitzetten'); };
     sb.addEventListener('click', () => { this.sfx.setMuted(!this.sfx.muted); syncSound(); });
@@ -401,9 +411,51 @@ class Game {
     });
   }
 
+  // Terug naar het startpunt: alles stoppen en opruimen wat er loopt, elke stap apart beveiligd,
+  // zodat dit ook werkt als er ergens iets is vastgelopen.
+  goHome() {
+    const step = (name, fn) => { try { fn(); } catch (e) { console.warn('naar start: ' + name, e); } };
+    step('kaart', () => { if (this.bigmap?.open) this.bigmap.hide(); });
+    step('missie', () => { if (this.missions?.busy()) this.missions.stop(); });
+    step('minispel', () => { this.minigame?.stop?.(); this.minigame = null; });
+    step('gesprek', () => { this.ui.cancelDialogs?.(); this.ui.close(); if (this.missions) this.missions.talking = false; });
+    step('binnen', () => {
+      const room = this.interior;
+      if (!room) return;
+      room.group.visible = false; this.interior = null;
+      document.body.classList.remove('inside');
+      this.interiors.light.intensity = 0; this.hemi.groundColor.set(0x5c5a3a);
+      room.onExit?.();
+    });
+    step('race', () => { if (this.race) this.endRace(false, true); });
+    step('auto', () => { if (this.mode === 'car') { this.car.speed = 0; this.exitCar(); } });
+    step('spullen', () => { this.dropProp?.(); this.dropKeg?.(); this.stopPolonaise?.(); this.fragile = null; this.drunk = 0; this.wobble = 0; });
+    step('lopen', () => { if (this.mode !== 'walk') this.setMode('walk'); });
+    step('scherm', () => {
+      document.body.classList.remove('pov', 'cutscene', 'live', 'dialog-open', 'intro', 'inside');
+      document.querySelectorAll('.mini-overlay, .fade-veil').forEach((e) => e.remove());
+      const lb = document.getElementById('live-badge'); if (lb) lb.hidden = true;
+      this.ui.timer?.(null);
+    });
+    step('speler', () => {
+      const p = this.player, [x, z] = this.startPos;
+      p.x = x; p.z = z; p.speed = 0; p.boost = 0; p.heading = Math.PI; p.pose = null; p.lockedFor = false;
+      p.group.visible = true;
+      this.pov = null; this.fading = false;
+      this.actGen = (this.actGen || 0) + 1;
+      this.unlockUntil = performance.now() + 3000;
+      this.camYaw = 0.2; this.camPitch = 0.24; this.camDist = innerWidth < innerHeight ? 9 : 7;
+      this.input.actionPressed = false;
+      this.updateCamera(0, true);
+      this.updateVehicleButton();
+    });
+    step('melding', () => this.ui.toast('Terug bij het startpunt', 1800));
+  }
+
   async fade(mid) {
     this.fading = true;
     const el = document.createElement('div');
+    el.className = 'fade-veil';
     Object.assign(el.style, { position: 'fixed', inset: 0, background: '#000', opacity: 0, transition: 'opacity 1s', zIndex: 15, pointerEvents: 'none' });
     document.body.appendChild(el);
     await wait(30);
