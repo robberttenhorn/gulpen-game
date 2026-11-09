@@ -71,9 +71,9 @@ export function setupGeschiedenis(m, g, add) {
   if (oak) add('archeoloog', 'Archeologe', oak, { shirt: 0xc8a26b, pants: 0x5d4037, hair: 0x6d4c41, hairStyle: 'long', female: true, hat: 'cap', hatColor: 0x8d6e63 });
   const at = spotAt(g, 'atelier', 2.2, -1.2);
   if (at) add('chef', 'Chef van Restaurant Atelier', at, { shirt: 0xffffff, pants: 0x212121, apron: 0x212121, hair: 0x3e2723, hat: 'chef', hatColor: 0xffffff });
-  // de MC wacht bij Café Neubourg (het podium komt pas tijdens de missie bij Mezzaluna)
-  const mc = spotAt(g, 'neubourg', 3, 0) || spotAt(g, 'mezzaluna', 3.2, -4.5);
-  if (mc) add('feestmc', 'MC van Feestkabinet', mc, { shirt: 0xff4fd8, pants: 0x111111, hair: 0x3e2723, sleeves: 'short', shoes: 0xffffff });
+  // de voorzitter van de Gulpener Bierfeesten wacht bij Café Neubourg (het podium komt pas tijdens de missie bij Mezzaluna)
+  const vz = spotAt(g, 'neubourg', 3, 0) || spotAt(g, 'mezzaluna', 3.2, -4.5);
+  if (vz) add('voorzitter', 'Voorzitter van de Gulpener Bierfeesten', vz, { shirt: 0xffffff, pants: 0x263238, coat: 0x123a24, hair: 0x9e9e9e, sash: 0xf2c14e });
   // bioloog aan de rand van het dorp, bij een veld
   const field = findField(g, g.startPos || [0, 0]);
   if (field) {
@@ -95,13 +95,13 @@ export function geschiedenisItems(n) {
     { id: 'primosa', npc: n.conservator, title: 'Kunst in de piramide', place: 'Piramide Primosa, Landsraderweg 7', desc: 'De tentoonstelling in de glazen piramide opent, maar er komt geen hond op af. Haal bezoekers uit de buurt voor de Mona Liesje.' },
     { id: 'romeinen', npc: n.archeoloog, title: 'De Romeinse weg', place: 'Oude Akerweg', desc: 'De Oude Akerweg was de Romeinse weg van Maastricht naar Aken. Help de archeologe graven naar Romeinse vondsten.' },
     { id: 'atelier', npc: n.chef, title: 'Een bord is een schilderij', place: 'Restaurant Atelier, Markt 9', desc: 'Het restaurant zit vol en de souschef is ziek. Maak de borden op precies zoals de chef ze voordoet.' },
-    { id: 'bierfeesten', npc: n.feestmc, title: 'Tappen op de Bierfeesten', place: 'Markt (Gulpener Bierfeesten)', desc: 'Het grootste feest van het jaar, Feestkabinet staat op het podium, maar de tappers zijn kwijt. Tap jij?' },
+    { id: 'bierfeesten', npc: n.voorzitter, title: 'Tappen op de Bierfeesten', place: 'Markt (Gulpener Bierfeesten)', desc: 'Het grootste feest van het jaar, Feestkabinet staat op het podium, maar de tappers zijn kwijt. Tap jij?' },
     { id: 'korenwolf', npc: n.bioloog, title: 'Zit de korenwolf er nog?', place: 'Velden aan de rand van het dorp', desc: 'Hang wildcamera\'s op in het veld en kijk de nachtfoto\'s na. Zit de korenwolf er nog, of niet?' },
     { id: 'forellen', npc: n.kweker, title: 'Forellen scheppen', place: 'Aan de Gulp, bij de Looierstraat', desc: 'Help de forellenkweker met een bestelling: schep alleen de grote forellen uit de kweekvijver.' },
   ].filter((x) => x.npc);
 }
 
-export const GESCHIEDENIS_MISSION_OF = { conservator: 'primosa', archeoloog: 'romeinen', chef: 'atelier', feestmc: 'bierfeesten', bioloog: 'korenwolf', kweker: 'forellen' };
+export const GESCHIEDENIS_MISSION_OF = { conservator: 'primosa', archeoloog: 'romeinen', chef: 'atelier', voorzitter: 'bierfeesten', bioloog: 'korenwolf', kweker: 'forellen' };
 
 export const geschiedenisHandlers = {
   // ------------------------------------------------------------ de glazen piramide Primosa
@@ -207,11 +207,12 @@ export const geschiedenisHandlers = {
   },
 
   // ------------------------------------------------------------ de Gulpener Bierfeesten met Feestkabinet
-  async feestmc(npc, N, ui, g) {
+  async voorzitter(npc, N, ui, g) {
+    const MC = 'MC van Feestkabinet';
     const a = await ui.dialog(N, [
       'Enne? Klaar voor de Gulpener Bierfeesten? Het grootste feest van het jaar, hier op de Markt!',
-      'Wij zijn Feestkabinet: de DJ draait, en ik ben de MC. Het podium staat bij Mezzaluna, de discolampen gaan zo aan.',
-      'Maar er is een probleem: de tappers zijn kwijt, en een Bierfeest zonder bier... Ga jij achter de bar? Tien perfecte Gulpeners, dan roep ik je naam door de boxen!',
+      'Het podium staat bij Mezzaluna, Feestkabinet staat klaar: de DJ draait en de MC zweept iedereen op. De discolampen gaan zo aan.',
+      'Maar als voorzitter heb ik een probleem: de tappers zijn kwijt, en een Bierfeest zonder bier... Ga jij achter de bar? Tien goede Gulpeners, dan laat ik de MC je naam door de boxen roepen!',
     ], ['Ik tap!', 'Ik drink liever mee']);
     if (a !== 0) { await ui.dialog(N, ['Meedrinken kan pas als iemand tapt, hè! Kom maar terug als je dorst krijgt.']); return; }
     if (g.mode === 'car') g.exitCar();
@@ -222,7 +223,7 @@ export const geschiedenisHandlers = {
     const restore = () => {
       g.updaters.delete(upd);
       feest?.remove(); feest = null;
-      g.pov = null; npc.group.visible = true;
+      g.pov = null;
       g.sfx?.stopMusic();
     };
     this.active.cleanup = restore;
@@ -230,7 +231,6 @@ export const geschiedenisHandlers = {
       feest = buildBierfeest(g);
       if (!feest) return;
       g.updaters.add(upd);
-      npc.group.visible = false; // de MC staat nu op het podium
       const b = feest.barSpot;
       if (b) {
         g.player.x = b.x; g.player.z = b.z; g.player.heading = b.heading;
@@ -248,15 +248,16 @@ export const geschiedenisHandlers = {
     if (!r || this.active?.id !== 'bierfeesten') return;
     if (r.ok) {
       g.sfx?.play('cheer');
-      await ui.dialog(N, [
+      await ui.dialog(MC, [
         'GULLEPE! Een daverend applaus voor onze tapper!',
-        'Tien perfecte Gulpeners, en niemand heeft droog gestaan. De DJ draait de volgende plaat speciaal voor jou!',
+        'Tien Gulpeners, en niemand heeft droog gestaan. De DJ draait de volgende plaat speciaal voor jou!',
       ]);
+      await ui.dialog(N, ['Namens het bestuur van de Gulpener Bierfeesten: bedankt! Volgend jaar sta jij op het rooster, hoor.']);
       await g.fade(async () => restore());
       this.active.cleanup = null;
       this.complete('bierfeesten', 'Held van de Bierfeesten!');
     } else {
-      await ui.dialog(N, [r.fails >= 3 ? 'Ai, de halve Markt staat in het schuim. We halen even een dweil.' : 'De rij bij de bar staat tot aan de kerk! Volgend jaar beter.']);
+      await ui.dialog(N, [r.fails >= 3 ? 'Ai, de halve Markt staat in het schuim. Ik haal even een dweil.' : 'De rij bij de bar staat tot aan de kerk! Volgend jaar beter.']);
       await g.fade(async () => restore());
       this.active.cleanup = null;
       this.fail('Te weinig biertjes getapt.');
