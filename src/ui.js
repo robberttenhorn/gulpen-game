@@ -79,6 +79,7 @@ export class UI {
   toast(text, ms = 2600) {
     const el = $('toast');
     el.textContent = text;
+    el.classList.toggle('long', String(text).length > 48); // lange meldingen kleiner, zodat ze niet het hele beeld vullen
     el.classList.add('show');
     clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => el.classList.remove('show'), ms);
