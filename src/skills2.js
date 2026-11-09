@@ -111,63 +111,113 @@ const LOOKERS = [
 ];
 
 // Aan de knop van de automaat draaien zonder betrapt te worden.
-// De knop draait door met vaart, de automaat schudt, en iemand komt van de zijkant aanlopen en blijft staren.
+// Een straatje met de DA-gevel en de automaat. Voorbijgangers lopen over de stoep binnen, blijven staan en staren,
+// en lopen daarna weer door. Draai je terwijl iemand kijkt, dan ben je betrapt. Sta je stil, dan fluit de jongen onschuldig.
 export function startTuutjes(g) {
   const ui = overlay(g, 'Tuutjes trekken', `
-    <div class="tt-machine">
-      <div class="tt-street"><div class="tt-looker"><div class="tt-person"><span class="tt-head">🙂</span><span class="tt-body"></span></div><div class="tt-bubble"><b class="tt-who"></b><small class="tt-say"></small></div></div><div class="tt-warn">!</div></div>
-      <div class="tt-box"><div class="tt-window">TUUTJES<br><small>3 stuks · extra veilig</small></div><div class="tt-knob"><i></i></div><div class="tt-slot"></div><div class="tt-pack">🎁</div></div>
-      <div class="tt-meters"><div>Draaien <div class="bar"><i class="tt-prog"></i></div></div><div>Schaamte <span class="tt-shame">😊😊😊</span></div></div>
-    </div>`, g.input.isTouch ? 'Tik snel om aan de knop te draaien · STOP als er iemand kijkt!' : 'Druk snel op E of spatie om te draaien · STOP als er iemand kijkt!');
-  let prog = 0, shame = 0, t = 0, state = 'rustig', stT = 1.5 + Math.random() * 1.5, looker = null, rot = 0, spin = 0, caughtThisLook = false, done = 0;
-  const $ = (s) => ui.ov.querySelector(s);
+    <div class="tz-scene">
+      <div class="tz-street">
+        <div class="tz-shop"><i style="left:10%"></i><i style="left:30%;background:#b3e5fc"></i><i style="left:52%;background:#ffe082"></i><i style="left:74%;background:#c5e1a5"></i></div>
+        <div class="tz-box"><div class="tz-window">TUUTJES<small>3 stuks · extra veilig</small></div><div class="tz-knob"><i></i></div><div class="tz-slot"></div><div class="tz-pack"></div></div>
+        <div class="tz-boy"><span class="tz-face">😬</span><span class="tz-torso"></span><span class="tz-legs"></span></div>
+        <div class="tz-walker"><span class="tz-eyes">👀</span><span class="tz-face">🙂</span><span class="tz-torso"></span><span class="tz-legs"></span></div>
+        <div class="tz-alarm">👣 Er komt iemand aan!</div>
+        <div class="tz-bubble"><b class="tz-who"></b><small class="tz-say"></small></div>
+      </div>
+      <div class="tz-meters"><div>Draaien <div class="bar"><i class="tz-prog"></i></div></div><div>Schaamte <span class="tz-shame">😊😊😊</span></div></div>
+    </div>`, g.input.isTouch ? 'Tik snel om aan de knop te draaien · stop als er iemand kijkt!' : 'Druk snel op E of spatie om te draaien · stop als er iemand kijkt!');
+  const $ = (q) => ui.ov.querySelector(q);
   const faces = { 'Je tante': '👵', 'De buurvrouw': '👩', 'Prins Carnaval': '🤴', 'Je oude juf': '👩‍🏫', 'De nachtburgemeester': '🕵️', 'Je ex': '😏' };
+  const shirts = { 'Je tante': '#8e24aa', 'De buurvrouw': '#ef6c00', 'Prins Carnaval': '#c62828', 'Je oude juf': '#00897b', 'De nachtburgemeester': '#263238', 'Je ex': '#ad1457' };
+  const walker = $('.tz-walker'), boy = $('.tz-boy'), bubble = $('.tz-bubble');
+  const STARE_X = 30; // waar de voorbijganger blijft staan (procent van de breedte)
+  let prog = 0, shame = 0, state = 'rustig', stT = 1.6 + Math.random() * 1.4, looker = null, rot = 0, spin = 0, caught = false, done = 0;
+  let wx = -20, wFrom = -20, wTo = -20, wDur = 1, wT = 1, lastPress = -9, t = 0, noteT = 0;
+  const say = (who, text, kind, tailX) => {
+    bubble.className = 'tz-bubble on ' + (kind || '');
+    $('.tz-who').textContent = who; $('.tz-say').textContent = text || '';
+    bubble.style.setProperty('--tail', tailX + '%');
+  };
+  const hush = () => { bubble.className = 'tz-bubble'; };
+  const walkTo = (to, dur) => { wFrom = wx; wTo = to; wDur = dur; wT = 0; };
   const setState = (st) => {
-    state = st; caughtThisLook = false;
-    $('.tt-looker').className = 'tt-looker ' + st;
-    $('.tt-warn').classList.toggle('on', st === 'komt');
-    if (st === 'rustig') { stT = 1.4 + Math.random() * 2.2; $('.tt-who').textContent = ''; $('.tt-say').textContent = ''; }
-    if (st === 'komt') { stT = 0.9; looker = LOOKERS[Math.floor(Math.random() * LOOKERS.length)]; $('.tt-head').textContent = faces[looker[0]] || '🙂'; $('.tt-who').textContent = 'Er komt iemand aan!'; $('.tt-say').textContent = ''; }
-    if (st === 'kijkt') { stT = 1.3 + Math.random() * 1.2; $('.tt-who').textContent = looker[0] + ' kijkt!'; $('.tt-say').textContent = ''; }
+    state = st;
+    $('.tz-alarm').classList.toggle('on', st === 'komt');
+    walker.classList.toggle('staring', st === 'kijkt');
+    if (st === 'rustig') { stT = 1.3 + Math.random() * 2.0; }
+    if (st === 'komt') {
+      stT = 1.0; caught = false;
+      looker = LOOKERS[Math.floor(Math.random() * LOOKERS.length)];
+      walker.querySelector('.tz-face').textContent = faces[looker[0]] || '🙂';
+      walker.querySelector('.tz-torso').style.background = shirts[looker[0]] || '#546e7a';
+      wx = -20; walkTo(STARE_X, 1.0);
+      hush();
+    }
+    if (st === 'kijkt') { stT = 1.3 + Math.random() * 1.2; say(looker[0] + ' kijkt!', 'Niet draaien nu...', 'bad', STARE_X); }
+    if (st === 'weg') {
+      stT = 1.2; walkTo(125, 1.2);
+      if (!caught) { say('Pfoe, niks gezien.', 'Gewoon even een kauwgompje kopen... 😇', 'ok', 88); g.sfx?.play('coin'); }
+      else hush();
+    }
   };
   return runMini(g, (dt, finish) => {
     t += dt; stT -= dt;
     g.player.lockedFor = true;
+    // voorbijganger over de stoep laten lopen
+    if (wT < 1) { wT = Math.min(1, wT + dt / wDur); const e = wT < 1 ? wT : 1; wx = wFrom + (wTo - wFrom) * e; }
+    walker.style.left = wx + '%';
+    walker.classList.toggle('walking', wT < 1);
     if (done) { done -= dt; if (done <= 0) finish({ ok: true, shame }); return; }
-    if (stT <= 0) setState(state === 'rustig' ? 'komt' : state === 'komt' ? 'kijkt' : 'rustig');
+    if (stT <= 0) setState(state === 'rustig' ? 'komt' : state === 'komt' ? 'kijkt' : state === 'kijkt' ? 'weg' : 'rustig');
+    if (state === 'weg' && stT < 0.5 && !caught) hush();
     if (pressed(g)) {
+      lastPress = t;
       if (state === 'kijkt') {
-        if (!caughtThisLook) {
-          caughtThisLook = true; shame++;
-          $('.tt-say').textContent = `"${looker[1]}"`;
-          flash(ui.ov, 'bad'); shake($('.tt-box'), true); bump($('.tt-shame'));
-          popText(ui.ov, 'BETRAPT!', 50, 38, 'bad big');
+        if (!caught) {
+          caught = true; shame++;
+          say(looker[0] + ': BETRAPT!', `"${looker[1]}"`, 'bad', STARE_X);
+          flash(ui.ov, 'bad'); shake($('.tz-street'), true); bump($('.tz-shame'));
           g.sfx?.play('fail');
+          stT = Math.max(stT, 1.6); // even laten staan, zodat je de opmerking kunt lezen
         }
       } else {
         prog = Math.min(1, prog + 0.055);
-        spin += 520;
-        shake($('.tt-box'));
-        bump($('.tt-prog').parentElement);
-        if (Math.random() < 0.5) popText(ui.ov, ['krrr', 'klik', 'rrrt', '+5%'][Math.floor(Math.random() * 4)], 46 + Math.random() * 8, 58, 'small');
+        spin += 560;
+        shake($('.tz-box'));
+        boy.classList.remove('crank'); void boy.offsetWidth; boy.classList.add('crank');
+        if (Math.random() < 0.45) popText(ui.ov, ['krrr', 'klik', 'rrrt'][Math.floor(Math.random() * 3)], 62 + Math.random() * 10, 40 + Math.random() * 8, 'small');
         g.sfx?.play('cart');
       }
     }
+    // gezicht van de jongen: zenuwachtig, druk bezig, betrapt of onschuldig fluitend
+    const busy = t - lastPress < 0.35;
+    const innocent = state === 'kijkt' && !caught && !busy;
+    boy.querySelector('.tz-face').textContent = caught && state === 'kijkt' ? '😳' : innocent ? '😗' : busy ? '😅' : state === 'komt' ? '😟' : '😬';
+    boy.classList.toggle('innocent', innocent);
+    if (innocent && (noteT -= dt) <= 0) {
+      noteT = 0.55;
+      const n = document.createElement('div'); n.className = 'tz-note'; n.textContent = Math.random() < 0.5 ? '♪' : '♫';
+      $('.tz-street').appendChild(n); setTimeout(() => n.remove(), 1200);
+    }
     // knop draait door met vaart en remt af
     rot += spin * dt; spin *= Math.pow(0.04, dt);
-    $('.tt-prog').style.width = prog * 100 + '%';
-    $('.tt-knob').style.transform = `rotate(${rot}deg)`;
-    $('.tt-shame').textContent = '😳'.repeat(shame) + '😊'.repeat(Math.max(0, 3 - shame));
+    $('.tz-knob').style.transform = `rotate(${rot}deg)`;
+    $('.tz-prog').style.width = prog * 100 + '%';
+    $('.tz-prog').parentElement.classList.toggle('hot', prog > 0.8);
+    $('.tz-box').classList.toggle('glow', prog > 0.8);
+    $('.tz-shame').textContent = '😳'.repeat(shame) + '😊'.repeat(Math.max(0, 3 - shame));
     ui.score(`${Math.round(prog * 100)}%`);
     if (prog >= 1) {
       // pakje valt uit de automaat
-      $('.tt-pack').classList.add('drop');
-      popText(ui.ov, 'Gelukt!', 50, 40, 'gold big');
+      $('.tz-pack').classList.add('drop');
+      boy.querySelector('.tz-face').textContent = '😁';
+      say('Gelukt!', 'Snel in je zak ermee, voor iemand het ziet.', 'ok', 88);
+      popText(ui.ov, 'Gelukt!', 50, 30, 'gold big');
       flash(ui.ov, 'gold');
       g.sfx?.play('coin');
-      done = 1.3;
+      done = 1.6;
     } else if (shame >= 3) finish({ ok: false, shame });
-  }, () => { ui.close(); g.player.lockedFor = false; }, { state: () => state, prog: () => prog, label: 'Draai!' });
+  }, () => { ui.close(); g.player.lockedFor = false; }, { state: () => (state === 'weg' ? 'rustig' : state), prog: () => prog, label: 'Draai!' });
 }
 
 // ------------------------------------------------------------ bommetje (Mosaqua)

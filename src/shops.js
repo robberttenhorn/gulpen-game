@@ -19,7 +19,7 @@ export const SHOPS = {
   hema: { sign: 'HEMA', sub: '', bg: '#c8102e', fg: '#ffffff', type: 'warenhuis' },
   top1toys: { sign: 'Top1Toys', sub: 'speelgoed', bg: '#ffd400', fg: '#d6001c', type: 'speelgoed' },
   euronics: { sign: 'Euronics', sub: 'elektronica · witgoed', bg: '#0b3c8c', fg: '#ffffff', type: 'elektro' },
-  da: { sign: 'DA Drogisterij & Parfumerie', sub: '', bg: '#ffffff', fg: '#c8102e', type: 'drogist' },
+  da: { sign: 'DA Drogisterij & Parfumerie', sub: '', bg: '#ffffff', fg: '#c8102e', type: 'drogist', automaat: true },
   pijls: { sign: 'Bakkerij Pijls', sub: 'brood · vlaai · banket', bg: '#5a2e14', fg: '#f6e7c8', awning: ['#5a2e14', '#f6e7c8'], type: 'bakker' },
   athene: { sign: 'Grieks Restaurant Athene', sub: 'gyros · souvlaki · ouzo', bg: '#0d47a1', fg: '#ffffff', awning: ['#0d47a1', '#ffffff'], type: 'grieks' },
   plankeukens: { sign: 'Plan Keukens', sub: 'keukens op maat', bg: '#263238', fg: '#ffffff', type: 'keukens' },
@@ -136,7 +136,8 @@ function shopFacade(fac, f, s) {
       break;
     }
     case 'drogist': {
-      // ouderwetse condoomautomaat aan de gevel, naast de etalage
+      // ouderwetse condoomautomaat aan de gevel, naast de etalage (alleen bij de DA: daar staat hij echt)
+      if (s.automaat) {
       const auto = new THREE.Group();
       auto.add(mesh(new THREE.BoxGeometry(0.55, 0.85, 0.22), std(0xb71c1c, { roughness: 0.4, metalness: 0.2 }), 0, 0, 0.11));
       auto.add(mesh(new THREE.PlaneGeometry(0.42, 0.3), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1f5, emissiveIntensity: 0.2 }), 0, 0.2, 0.225));
@@ -144,6 +145,7 @@ function shopFacade(fac, f, s) {
       auto.position.set(-w / 2 - 0.55, 1.35, 0);
       add(auto);
       fac.frames.automaat = { ...f, x: f.x - f.ux * (w / 2 + 0.55), z: f.z - f.uz * (w / 2 + 0.55) };
+      }
       const cols = [0xf8bbd0, 0xb3e5fc, 0xffffff, 0xffe082, 0xc5e1a5];
       for (let r = 0; r < 2; r++) {
         add(mesh(new THREE.BoxGeometry(winW - 0.2, 0.03, 0.25), std(0xffffff), wx, 0.95 + r * 0.6, 0.2));
