@@ -51,13 +51,13 @@ export const knotwilgHandlers = {
     if (g.mode === 'car') g.exitCar();
     g.setMode('walk');
     this.setActive('knotwilg', 'Knotwilgen knotten', 'Zaag alle jonge takken van de twee knotwilgen. Kies eerst waar je zaagt (net boven de knot), zaag dan in een rustig ritme.', '0 / 12 takken');
-    const r = await startKnotten(g, { perTree: 6, trees: 2, limit: 120, maxKnot: 3 });
+    const r = await startKnotten(g, { perTree: 6, trees: 2, limit: 110, maxKnot: 3 });
     if (!r || this.active?.id !== 'knotwilg') return;
     if (r.ok) {
       g.tuin38?.prune();
       await ui.dialog(N, [
         r.neat >= 10 ? 'Allemaal netjes vlak boven de knot! Jij hebt dit vaker gedaan, of niet?' : 'Ze zijn eraf! Hier en daar een stompje, maar dat groeit wel weer dicht.',
-        'Die takken gebruik ik voor de bonen in de moestuin. En de rest gaat in de groenbak. Bedankt, hè!',
+        'Die takken laat ik een jaartje drogen, en dan gaan ze in de haard. Lekker warm deze winter! Bedankt, hè!',
       ]);
       this.complete('knotwilg', 'Knotwilgen geknot!');
     } else {
@@ -109,7 +109,7 @@ export function startKnotten(g, { perTree = 6, trees = 2, limit = 120, maxKnot =
   const zoneGood = new THREE.MeshBasicMaterial({ color: 0x66bb6a, transparent: true, opacity: 0.5, depthWrite: false });
   const zoneBad = new THREE.MeshBasicMaterial({ color: 0xe53935, transparent: true, opacity: 0.55, depthWrite: false });
   const rnd = (() => { let x = 11; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); })();
-  const ZONE = [0.06, 0.2];
+  const ZONE = [0.07, 0.16];
   const man = g.missions?.npcs?.snoeier;
   // ---- per wilg: kijkrichting en takken die in een waaier uit de knot komen (de echte kruin gaat zolang weg)
   const wills = T.willows.slice(0, trees).map((wl, ti) => {
@@ -145,7 +145,7 @@ export function startKnotten(g, { perTree = 6, trees = 2, limit = 120, maxKnot =
       zg.visible = zb.visible = false;
       grp.add(stem, leafMesh, zg, zb);
       root.add(grp);
-      branches.push({ grp, stem, leafMesh, leafGeo, zg, zb, mat, dir, L, r0, cut: null, need: 6 + Math.round(rnd() * 3), wig: 0, phase: rnd() * 6 });
+      branches.push({ grp, stem, leafMesh, leafGeo, zg, zb, mat, dir, L, r0, cut: null, need: 8 + Math.round(rnd() * 3), wig: 0, phase: rnd() * 6 });
     }
     return { wl, knot, back, right, branches };
   });
@@ -198,8 +198,8 @@ export function startKnotten(g, { perTree = 6, trees = 2, limit = 120, maxKnot =
       const dt = t - lastStroke;
       lastStroke = t; stroke++; strokeAnim = 1; b.wig = 0.6;
       const at = pointOn(b, cutS);
-      if (dt < 0.13) { jam = 0.8; speak('klem'); shake(ui.ov.querySelector('.kn-meter')); g.sfx?.play('splat'); const [x, y] = screenPct(at); popText(ui.ov, 'Klem!', x, y - 8, 'bad'); return; }
-      prog = Math.min(1, prog + (dt > 0.75 ? 0.5 : 1) / b.need);
+      if (dt < 0.2) { jam = 1.0; speak('klem'); shake(ui.ov.querySelector('.kn-meter')); g.sfx?.play('splat'); const [x, y] = screenPct(at); popText(ui.ov, 'Klem!', x, y - 8, 'bad'); return; }
+      prog = Math.min(1, prog + (dt > 0.6 ? 0.4 : 1) / b.need);
       spawnDust(at, 7);
       g.sfx?.play('cart');
       if (prog >= 1) {
@@ -244,7 +244,7 @@ export function startKnotten(g, { perTree = 6, trees = 2, limit = 120, maxKnot =
     const b = cur();
     // zaag op en neer langs de tak, sneller bij latere takken
     if (phase === 'mik' && ok === null && travel === 0) {
-      s += sDir * (0.42 + cutCount * 0.035) * dt;
+      s += sDir * (0.55 + cutCount * 0.045) * dt;
       if (s > 0.62) { s = 0.62; sDir = -1; } else if (s < 0) { s = 0; sDir = 1; }
     }
     // takken wiegen in de wind en schudden bij het zagen; de actieve tak licht op
@@ -307,7 +307,7 @@ export function startKnotten(g, { perTree = 6, trees = 2, limit = 120, maxKnot =
       meter.classList.add('on');
       meter.classList.toggle('jam', jam > 0);
       meter.querySelector('i').style.width = Math.round(prog * 100) + '%';
-      meter.querySelector('span').textContent = jam > 0 ? 'Zaag klemt... even wachten' : since < 0.13 ? 'Rustig!' : since > 0.75 ? 'Doorzagen!' : 'Mooi ritme';
+      meter.querySelector('span').textContent = jam > 0 ? 'Zaag klemt... even wachten' : since < 0.2 ? 'Rustig!' : since > 0.6 ? 'Doorzagen!' : 'Mooi ritme';
       $('.kn-cue').textContent = '';
     } else {
       meter.classList.remove('on');
