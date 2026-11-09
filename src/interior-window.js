@@ -43,6 +43,74 @@ function counter(c, x, y, w, h, color = '#7a5236', top = '#d7ccc8') {
 }
 function lamp(c, x, y) { c.fillStyle = '#fff8e1'; c.beginPath(); c.ellipse(x, y, 16, 5, 0, 0, 7); c.fill(); }
 
+
+// ---- kamers in een woonhuis (achterkant van Ringweg 38): geen toonbank, geen personeel
+const HOME = {
+  // eetkamer: houten tafel met zes stoelen, hanglamp, dressoir en schilderijen
+  eetkamer(b, m, rand) {
+    b.fillStyle = 'rgba(0,0,0,0.06)'; b.fillRect(0, H * 0.78, W, H * 0.22);
+    // dressoir met spullen erop
+    b.fillStyle = '#6d4c33'; b.fillRect(W * 0.1, H * 0.5, W * 0.34, H * 0.28);
+    b.fillStyle = '#5a3d28'; for (let i = 0; i < 3; i++) b.fillRect(W * (0.115 + i * 0.11), H * 0.54, W * 0.1, H * 0.2);
+    b.fillStyle = '#e0e0e0'; b.fillRect(W * 0.16, H * 0.42, 14, 26); b.fillStyle = '#2e7d32'; b.beginPath(); b.arc(W * 0.38, H * 0.42, 16, 0, 7); b.fill(); b.fillStyle = '#8d6e63'; b.fillRect(W * 0.37, H * 0.44, 10, 18);
+    // schilderijen
+    b.fillStyle = '#3e2723'; b.fillRect(W * 0.55, H * 0.14, W * 0.2, H * 0.3); b.fillStyle = '#90caf9'; b.fillRect(W * 0.56, H * 0.16, W * 0.18, H * 0.13); b.fillStyle = '#9ccc65'; b.fillRect(W * 0.56, H * 0.29, W * 0.18, H * 0.13);
+    b.fillStyle = '#3e2723'; b.fillRect(W * 0.8, H * 0.2, W * 0.1, H * 0.2); b.fillStyle = '#ffcc80'; b.fillRect(W * 0.81, H * 0.22, W * 0.08, H * 0.16);
+    // hanglamp boven de tafel
+    m.strokeStyle = '#333'; m.lineWidth = 2; m.beginPath(); m.moveTo(W * 0.5, 0); m.lineTo(W * 0.5, H * 0.3); m.stroke();
+    m.fillStyle = '#263238'; m.beginPath(); m.moveTo(W * 0.43, H * 0.38); m.lineTo(W * 0.57, H * 0.38); m.lineTo(W * 0.53, H * 0.3); m.lineTo(W * 0.47, H * 0.3); m.closePath(); m.fill();
+    m.fillStyle = 'rgba(255,240,200,0.9)'; m.beginPath(); m.ellipse(W * 0.5, H * 0.385, W * 0.06, 4, 0, 0, 7); m.fill();
+    // stoelen achter de tafel (ruggen boven het blad uit) en aan de koppen
+    const chairBack = (x, y, w, h) => { m.fillStyle = '#7a5434'; m.fillRect(x - w / 2, y - h, w, h); m.fillStyle = '#8f6440'; for (let k = 0; k < 3; k++) m.fillRect(x - w / 2 + 3, y - h + 4 + k * (h / 3), w - 6, h / 6); };
+    for (const x of [0.38, 0.62]) chairBack(W * x, H * 0.66, 34, 46);
+    for (const x of [0.2, 0.8]) chairBack(W * x, H * 0.74, 30, 56);
+    // tafelblad en poten
+    m.fillStyle = '#9a7048'; m.fillRect(W * 0.25, H * 0.64, W * 0.5, 10); m.fillStyle = '#7a5434'; m.fillRect(W * 0.25, H * 0.68, W * 0.5, 4);
+    m.fillStyle = '#7a5434'; for (const x of [0.27, 0.72]) m.fillRect(W * x, H * 0.68, 8, H * 0.24);
+    // fruitschaal en twee glazen op tafel
+    m.fillStyle = '#eceff1'; m.beginPath(); m.ellipse(W * 0.5, H * 0.635, 26, 6, 0, 0, 7); m.fill();
+    for (const [dx, c] of [[-10, '#e53935'], [4, '#fdd835'], [14, '#7cb342']]) { m.fillStyle = c; m.beginPath(); m.arc(W * 0.5 + dx, H * 0.6, 7, 0, 7); m.fill(); }
+    m.fillStyle = 'rgba(200,230,255,0.7)'; m.fillRect(W * 0.34, H * 0.585, 6, 14); m.fillRect(W * 0.64, H * 0.585, 6, 14);
+    // twee stoelen aan de voorkant (ruggen naar je toe), onder de rand
+    for (const x of [0.38, 0.62]) { m.fillStyle = '#6a472b'; m.fillRect(W * x - 22, H * 0.74, 44, H * 0.26); m.fillStyle = '#7f5836'; for (let k = 0; k < 3; k++) m.fillRect(W * x - 18, H * 0.76 + k * 16, 36, 8); }
+  },
+  // serre: twee comfortabele oranje stoelen, een schildersezel met een schilderij, planten en glas met de tuin erachter
+  serre(b, m, rand) {
+    // achterwand van glas met de tuin erachter
+    b.fillStyle = '#b9d7a8'; b.fillRect(0, 0, W, H * 0.8);
+    b.fillStyle = '#7fae69'; for (let i = 0; i < 9; i++) { b.beginPath(); b.arc(rand() * W, H * (0.5 + rand() * 0.25), 30 + rand() * 30, 0, 7); b.fill(); }
+    b.fillStyle = '#cfe3f2'; b.fillRect(0, 0, W, H * 0.35);
+    b.fillStyle = '#eceff1'; for (let i = 0; i <= 5; i++) b.fillRect(i * W / 5 - 4, 0, 8, H * 0.8); b.fillRect(0, H * 0.33, W, 6); b.fillRect(0, H * 0.78, W, 10);
+    // planten in potten
+    for (const x of [0.06, 0.94]) { b.fillStyle = '#b5653b'; b.fillRect(W * x - 18, H * 0.66, 36, 26); b.fillStyle = '#3f7a34'; for (let k = 0; k < 6; k++) { b.beginPath(); b.ellipse(W * x + (rand() - 0.5) * 30, H * (0.45 + rand() * 0.2), 10, 22, (rand() - 0.5) * 1.2, 0, 7); b.fill(); } }
+    // schildersezel met een schilderij (een zonnig landschap met de Gulperberg)
+    const ex = W * 0.72;
+    m.strokeStyle = '#8d6e4a'; m.lineWidth = 6; m.lineCap = 'round';
+    m.beginPath(); m.moveTo(ex - 34, H * 0.98); m.lineTo(ex, H * 0.2); m.lineTo(ex + 34, H * 0.98); m.moveTo(ex, H * 0.2); m.lineTo(ex + 6, H * 0.95); m.stroke();
+    m.fillStyle = '#8d6e4a'; m.fillRect(ex - 44, H * 0.66, 88, 6);
+    m.fillStyle = '#f5f0e6'; m.fillRect(ex - 46, H * 0.3, 92, 70);
+    m.fillStyle = '#7ec8f0'; m.fillRect(ex - 42, H * 0.32, 84, 28);
+    m.fillStyle = '#6aa84f'; m.beginPath(); m.moveTo(ex - 42, H * 0.62); m.quadraticCurveTo(ex - 10, H * 0.38, ex + 42, H * 0.5); m.lineTo(ex + 42, H * 0.57); m.lineTo(ex - 42, H * 0.57); m.fill();
+    m.fillStyle = '#ffd54f'; m.beginPath(); m.arc(ex + 26, H * 0.38, 7, 0, 7); m.fill();
+    m.fillStyle = '#e57373'; m.fillRect(ex - 20, H * 0.5, 10, 8); m.fillStyle = '#5d4037'; m.fillRect(ex - 22, H * 0.47, 14, 4);
+    // twee comfortabele oranje fauteuils, een beetje naar elkaar toe
+    const armchair = (x, flip) => {
+      m.save(); m.translate(x, H * 0.97); m.scale(flip ? -1 : 1, 1);
+      m.fillStyle = '#c75b1f'; m.beginPath(); m.roundRect(-46, -112, 92, 70, 22); m.fill(); // rugleuning
+      m.fillStyle = '#e8792f'; m.beginPath(); m.roundRect(-52, -60, 104, 40, 14); m.fill(); // zitting
+      m.fillStyle = '#d96a26'; m.beginPath(); m.roundRect(-60, -78, 22, 58, 10); m.fill(); m.beginPath(); m.roundRect(38, -78, 22, 58, 10); m.fill(); // armleuningen
+      m.fillStyle = '#f39a5a'; m.beginPath(); m.roundRect(-34, -104, 68, 10, 5); m.fill(); // licht op de bovenrand
+      m.fillStyle = '#4e342e'; m.fillRect(-48, -20, 8, 20); m.fillRect(40, -20, 8, 20);
+      m.restore();
+    };
+    armchair(W * 0.2, false);
+    armchair(W * 0.44, true);
+    // bijzettafeltje met een kop thee
+    m.fillStyle = '#5d4037'; m.fillRect(W * 0.315, H * 0.76, 26, 6); m.fillRect(W * 0.315 + 11, H * 0.78, 4, H * 0.19);
+    m.fillStyle = '#fafafa'; m.fillRect(W * 0.315 + 8, H * 0.73, 10, 8);
+  },
+};
+
 // ---- per soort zaak: achterwand (back) en de laag ervoor (mid: toonbank, mensen)
 const SHIRTS = ['#1e88e5', '#e53935', '#43a047', '#fdd835', '#8e24aa', '#ff7043', '#00acc1', '#5d4037', '#90a4ae'];
 function drawRoom(type, seed) {
@@ -52,8 +120,14 @@ function drawRoom(type, seed) {
   const rand = rnd(seed);
   const shirt = () => SHIRTS[Math.floor(rand() * SHIRTS.length)];
   c2 = b;
-  const wall = { cafe: '#6b4a32', friture: '#f3e5ab', grill: '#5d4037', bakker: '#f1e2c2', slager: '#eeeeee', ijs: '#fde4ee', choco: '#4e342e', apotheek: '#f5f5f5', drogist: '#fafafa', opticien: '#eceff1', warenhuis: '#fafafa', speelgoed: '#fff8e1', elektro: '#eceff1', ijzer: '#cfd8dc', bier: '#2e4a32', grieks: '#e3f2fd', restaurant: '#3e2f25', pannenkoek: '#f6e7c8', keukens: '#efebe9', vvv: '#e3f2fd', gemeente: '#f5f1e6', wonen: '#fff3e0', zwembad: '#b3e5fc', supermarkt: '#f5f5f5', fietsen: '#eceff1', brouwerij: '#5d4037', deli: '#f1e2c2', kleding: '#f5f5f5', damesmode: '#f8eef0', ballonnen: '#fff3fa', kapper: '#2b2b2b', kantoor: '#ece9e2', tijdschriften: '#f3eefb', lunchroom: '#efe3cf' }[type] || '#ece5d8';
+  const wall = { cafe: '#6b4a32', friture: '#f3e5ab', grill: '#5d4037', bakker: '#f1e2c2', slager: '#eeeeee', ijs: '#fde4ee', choco: '#4e342e', apotheek: '#f5f5f5', drogist: '#fafafa', opticien: '#eceff1', warenhuis: '#fafafa', speelgoed: '#fff8e1', elektro: '#eceff1', ijzer: '#cfd8dc', bier: '#2e4a32', grieks: '#e3f2fd', restaurant: '#3e2f25', pannenkoek: '#f6e7c8', keukens: '#efebe9', vvv: '#e3f2fd', gemeente: '#f5f1e6', wonen: '#fff3e0', zwembad: '#b3e5fc', supermarkt: '#f5f5f5', fietsen: '#eceff1', brouwerij: '#5d4037', deli: '#f1e2c2', kleding: '#f5f5f5', damesmode: '#f8eef0', ballonnen: '#fff3fa', kapper: '#2b2b2b', kantoor: '#ece9e2', tijdschriften: '#f3eefb', lunchroom: '#efe3cf', eetkamer: '#efe4d2', serre: '#eef2ea' }[type] || '#ece5d8';
   b.fillStyle = wall; b.fillRect(0, 0, W, H);
+  if (HOME[type]) {
+    HOME[type](b, m, rand);
+    const hb = new THREE.CanvasTexture(back); hb.colorSpace = THREE.SRGBColorSpace;
+    const hm = new THREE.CanvasTexture(mid); hm.colorSpace = THREE.SRGBColorSpace;
+    return { back: hb, mid: hm, wall: new THREE.Color(wall) };
+  }
   b.fillStyle = 'rgba(0,0,0,0.08)'; b.fillRect(0, H * 0.75, W, H * 0.25); // plint
   for (const lx of [W * 0.25, W * 0.5, W * 0.75]) lamp(b, lx, 14);
   const pal = {

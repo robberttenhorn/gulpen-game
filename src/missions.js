@@ -13,6 +13,7 @@ import { inviteFinale } from './finale.js';
 import { setupWest, setupGroeneweg, setupFitness, setupVerbouwing, setupPloegen, westItems, westHandlers, WEST_MISSION_OF } from './missions3.js';
 import { setupMarkt, marktItems, marktHandlers, MARKT_MISSION_OF } from './missions4.js';
 import { setupGeschiedenis, geschiedenisItems, geschiedenisHandlers, GESCHIEDENIS_MISSION_OF } from './missions5.js';
+import { setupKnotwilg, knotwilgItems, knotwilgHandlers, KNOTWILG_MISSION_OF } from './knotwilg.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
 const SAVE_KEY = 'gulpe-missies-v2';
@@ -263,6 +264,9 @@ export class Missions {
     // geschiedenis en feesten (missions5.js)
     setupGeschiedenis(this, g, add);
     Object.assign(this.extra, geschiedenisHandlers);
+    // achtertuin van Ringweg 38: knotwilgen knotten (knotwilg.js)
+    setupKnotwilg(this, g, add);
+    Object.assign(this.extra, knotwilgHandlers);
 
     Object.values(this.npcs).forEach((n) => { n.active = true; });
     this.refresh();
@@ -299,7 +303,7 @@ export class Missions {
       { id: 'vissen', npc: n.visser, title: 'Vissen in de Gulp', place: 'Oever van de Gulp', desc: 'Vang drie vissen. Tik pas als de dobber onder gaat.' },
       { id: 'polonaise', npc: n.carnaval, title: 'Op tijd voor de optocht', place: 'Markt', desc: 'Prins Carnaval moet klumpkes sjmiete in de optocht. Haal zijn gevolg op, dan kan de optocht beginnen.' },
       { id: 'nachtvangulpen', npc: n.organisator, title: 'Nacht van Gulpen', place: 'Bij de Markt (alleen \'s avonds)', desc: 'Een proefrondje wandelen langs de stempelposten.', nightOnly: true },
-    ].filter((m) => m.npc).concat(moreItems(n), westItems(n), marktItems(n), geschiedenisItems(n));
+    ].filter((m) => m.npc).concat(moreItems(n), westItems(n), marktItems(n), geschiedenisItems(n), knotwilgItems(n));
     for (const m of items) { m.state = this.active?.id === m.id ? 'actief' : this.done.has(m.id) && !m.repeat ? 'klaar' : 'open'; m.best = this.bestLabel(m.id); }
     void g;
     return items;
@@ -386,7 +390,7 @@ export class Missions {
     npc.lookAtPlayer = true;
     try {
       // bezig met een andere klus?
-      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', stagiair: 'tiktok', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'geit', klant: 'inparkeren', schutter: 'vogelschieten', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', koster: 'armenfonds', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager', ...MORE_MISSION_OF, ...WEST_MISSION_OF, ...MARKT_MISSION_OF, ...GESCHIEDENIS_MISSION_OF };
+      const missionOf = { monteur: 'fiets', frituur: 'frikandel', salma: 'salma', zheng: 'zheng', stagiair: 'tiktok', concierge: 'skateboard', skater: 'race', brouwer: 'vat', waard: 'pils', trainer: 'penalty', jas: 'deal', nacht: 'nacht', wielrenner: 'gulperberg', boer: 'geit', klant: 'inparkeren', schutter: 'vogelschieten', visser: 'vissen', carnaval: 'polonaise', organisator: 'nachtvangulpen', opa: 'plat', reporter: 'hubertus', donnys: 'borrelplank', koster: 'armenfonds', plus: 'karretjes', bakker: 'vlaaien', slager: 'slager', ...MORE_MISSION_OF, ...WEST_MISSION_OF, ...MARKT_MISSION_OF, ...GESCHIEDENIS_MISSION_OF, ...KNOTWILG_MISSION_OF };
       const key = Object.keys(n).find((k) => n[k] === npc);
       const mid = missionOf[key];
       const deliverKeg = key === 'waard' && this.active?.id === 'vat';

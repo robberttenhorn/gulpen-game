@@ -4,6 +4,7 @@
 // Wat precies welke plant of welk meubel is, is een interpretatie van de luchtfoto.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { makeInteriorWindow } from './interior-window.js';
 
 const A = [456.2, -304.88]; // westelijke hoek aan de straat (lokale x, z)
 const U = [0.93659, -0.35043]; // langs de straat, naar het oosten
@@ -133,11 +134,30 @@ export function buildTuin38(g) {
     stam: new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1 }),
     wilgstam: new THREE.MeshStandardMaterial({ color: 0x5e554a, roughness: 1, flatShading: true }),
     twijg: new THREE.MeshStandardMaterial({ color: 0x7b6a48, roughness: 0.9 }),
+    teak: new THREE.MeshStandardMaterial({ color: 0x9a7048, roughness: 0.8 }),
+    bistro: new THREE.MeshStandardMaterial({ color: 0x262829, metalness: 0.55, roughness: 0.45 }),
+    terracotta: new THREE.MeshStandardMaterial({ color: 0xc8643c, roughness: 0.85, side: THREE.DoubleSide }),
+    snijvlak: new THREE.MeshStandardMaterial({ color: 0xe6d3a3, roughness: 0.9 }),
     metaal: new THREE.MeshStandardMaterial({ color: 0x3b3b3b, metalness: 0.6, roughness: 0.4 }),
     wit: new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.6 }),
     doek: new THREE.MeshStandardMaterial({ color: 0xe6dcc6, roughness: 0.9, side: THREE.DoubleSide }),
   };
-  const batches = new Map(); // per materiaal één samengevoegd model: weinig tekenopdrachten
+  let batches = new Map(); // per materiaal één samengevoegd model: weinig tekenopdrachten
+  const flat = () => [mats.gras, mats.tegel, mats.klinker, mats.aarde, mats.water];
+  const mergeBatches = (map) => {
+    const grp = new THREE.Group();
+    for (const { mat, geos } of map.values()) {
+      const merged = mergeGeometries(geos);
+      if (!merged) continue;
+      const mesh = new THREE.Mesh(merged, mat);
+      const isFlat = flat().includes(mat);
+      mesh.castShadow = !isFlat;
+      mesh.receiveShadow = true;
+      if (isFlat) { mat.polygonOffset = true; mat.polygonOffsetFactor = -1; mat.polygonOffsetUnits = -2; }
+      grp.add(mesh);
+    }
+    return grp;
+  };
   const add = (geo, mat, matrix) => {
     if (matrix) geo.applyMatrix4(matrix);
     for (const k of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) geo.deleteAttribute(k);
@@ -247,9 +267,10 @@ export function buildTuin38(g) {
 
   // ---------------- ACHTERTUIN (v 21 - 39,8) ----------------
   patch(0.2, 14.0, 20.0, 39.5, mats.gras, 0.07, 2); // gazon als ondergrond
-  patch(0.6, 6.2, 22.6, 29.2, mats.tegel, 0.1, 1.2); // terras bij het huis
+  patch(1.85, 6.2, 22.6, 29.2, mats.tegel, 0.1, 1.2); // terras bij het huis
+  patch(0.9, 1.85, 22.7, 29.1, mats.aarde, 0.11, 1.5); // smalle border tussen terras en haag
   patch(8.6, 13.9, 27.5, 30.6, mats.klinker, 0.1, 0.8); // strook klinkers
-  patch(8.6, 13.9, 30.6, 36.8, mats.tegel, 0.1, 1.2); // terras achterin (met zweefparasol)
+  patch(8.6, 13.9, 30.6, 36.8, mats.tegel, 0.1, 1.2); // terras achterin (met de bistroset)
   patch(12.6, 13.75, 20.5, 27.5, mats.aarde, 0.11, 1.5); // border langs de haag
   patch(0.9, 2.4, 29.2, 35.6, mats.aarde, 0.11, 1.5); // border voor de haag (achterin blijft het gras open)
   // vijver: rand van lichte natuursteen rond het water uit de kaart
@@ -265,30 +286,68 @@ export function buildTuin38(g) {
   block(pu1, pu1 + rim, pv0, pv1, 0.14, mats.steen);
   solid(pu0 - rim, pu1 + rim, pv0 - rim, pv1 + rim);
   for (let k = 0; k < 4; k++) { const geo = new THREE.CircleGeometry(0.22 + rand() * 0.1, 10).rotateX(-Math.PI / 2); add(geo, mats.haag, place(pu0 + 0.4 + rand() * (pu1 - pu0 - 0.8), pv0 + 0.4 + rand() * (pv1 - pv0 - 0.8), 0.06)); }
-  // ronde tafel met vier stoelen op het terras bij het huis
-  const table = (u, v) => {
-    add(new THREE.CylinderGeometry(0.55, 0.55, 0.04, 20).translate(0, 0.74, 0), mats.wit, place(u, v, 0.05));
-    add(new THREE.CylinderGeometry(0.04, 0.05, 0.72, 8).translate(0, 0.37, 0), mats.metaal, place(u, v, 0.05));
-    for (let k = 0; k < 4; k++) {
-      const a = (k / 4) * Math.PI * 2 + 0.4, cu = u + Math.cos(a) * 0.85, cv = v + Math.sin(a) * 0.85;
-      add(boxGeo(0.45, 0.05, 0.45).translate(0, 0.45, 0), mats.metaal, place(cu, cv, 0.05, -a));
-      add(boxGeo(0.45, 0.45, 0.05).translate(0, 0.7, 0.22), mats.metaal, place(cu, cv, 0.05, -a + Math.PI / 2));
+  // klinkerpaadje tussen de twee terrassen, langs de vijver
+  patch(6.2, 8.6, pv1 + rim + 0.1, 29.2, mats.klinker, 0.1, 0.8);
+  // middelhoog plantvak rechts van de vijver met witte en gele bloemen
+  const bu0 = pu1 + rim + 0.35, bu1 = 12.5, bv0 = pv0 - 0.1, bv1 = pv1 + 0.1;
+  patch(bu0, bu1, bv0, bv1, mats.aarde, 0.11, 1.5);
+  for (let k = 0; k < 14; k++) blob(bu0 + 0.4 + rand() * (bu1 - bu0 - 0.8), bv0 + 0.4 + rand() * (bv1 - bv0 - 0.8), 0.35, 0.38 + rand() * 0.2, [0x4c7a3a, 0x5d8a44, 0x3f6b34][k % 3], 2);
+  for (let k = 0; k < 70; k++) {
+    const fu = bu0 + 0.3 + rand() * (bu1 - bu0 - 0.6), fv = bv0 + 0.3 + rand() * (bv1 - bv0 - 0.6);
+    blob(fu, fv, 0.62 + rand() * 0.35, 0.06 + rand() * 0.05, rand() < 0.5 ? 0xf7f5ee : rand() < 0.6 ? 0xf2c83b : 0xffe27a, 1);
+  }
+  solid(bu0, bu1, bv0, bv1);
+  // stoel: zitting rond de oorsprong, rugleuning aan de achterkant; kijkt naar lokaal +z (draai: zie place)
+  const chair = (u, v, yaw, mat, round) => {
+    const m = place(u, v, 0.1, yaw);
+    if (round) {
+      add(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 16).translate(0, 0.46, 0), mat, m);
+      add(new THREE.TorusGeometry(0.21, 0.018, 5, 14, Math.PI).rotateY(Math.PI).translate(0, 0.78, -0.02).rotateX(-0.12), mat, m);
+      for (const [x, z] of [[-0.15, -0.13], [0.15, -0.13]]) add(new THREE.CylinderGeometry(0.014, 0.014, 0.36, 5).translate(x, 0.64, z - 0.05), mat, m);
+      for (const [x, z] of [[-0.14, 0.14], [0.14, 0.14], [-0.14, -0.14], [0.14, -0.14]]) add(new THREE.CylinderGeometry(0.014, 0.012, 0.46, 5).translate(x, 0.23, z), mat, m);
+    } else {
+      add(boxGeo(0.46, 0.04, 0.44).translate(0, 0.45, 0), mat, m);
+      for (let k = 0; k < 4; k++) add(boxGeo(0.44, 0.06, 0.025).translate(0, 0.58 + k * 0.1, -0.21), mat, m);
+      for (const [x, z] of [[-0.2, 0.19], [0.2, 0.19]]) add(boxGeo(0.04, 0.45, 0.04).translate(x, 0.225, z), mat, m);
+      for (const x of [-0.2, 0.2]) add(boxGeo(0.04, 0.88, 0.04).translate(x, 0.44, -0.21), mat, m);
     }
-    solid(u - 0.6, u + 0.6, v - 0.6, v + 0.6);
   };
-  table(3.9, 26.8);
-  // witte ligstoel naast de vijver
-  add(boxGeo(0.7, 0.3, 1.9).translate(0, 0.25, 0), mats.wit, place(12.4, 24.6, 0.02));
-  add(boxGeo(0.7, 0.06, 0.7).translate(0, 0.62, 0).rotateX(-0.9), mats.wit, place(12.4, 25.6, 0.02));
-  // zweefparasol met loungebankje op het terras achterin
-  add(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 8).translate(0, 1.3, 0), mats.metaal, place(13.1, 35.9, 0.05));
-  add(boxGeo(0.5, 0.15, 0.5).translate(0, 0.08, 0), mats.beton, place(13.1, 35.9, 0.05));
-  seg([13.1, 35.9, 2.6], [11.0, 33.6, 2.72], 0.03, mats.metaal); // arm van de zweefparasol
-  add(new THREE.ConeGeometry(1.9, 0.5, 4, 1, true).rotateY(Math.PI / 4).translate(0, 2.45, 0), mats.doek, place(11.0, 33.6, 0.05));
-  add(boxGeo(1.8, 0.4, 0.75).translate(0, 0.2, 0), mats.wit, place(10.6, 34.6, 0.05));
-  add(boxGeo(1.8, 0.45, 0.15).translate(0, 0.5, -0.32), mats.wit, place(10.6, 34.6, 0.05));
-  add(boxGeo(0.7, 0.35, 0.7).translate(0, 0.18, 0), mats.hout, place(10.6, 33.2, 0.05));
-  solid(9.7, 11.5, 34.2, 35.0); solid(13.0, 13.2, 35.8, 36.0);
+  // houten eettafel met zes stoelen op het terras bij het huis (lange kant van het huis af, naar de tuin)
+  const tu = 3.7, tv = 25.9;
+  add(boxGeo(0.95, 0.05, 2.0).translate(0, 0.74, 0), mats.teak, place(tu, tv, 0.1));
+  for (const [x, z] of [[-0.4, -0.9], [0.4, -0.9], [-0.4, 0.9], [0.4, 0.9]]) add(boxGeo(0.07, 0.72, 0.07).translate(x, 0.36, z), mats.teak, place(tu, tv, 0.1));
+  for (const dv of [-0.55, 0.55]) { chair(tu - 0.78, tv + dv, Math.PI / 2, mats.teak); chair(tu + 0.78, tv + dv, -Math.PI / 2, mats.teak); }
+  chair(tu, tv - 1.35, Math.PI, mats.teak); chair(tu, tv + 1.35, 0, mats.teak);
+  solid(tu - 0.48, tu + 0.48, tv - 1.0, tv + 1.0);
+  // boom: stam en een kroon van bladerbollen
+  const tree = (u, v, trunkH, crownR, color, flat = 1) => {
+    seg([u, v, 0], [u + 0.05, v, trunkH + crownR * 0.4], 0.09 + crownR * 0.03, mats.stam);
+    const n = Math.round(10 + crownR * 9);
+    for (let k = 0; k < n; k++) {
+      const a = rand() * Math.PI * 2, el = Math.acos(1 - 2 * rand()) - Math.PI / 2, d = crownR * (0.35 + rand() * 0.6);
+      blob(u + Math.cos(a) * Math.cos(el) * d, v + Math.sin(a) * Math.cos(el) * d, trunkH + crownR + Math.sin(el) * d * flat, crownR * (0.32 + rand() * 0.15), color, 1);
+    }
+    solid(u - 0.18, u + 0.18, v - 0.18, v + 0.18);
+  };
+  // twee bomen met groen blad in de smalle border naast de haag
+  tree(1.4, 24.0, 2.2, 1.3, 0x4f7d3a, 0.85);
+  tree(1.4, 27.8, 2.0, 1.2, 0x5b8a40, 0.85);
+  tree((bu0 + bu1) / 2, (bv0 + bv1) / 2, 3.6, 2.4, 0x467a34);
+  // donkere bistroset: rond tafeltje met zes stoeltjes op het terras achterin
+  const bu = 10.9, bv = 33.5;
+  add(new THREE.CylinderGeometry(0.5, 0.5, 0.03, 24).translate(0, 0.74, 0), mats.bistro, place(bu, bv, 0.1));
+  add(new THREE.CylinderGeometry(0.035, 0.035, 0.72, 8).translate(0, 0.37, 0), mats.bistro, place(bu, bv, 0.1));
+  add(new THREE.CylinderGeometry(0.28, 0.3, 0.03, 16).translate(0, 0.015, 0), mats.bistro, place(bu, bv, 0.1));
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 + 0.3; chair(bu + Math.cos(a) * 0.95, bv + Math.sin(a) * 0.95, Math.atan2(-Math.cos(a), Math.sin(a)), mats.bistro, true); }
+  solid(bu - 0.5, bu + 0.5, bv - 0.5, bv + 0.5);
+  // ronde terracotta parasol op een voet, naast de bistroset
+  const pu = 12.55, pv = 33.5;
+  add(boxGeo(0.5, 0.08, 0.5).translate(0, 0.04, 0), mats.bistro, place(pu, pv, 0.1));
+  add(new THREE.CylinderGeometry(0.025, 0.025, 2.45, 8).translate(0, 1.22, 0), mats.metaal, place(pu, pv, 0.1));
+  add(new THREE.ConeGeometry(1.55, 0.45, 20, 1, true).translate(0, 2.38, 0), mats.terracotta, place(pu, pv, 0.1));
+  add(new THREE.CylinderGeometry(1.55, 1.55, 0.12, 20, 1, true).translate(0, 2.1, 0), mats.terracotta, place(pu, pv, 0.1)); // rand (volant)
+  add(new THREE.SphereGeometry(0.05, 8, 6).translate(0, 2.64, 0), mats.metaal, place(pu, pv, 0.1));
+  solid(pu - 0.25, pu + 0.25, pv - 0.25, pv + 0.25);
   // moestuinbakken achter het terras, voor de achterhaag
   for (const [u0, u1] of [[9.0, 11.2], [11.45, 13.6]]) {
     block(u0, u1, 36.95, 38.85, 0.4, mats.hout, { tile: 0.8 });
@@ -305,7 +364,10 @@ export function buildTuin38(g) {
   block(13.75, 14.4, 10.0, 39.8, 1.8, mats.haag, hedge);
   block(8.6, 13.75, 39.1, 39.8, 1.7, mats.haag, hedge);
   solid(13.75, 14.4, 10.0, 39.8); solid(8.6, 13.75, 39.1, 39.8);
-  // twee knotwilgen achterin het gras, bij het open stuk
+  // twee knotwilgen achterin het gras, bij het open stuk. De kruin, de stompjes (na het knotten) en de takkenstapel
+  // zijn losse groepen, zodat de missie van de snoeier (knotwilg.js) ze kan wisselen.
+  const collect = (fn) => { const keep = batches; batches = new Map(); fn(); const grp = mergeBatches(batches); batches = keep; return grp; };
+  const willows = [];
   const knotwilg = (u, v, h) => {
     seg([u, v, 0], [u + 0.08, v + 0.05, h * 0.55], 0.3, mats.wilgstam);
     seg([u + 0.08, v + 0.05, h * 0.5], [u - 0.05, v + 0.1, h], 0.34, mats.wilgstam);
@@ -315,33 +377,78 @@ export function buildTuin38(g) {
     knob.computeVertexNormals();
     add(knob, mats.wilgstam, place(u - 0.05, v + 0.1, h + 0.1));
     // rechte jonge takken die uit de knot omhoog schieten, met grijsgroen smal blad
+    const twigs = [];
     for (let k = 0; k < 26; k++) {
       const a = rand() * Math.PI * 2, tilt = 0.15 + rand() * 0.6, len = 1.5 + rand() * 1.3;
       const su = u - 0.05 + Math.cos(a) * 0.3, sv = v + 0.1 + Math.sin(a) * 0.3, sy = h + 0.15;
-      const eu = su + Math.cos(a) * Math.sin(tilt) * len, ev = sv + Math.sin(a) * Math.sin(tilt) * len, ey = sy + Math.cos(tilt) * len;
-      seg([su, sv, sy], [eu, ev, ey], 0.022, mats.twijg);
-      for (const f of [0.55, 0.85]) blob(su + (eu - su) * f, sv + (ev - sv) * f, sy + (ey - sy) * f, 0.32 + rand() * 0.18, rand() < 0.5 ? 0x93a87e : 0x7d9468, 1);
+      twigs.push([su, sv, sy, Math.cos(a) * Math.sin(tilt), Math.sin(a) * Math.sin(tilt), Math.cos(tilt), len]);
     }
+    const crown = collect(() => {
+      for (const [su, sv, sy, du, dv, dy, len] of twigs) {
+        const eu = su + du * len, ev = sv + dv * len, ey = sy + dy * len;
+        seg([su, sv, sy], [eu, ev, ey], 0.022, mats.twijg);
+        for (const f of [0.55, 0.85]) blob(su + (eu - su) * f, sv + (ev - sv) * f, sy + (ey - sy) * f, 0.32 + rand() * 0.18, rand() < 0.5 ? 0x93a87e : 0x7d9468, 1);
+      }
+    });
+    const stubs = collect(() => {
+      for (const [su, sv, sy, du, dv, dy] of twigs) {
+        const l = 0.12 + rand() * 0.1;
+        seg([su, sv, sy], [su + du * l, sv + dv * l, sy + dy * l], 0.024, mats.twijg);
+        add(new THREE.CylinderGeometry(0.024, 0.024, 0.01, 6), mats.snijvlak, place(su + du * l, sv + dv * l, sy + dy * l));
+      }
+    });
+    stubs.visible = false;
     solid(u - 0.35, u + 0.35, v - 0.3, v + 0.4);
+    willows.push({ u, v, h, crown, stubs });
   };
   knotwilg(3.2, 38.0, 2.3);
   knotwilg(6.6, 38.4, 2.1);
+  // stapel afgezaagde takken op het gras (pas zichtbaar na het knotten)
+  const pile = collect(() => {
+    for (let k = 0; k < 34; k++) {
+      const u0 = 4.0 + rand() * 0.5, v0 = 36.0 + rand() * 1.1, len = 1.6 + rand() * 1.0, a = (rand() - 0.5) * 0.4;
+      const y = 0.12 + (k % 6) * 0.05 + rand() * 0.04;
+      seg([u0, v0, y], [u0 + Math.cos(a) * len, v0 + Math.sin(a) * len, y + (rand() - 0.5) * 0.1], 0.025, mats.twijg);
+      if (k % 3 === 0) blob(u0 + Math.cos(a) * len * 0.8, v0 + Math.sin(a) * len * 0.8, y + 0.04, 0.12, 0x8aa070, 1);
+    }
+  });
+  pile.visible = false;
   // donkere haag langs de westgrens van de achtertuin
   block(0.1, 0.9, 22.6, 39.5, 1.9, mats.haag, { tile: 1, jitter: 0.8, segs: 2 });
   solid(0.1, 0.9, 22.6, 39.5);
 
   // alles samenvoegen: per materiaal één model
-  const group = new THREE.Group();
-  for (const { mat, geos } of batches.values()) {
-    const merged = mergeGeometries(geos);
-    if (!merged) continue;
-    const mesh = new THREE.Mesh(merged, mat);
-    mesh.castShadow = mat !== mats.gras && mat !== mats.tegel && mat !== mats.klinker && mat !== mats.aarde && mat !== mats.water;
-    mesh.receiveShadow = true;
-    if ([mats.gras, mats.tegel, mats.klinker, mats.aarde, mats.water].includes(mat)) { mat.polygonOffset = true; mat.polygonOffsetFactor = -1; mat.polygonOffsetUnits = -2; }
-    group.add(mesh);
-  }
+  const group = mergeBatches(batches);
+  group.add(...willows.flatMap((wl) => [wl.crown, wl.stubs]), pile);
   g.scene.add(group);
   for (const ring of obstacles) w.addObstacle(ring);
-  return group;
+  const tuin = {
+    group, willows, P,
+    // na het knotten: kale knotten met stompjes en een stapel takken
+    prune() { for (const wl of willows) { wl.crown.visible = false; wl.stubs.visible = true; } pile.visible = true; },
+    unprune() { for (const wl of willows) { wl.crown.visible = true; wl.stubs.visible = false; } pile.visible = false; },
+  };
+  // grote glazen ramen in de achtergevel: links (vanuit de tuin gezien) de eetkamer, rechts de serre in de uitbouw
+  const backWindow = (u, v, wdt, hgt, type) => {
+    const [x, z] = P(u, v);
+    const wall = w.nearestWall(x, z, 4);
+    if (!wall) return;
+    const gx = wall.px + wall.nx * 0.05, gz = wall.pz + wall.nz * 0.05, y = w.groundAt(gx, gz);
+    const grp = new THREE.Group();
+    grp.position.set(gx, y, gz);
+    grp.rotation.y = Math.atan2(wall.nx, wall.nz);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x2b2f33, metalness: 0.4, roughness: 0.5 });
+    const glass = makeInteriorWindow(wdt, hgt, type, 38);
+    glass.position.set(0, 0.12 + hgt / 2, 0.03);
+    grp.add(glass);
+    const bar = (bw, bh, bx, by) => { const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.08), frameMat); b.position.set(bx, by, 0.04); grp.add(b); };
+    bar(wdt + 0.16, 0.08, 0, 0.08); bar(wdt + 0.16, 0.08, 0, 0.16 + hgt); bar(0.08, hgt + 0.16, -wdt / 2 - 0.04, 0.12 + hgt / 2); bar(0.08, hgt + 0.16, wdt / 2 + 0.04, 0.12 + hgt / 2);
+    for (let k = 1; k < Math.round(wdt / 1.1); k++) bar(0.05, hgt, -wdt / 2 + (k * wdt) / Math.round(wdt / 1.1), 0.12 + hgt / 2); // stijlen tussen de glazen delen
+    g.scene.add(grp);
+    g.facades?.signMats?.push({ interior: glass });
+  };
+  backWindow(7.6, 21.2, 3.0, 2.2, 'eetkamer');
+  backWindow(2.4, 22.6, 4.0, 2.3, 'serre');
+  g.tuin38 = tuin;
+  return tuin;
 }
