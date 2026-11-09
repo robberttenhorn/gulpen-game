@@ -655,11 +655,7 @@ class Game {
     if (!p) return;
     // op de oprit (plek volgens de luchtfoto), met de neus naar de straat
     const { x, z, heading } = volvoSpot38();
-    this.volvo = this.cars.addCar('suv', x, z, heading, VOLVO_GREY, { isVolvo: true });
-    // zwart dak, zoals vaak bij de XC40
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.04, 2.0), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3, clearcoat: 1 }));
-    roof.position.set(0, 1.665, -0.1);
-    this.volvo.mesh.add(roof);
+    this.volvo = this.cars.addCar('xc40', x, z, heading, VOLVO_GREY, { isVolvo: true });
   }
 
   // Een boerenerf aan de rand van het dorp: weg met aan één kant akker of weiland.

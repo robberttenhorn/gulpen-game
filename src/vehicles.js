@@ -26,6 +26,8 @@ const TYPES = {
     body: [[0, 0.3], [0.04, 0.88], [0.6, 0.98], [1.4, 1.2], [2.55, 1.22], [3.3, 0.86], [4.35, 0.68], [4.4, 0.3]],
   },
   tractor: { L: 4.0, W: 2.2, wheelR: 0.75, wheelbase: 2.3, vmax: 11, custom: 'tractor' },
+  // de grijze Volvo XC40 van Ringweg 38: eigen model met de typische vormen en lampen
+  xc40: { L: 4.43, W: 1.86, wheelR: 0.36, wheelbase: 2.7, belt: 1.12, pillars: [], custom: 'xc40' },
 };
 
 const PAINTS = [0x2b2d30, 0xd8d9db, 0x8d9196, 0x1e2a44, 0x7a1e1e, 0xeeeeee, 0x3b4a3a, 0x6b6e72, 0x101012, 0x9c9fa3, 0x2f4f7a];
@@ -97,9 +99,97 @@ function buildTractor(t) {
   return { paint, detail, lights, ...t };
 }
 
+
+// Volvo XC40: zwart zwevend dak met spoiler, knik omhoog in de achterste ruitlijn, zwarte wielkasten en dorpels,
+// grille met schuine streep en logo, 'Thor's hammer'-koplampen, hoge verticale achterlichten en turbinevelgen.
+function buildXC40(t) {
+  const { L, W, wheelR, wheelbase } = t;
+  // zijprofiel (vanaf de achterkant gemeten) extruderen over de breedte; lengte langs z, voorkant naar +z
+  const side = (pts, depth, bev = 0.06) => {
+    const g = new THREE.ExtrudeGeometry(shapeOf(pts), { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev * 0.8, bevelSegments: 3, curveSegments: 4 });
+    g.translate(-L / 2, 0, -depth / 2);
+    g.rotateY(-Math.PI / 2);
+    return g;
+  };
+  const box = (w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.rotateX(rx); g.rotateY(ry); g.rotateZ(rz); g.translate(x, y, z); return g.toNonIndexed(); };
+  const col = (g, hex) => colorize(g.index ? g.toNonIndexed() : g, hex);
+  // ---- lak: onderkant met de knik bij de achterste stijl, plus de achterste stijlen (de 'vinnen' naast de achterruit)
+  const lower = side([[0, 0.44], [0.02, 0.98], [0.1, 1.15], [0.92, 1.21], [1.04, 1.12], [3.3, 1.1], [4.2, 0.98], [4.39, 0.86], [4.43, 0.62], [4.43, 0.44]], W - 0.16, 0.08);
+  const fins = [-1, 1].map((sx) => { const g = side([[0.1, 1.13], [0.36, 1.52], [0.78, 1.54], [0.96, 1.2]], 0.08, 0.03); g.translate(sx * (W / 2 - 0.1), 0, 0); return g; });
+  const paint = mergeGeometries([lower, ...fins]);
+  paint.computeVertexNormals();
+  const parts = [];
+  const BLACK = 0x111214, TRIM = 0x1c1d1f, CHROME = 0xcfd3d7;
+  // ---- glas (donker) met voorruit en achterruit, en zwarte B-stijl
+  parts.push(col(side([[0.16, 1.12], [0.42, 1.52], [2.85, 1.555], [3.36, 1.1]], W - 0.24, 0.05), 0x0b0e12));
+  parts.push(col(box(W - 0.18, 0.4, 0.1, 0, 1.33, -L / 2 + 2.05), TRIM));
+  // ---- zwart dak (zwevend) met dakspoiler achter
+  parts.push(col(side([[0.34, 1.53], [0.4, 1.61], [2.78, 1.64], [2.9, 1.555]], W - 0.28, 0.04), BLACK));
+  parts.push(col(box(W - 0.3, 0.05, 0.34, 0, 1.6, -L / 2 + 0.28, -0.12), BLACK));
+  // ---- zwarte wielkasten, dorpels en onderkant van de bumpers
+  const zF = wheelbase / 2, zR = -wheelbase / 2;
+  for (const z of [zF, zR]) for (const sx of [-1, 1]) {
+    const arch = new THREE.TorusGeometry(wheelR + 0.07, 0.065, 6, 18, Math.PI);
+    arch.scale(1, 1, 0.6); arch.rotateY(Math.PI / 2); arch.translate(sx * (W / 2 - 0.03), wheelR + 0.02, z);
+    parts.push(col(arch, TRIM));
+  }
+  for (const sx of [-1, 1]) parts.push(col(box(0.08, 0.16, wheelbase - 2 * (wheelR + 0.1), sx * (W / 2 - 0.02), 0.5, 0), TRIM));
+  parts.push(col(box(W - 0.12, 0.2, 0.14, 0, 0.5, L / 2 + 0.04), TRIM));
+  parts.push(col(box(W - 0.08, 0.26, 0.14, 0, 0.55, -L / 2 - 0.04), 0x2a2b2d));
+  // ---- voorkant: grille met verticale lamellen, schuine chromen streep en rond logo
+  const GY = 0.67;
+  parts.push(col(box(0.84, 0.24, 0.05, 0, GY, L / 2 + 0.07), 0x0d0e10));
+  for (let k = -6; k <= 6; k++) parts.push(col(box(0.012, 0.2, 0.02, k * 0.062, GY, L / 2 + 0.095), 0x4a4e54));
+  parts.push(col(box(0.66, 0.022, 0.02, 0, GY, L / 2 + 0.11, 0, 0, -0.3), CHROME));
+  { const ring = new THREE.TorusGeometry(0.065, 0.012, 6, 20); ring.translate(0, GY, L / 2 + 0.115); parts.push(col(ring, CHROME)); }
+  { const arrow = box(0.05, 0.014, 0.02, 0.065, GY + 0.05, L / 2 + 0.115, 0, 0, 0.75); parts.push(col(arrow, CHROME)); }
+  // koplamphuizen (donker), de lampen zelf staan bij 'lights'
+  for (const sx of [-1, 1]) parts.push(col(box(0.38, 0.12, 0.06, sx * 0.62, 0.81, L / 2 + 0.035, -0.3), 0x14171b));
+  // ---- achterkant: chromen strip en het merk
+  parts.push(col(box(0.7, 0.02, 0.02, 0, 0.9, -L / 2 - 0.07), CHROME));
+  // ---- spiegels, deurgrepen, kentekens
+  for (const sx of [-1, 1]) {
+    parts.push(col(box(0.16, 0.12, 0.22, sx * (W / 2 + 0.08), 1.18, L / 2 - 1.2), BLACK));
+    for (const z of [0.55, -0.45]) parts.push(col(box(0.02, 0.03, 0.16, sx * (W / 2 + 0.005), 1.02, z), 0xb9bdc2));
+  }
+  for (const z of [L / 2 + 0.125, -L / 2 - 0.115]) parts.push(col(box(0.52, 0.11, 0.02, 0, z > 0 ? 0.5 : 0.62, z), 0xf2c200));
+  // ---- wielen: band, zilveren velg met vijf donkere turbinespaken en een naafdop
+  for (const z of [zF, zR]) for (const sx of [-1, 1]) {
+    const x = sx * (W / 2 - 0.1);
+    const tire = new THREE.CylinderGeometry(wheelR, wheelR, 0.24, 20); tire.rotateZ(Math.PI / 2); tire.translate(x, wheelR, z);
+    parts.push(col(tire, 0x141414));
+    const rim = new THREE.CylinderGeometry(wheelR * 0.72, wheelR * 0.72, 0.25, 20); rim.rotateZ(Math.PI / 2); rim.translate(x, wheelR, z);
+    parts.push(col(rim, 0x33363b)); // donkere velg
+    for (let k = 0; k < 5; k++) { // vijf gepolijste turbinespaken
+      const a = (k / 5) * Math.PI * 2;
+      const sp = new THREE.BoxGeometry(0.03, wheelR * 0.62, 0.075); sp.translate(0, wheelR * 0.36, 0.02); sp.rotateX(a); sp.translate(x + sx * 0.14, wheelR, z);
+      parts.push(col(sp, 0xd5d9dd));
+    }
+    const cap = new THREE.CylinderGeometry(0.05, 0.05, 0.26, 10); cap.rotateZ(Math.PI / 2); cap.translate(x, wheelR, z);
+    parts.push(col(cap, 0x1a1b1d));
+  }
+  const detail = mergeGeometries(parts);
+  // ---- lampen: 'Thor's hammer' (liggende T) voor, hoge verticale achterlichten met een voetje naar binnen
+  const lp = [];
+  for (const sx of [-1, 1]) {
+    lp.push(col(box(0.3, 0.024, 0.02, sx * 0.62, 0.82, L / 2 + 0.07, -0.3), 0xfff8ec));
+    lp.push(col(box(0.024, 0.09, 0.02, sx * 0.55, 0.82, L / 2 + 0.075, -0.3), 0xfff8ec));
+    lp.push(col(box(0.16, 0.02, 0.02, sx * 0.62, 0.5, L / 2 + 0.09), 0xfff8ec)); // dagrijlicht onder in de bumper
+    // achterlicht: hoog en verticaal in de achterste stijl, om de hoek doorlopend, met een voetje naar binnen
+    // langs de schuine achterrand van de stijl: van (0,1 m; 1,13 m) naar (0,36 m; 1,52 m) vanaf de achterkant
+    lp.push(col(box(0.1, 0.46, 0.035, sx * (W / 2 - 0.1), 1.3, -L / 2 + 0.2 - 0.03, 0.59), 0xd01818));
+    lp.push(col(box(0.022, 0.46, 0.12, sx * (W / 2 - 0.055), 1.3, -L / 2 + 0.25, 0.59), 0xb01414));
+    lp.push(col(box(0.26, 0.07, 0.035, sx * (W / 2 - 0.2), 1.08, -L / 2 - 0.015), 0xd01818));
+    lp.push(col(box(0.14, 0.03, 0.02, sx * (W / 2 - 0.2), 0.62, -L / 2 - 0.085), 0x9a1010)); // reflector
+  }
+  const lights = mergeGeometries(lp);
+  return { paint, detail, lights, ...t };
+}
+
 // Bouwt de geometrie van één autotype: {paint, detail, lights}
 function buildType(t) {
   if (t.custom === 'tractor') return buildTractor(t);
+  if (t.custom === 'xc40') return buildXC40(t);
   const { L, W, wheelR, wheelbase } = t;
   const bevel = { depth: W - 0.16, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 3, curveSegments: 4 };
   const paint = new THREE.ExtrudeGeometry(shapeOf(t.body), bevel);
@@ -534,4 +624,4 @@ function along(pts, dist) {
   return { x: pts[0][0], z: pts[0][1], heading: 0 };
 }
 
-export const VOLVO_GREY = 0x7b7f84;
+export const VOLVO_GREY = 0x8e9296;
