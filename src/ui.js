@@ -129,6 +129,8 @@ export class UI {
   async dialog(name, lines, choices = null) {
     const never = () => new Promise(() => {});
     if (performance.now() < (this.cancelUntil || 0)) return never();
+    // een verhaal dat na 'Stoppen' nog doorloopt, mag geen nieuw gesprek meer openen
+    if (this.isStale?.()) return never();
     const gen = this.gen || 0;
     if (!this.dialogOpen) this.sfx?.play('open');
     this.dialogOpen = true;

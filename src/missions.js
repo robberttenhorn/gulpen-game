@@ -424,6 +424,9 @@ export class Missions {
     g.stopPolonaise();
     g.player.pose = null;
     g.player.lockedFor = false;
+    g.actGen = (g.actGen || 0) + 1; // eten/drinken dat nog loopt, stopt nu ook
+    g.unlockUntil = performance.now() + 5000; // wat nog naloopt (drinken, een overgang) mag je niet opnieuw vastzetten
+    g.dropProp?.();
     g.drunk = 0;
     g.wobble = 0;
     g.ui.timer(null);

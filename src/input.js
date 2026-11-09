@@ -79,6 +79,7 @@ export class Input {
     };
     joy.addEventListener('pointerup', joyEnd);
     joy.addEventListener('pointercancel', joyEnd);
+    joy.addEventListener('lostpointercapture', joyEnd); // bijv. als de stuurknop verdwijnt terwijl je hem vasthoudt
 
     document.getElementById('btn-action').addEventListener('pointerdown', (e) => { e.preventDefault(); this.actionPressed = true; });
     document.getElementById('btn-vehicle').addEventListener('pointerdown', (e) => { e.preventDefault(); this.vehiclePressed = true; });
