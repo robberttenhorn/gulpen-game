@@ -570,3 +570,30 @@ body.penalty-on #speedo, body.penalty-on #joystick, body.penalty-on #minimap-wra
 /* wildcamera: grote knop "Korenwolf!" */
 .wc-btn { position: absolute; left: 50%; bottom: max(70px, calc(env(safe-area-inset-bottom) + 60px)); transform: translateX(-50%); font: 800 22px 'Baloo 2', Inter, sans-serif; padding: 12px 34px; border: 0; border-radius: 999px; color: #1b2430; background: #f2c14e; box-shadow: 0 4px 14px rgba(0,0,0,.5); cursor: pointer; z-index: 5; }
 .wc-btn:active { transform: translateX(-50%) scale(.96); }
+
+/* drone: batterij, ringteller, pijl naar de volgende ring en de foto's aan het eind */
+body.drone-on #speedo, body.drone-on #minimap-wrap, body.drone-on #street-sign, body.drone-on #quest-card, body.drone-on #prompt, body.drone-on #btn-vehicle, body.drone-on #race-timer { display: none !important; }
+.drone-hud { position: absolute; inset: 0; pointer-events: none; color: #fff; font-family: Inter, sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+.drone-hud .dr-top { display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 14px 8px; background: linear-gradient(rgba(0,0,0,.5), transparent); }
+.drone-hud .dr-top b { font-family: 'Baloo 2', sans-serif; font-size: 22px; }
+.drone-hud .dr-rings { flex: 1; font-weight: 700; font-size: 14px; }
+.drone-hud .mini-stop { pointer-events: auto; }
+.drone-hud .dr-batt { position: absolute; left: 14px; top: calc(max(12px, env(safe-area-inset-top)) + 46px); width: 150px; height: 14px; border-radius: 8px; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.8); overflow: hidden; }
+.drone-hud .dr-batt i { position: absolute; left: 0; top: 0; bottom: 0; background: #69f0ae; }
+.drone-hud .dr-batt span { position: absolute; left: 160px; top: -3px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.drone-hud .dr-arrow { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 40px; color: #40c4ff; transform-origin: 50% 60%; }
+.drone-hud .dr-arrow.gold { color: #ffd54f; }
+.drone-hud .dr-alt { position: absolute; right: 16px; top: calc(max(12px, env(safe-area-inset-top)) + 46px); font-weight: 700; font-size: 14px; }
+.drone-hud .dr-hint { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); text-align: center; font-size: 13px; padding: 0 16px; }
+body.touch .drone-hud .dr-hint { bottom: 150px; }
+.dr-pop { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); font: 800 26px 'Baloo 2', sans-serif; animation: fx-pop 1.4s ease-out forwards; white-space: nowrap; }
+.dr-pop.good { color: #b9f6ca; } .dr-pop.gold { color: #ffd54f; } .dr-pop.bad { color: #ff8a80; }
+.dr-flash { position: absolute; inset: 0; background: #fff; animation: dr-flash .45s ease-out forwards; }
+.dr-flash.bad { background: #ff1744; }
+@keyframes dr-flash { from { opacity: .85; } to { opacity: 0; } }
+.dr-photos { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; padding: 0 16px; }
+.dr-photos figure { margin: 0; background: #fff; padding: 8px 8px 26px; box-shadow: 0 8px 24px rgba(0,0,0,.5); transform: rotate(var(--r)); width: min(30vw, 220px); animation: dr-in .5s ease-out both; }
+.dr-photos figure:nth-child(2) { animation-delay: .25s; } .dr-photos figure:nth-child(3) { animation-delay: .5s; }
+.dr-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+.dr-photos figcaption { color: #1b2430; text-shadow: none; font: 700 13px 'Baloo 2', sans-serif; text-align: center; margin-top: 6px; }
+@keyframes dr-in { from { opacity: 0; transform: translateY(30px) rotate(var(--r)) scale(.8); } to { opacity: 1; transform: rotate(var(--r)); } }
