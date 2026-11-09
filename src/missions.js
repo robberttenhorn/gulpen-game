@@ -326,7 +326,7 @@ export class Missions {
 
   setActive(id, title, desc, progress = '') {
     // een gewone missie start in het donker: eerst weer dag (niet bij de nachtmissies, het pilsje of de finale)
-    if (this.g.night > 0.5 && !['nacht', 'nachtvangulpen', 'pils', 'finale'].includes(id) && !this.g.dawning) this.g.dawn();
+    if (this.g.night > 0.5 && !['nacht', 'nachtvangulpen', 'bierfeesten', 'pils', 'finale'].includes(id) && !this.g.dawning) this.g.dawn();
     // tijd meten vanaf de start van de missie (opnieuw zetten tijdens dezelfde missie telt niet)
     if (this.runStart?.id !== id) { this.runStart = { id, t: performance.now() }; this.modeBefore = this.g.mode; }
     this.active = { id, title, desc, progress };
@@ -341,7 +341,7 @@ export class Missions {
   complete(id, toast, score = null) {
     this.done.add(id);
     this.g.lastDone = id; // voor foutmeldingen: welke missie net klaar was
-    if (id === 'nacht' || id === 'nachtvangulpen') this.g.morningAsap = true; // nachtmissie gehaald: weer ochtend
+    if (['nacht', 'nachtvangulpen', 'bierfeesten'].includes(id)) this.g.morningAsap = true; // avondmissie gehaald: weer ochtend
     const rec = id === 'finale' ? null : this.record(id, score);
     this.runStart = null;
     if (rec === 'record') toast = `${toast || 'Missie geslaagd!'} Nieuw record: ${this.bestLabel(id)}!`;
@@ -357,7 +357,7 @@ export class Missions {
   }
 
   fail(text) {
-    if (['nacht', 'nachtvangulpen'].includes(this.active?.id)) this.g.morningAsap = true; // nachtmissie mislukt: weer ochtend
+    if (['nacht', 'nachtvangulpen', 'bierfeesten'].includes(this.active?.id)) this.g.morningAsap = true; // avondmissie mislukt: weer ochtend
     this.runStart = null;
     this.active?.cleanup?.();
     this.active = null;
@@ -436,7 +436,7 @@ export class Missions {
 
   abort() {
     const g = this.g;
-    if (['nacht', 'nachtvangulpen'].includes(this.active?.id)) g.morningAsap = true; // nachtmissie gestopt: weer ochtend
+    if (['nacht', 'nachtvangulpen', 'bierfeesten'].includes(this.active?.id)) g.morningAsap = true; // avondmissie gestopt: weer ochtend
     this.runStart = null;
     this.active?.cleanup?.();
     if (g.interior) g.exitInterior();

@@ -95,7 +95,7 @@ export function geschiedenisItems(n) {
     { id: 'primosa', npc: n.conservator, title: 'Kunst in de piramide', place: 'Piramide Primosa, Landsraderweg 7', desc: 'De tentoonstelling in de glazen piramide opent, maar er komt geen hond op af. Haal bezoekers uit de buurt voor de Mona Liesje.' },
     { id: 'romeinen', npc: n.archeoloog, title: 'De Romeinse weg', place: 'Oude Akerweg', desc: 'De Oude Akerweg was de Romeinse weg van Maastricht naar Aken. Help de archeologe graven naar Romeinse vondsten.' },
     { id: 'atelier', npc: n.chef, title: 'Een bord is een schilderij', place: 'Restaurant Atelier, Markt 9', desc: 'Het restaurant zit vol en de souschef is ziek. Maak de borden op precies zoals de chef ze voordoet.' },
-    { id: 'bierfeesten', npc: n.voorzitter, title: 'Tappen op de Bierfeesten', place: 'Markt (Gulpener Bierfeesten)', desc: 'Het grootste feest van het jaar, Feestkabinet staat op het podium, maar de tappers zijn kwijt. Tap jij?' },
+    { id: 'bierfeesten', npc: n.voorzitter, title: 'Tappen op de Bierfeesten', place: 'Markt, bij Café Neubourg (alleen \'s avonds)', desc: 'Het grootste feest van het jaar, Feestkabinet staat op het podium, maar de tappers zijn kwijt. Tap jij? Het feest begint pas als het avond is: drink eerst een pilsje bij De Zwarte Ruiter.', nightOnly: true },
     { id: 'korenwolf', npc: n.bioloog, title: 'Zit de korenwolf er nog?', place: 'Velden aan de rand van het dorp', desc: 'Hang wildcamera\'s op in het veld en kijk de nachtfoto\'s na. Zit de korenwolf er nog, of niet?' },
     { id: 'forellen', npc: n.kweker, title: 'Forellen scheppen', place: 'Aan de Gulp, bij de Looierstraat', desc: 'Help de forellenkweker met een bestelling: schep alleen de grote forellen uit de kweekvijver.' },
   ].filter((x) => x.npc);
@@ -209,6 +209,14 @@ export const geschiedenisHandlers = {
   // ------------------------------------------------------------ de Gulpener Bierfeesten met Feestkabinet
   async voorzitter(npc, N, ui, g) {
     const MC = 'MC van Feestkabinet';
+    // het feest is 's avonds: overdag eerst een pilsje bij De Zwarte Ruiter, dan wordt het vanzelf avond
+    if (!(g.night > 0.5)) {
+      await ui.dialog(N, [
+        'Goeiedag! Ik ben de voorzitter van de Gulpener Bierfeesten. Vanavond is het grootste feest van het jaar, hier op de Markt.',
+        'Maar overdag is er nog niks te beleven. Ga eerst maar een pilsje drinken bij De Zwarte Ruiter. Als het avond is, kom je terug, dan begint het feest!',
+      ]);
+      return;
+    }
     const a = await ui.dialog(N, [
       'Enne? Klaar voor de Gulpener Bierfeesten? Het grootste feest van het jaar, hier op de Markt!',
       'Het podium staat bij Mezzaluna, Feestkabinet staat klaar: de DJ draait en de MC zweept iedereen op. De discolampen gaan zo aan.',

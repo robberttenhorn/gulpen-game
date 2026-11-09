@@ -73,13 +73,13 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Kunst in de piramide: er komt geen hond op de tentoonstelling af; haal vijf bezoekers (en een hond) voor de Mona Liesje, daarna het verhaal van de veiling | Piramide Primosa, Landsraderweg 7 |
 | De Romeinse weg: graven naar Romeinse vondsten; een getal zegt hoeveel vondsten er in de vakjes eromheen liggen, pas op voor de waterleiding | Oude Akerweg |
 | Een bord is een schilderij: drie gangen precies zo opmaken als de chef ze voordoet | Restaurant Atelier, Markt 9 |
-| Tappen op de Bierfeesten: tien Gulpeners precies tot de streep met een kraag van twee vingers schuim (de tap sputtert en het schuim verschilt per glas), met Feestkabinet op het podium | Markt (Gulpener Bierfeesten) |
+| Tappen op de Bierfeesten: tien Gulpeners precies tot de streep met een kraag van twee vingers schuim (de tap sputtert en het schuim verschilt per glas), met Feestkabinet op het podium | Markt, bij Café Neubourg (alleen 's avonds: overdag stuurt de voorzitter je eerst voor een pilsje naar De Zwarte Ruiter) |
 | Zit de korenwolf er nog?: drie wildcamera's ophangen in het veld en de nachtfoto's nakijken | Velden aan de rand van het dorp |
 | Forellen scheppen: alleen de grote forellen uit de kweekvijver, de kleintjes laten zwemmen | Aan de Gulp, bij de Looierstraat |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
-**Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer dag zodra je een andere missie begint, als je een nachtmissie haalt, stopt of die mislukt, met nog een pilsje, en anders na 2 minuten zonder missie. Bij elke start van de game is het 11 uur 's ochtends.
+**Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer dag zodra je een andere missie begint, als je een nachtmissie haalt, stopt of die mislukt, met nog een pilsje, en anders na 2 minuten zonder missie. Bij elke start van de game is het 11 uur 's ochtends. De avondmissies zijn de Nachtburgemeester, de Nacht van Gulpen en de Gulpener Bierfeesten.
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
 
