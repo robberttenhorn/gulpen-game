@@ -325,7 +325,7 @@ const frag = `
       }
     }
     // binnen brandt licht: overdag iets donkerder dan buiten, 's avonds warm en helder
-    col *= mix(0.78, 1.25, uNight) * mix(vec3(1.0), vec3(1.08, 0.98, 0.85), uNight);
+    col *= mix(0.9, 1.25, uNight) * mix(vec3(1.06, 0.99, 0.9), vec3(1.08, 0.98, 0.85), uNight); // binnen brandt ook overdag warm licht
     // spiegeling van de lucht in het glas (sterker als je schuin kijkt)
     float fres = pow(1.0 - abs(normalize(vCam - vPos).z), 3.0);
     col = mix(col, vec3(0.75, 0.82, 0.9), 0.12 + fres * 0.45 * (1.0 - uNight * 0.7));

@@ -1,6 +1,7 @@
 import { GAME_NAME, PLACE } from './config.js';
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import { installLighting } from './lighting.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -31,6 +32,7 @@ import { setupSecret } from './secret.js';
 
 const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
 const HIGH = !isMobile;
+installLighting(); // randlicht en mist met zon in alle materialen (lighting.js)
 
 const SPEED = { walk: 4.0, run: 6.5, bike: 12.5, skate: 9.5, keg: 2.8 };
 
@@ -66,7 +68,7 @@ class Game {
     this.vehicles = { bike: true, skate: false };
     this.bikeSpeed = SPEED.bike;
     this.mode = 'walk';
-    this.timeOfDay = 11;
+    this.timeOfDay = 15; // middag: lagere, warmere zon dan rond het middaguur, met langere schaduwen
     this.wobble = 0;
     this.shake = 0;
     this.time = 0;
@@ -214,7 +216,7 @@ class Game {
     this.scene.add(this.sun, this.sun.target);
     this.hemi = new THREE.HemisphereLight(0xbfd8ff, 0x5c5a3a, 0.7);
     this.scene.add(this.hemi);
-    this.scene.fog = new THREE.Fog(0xc9d8e6, 450, 4200);
+    this.scene.fog = new THREE.Fog(0xc9d8e6, 140, 4200); // luchtperspectief: verderop zachter en lichter
 
     // wolken: een koepel met langzaam drijvende stapelwolken
     this.clouds = new THREE.Mesh(new THREE.SphereGeometry(8000, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.ShaderMaterial({
@@ -351,15 +353,19 @@ class Game {
     }
 
     const dusk = THREE.MathUtils.smoothstep(elev, -4, 6) * (1 - THREE.MathUtils.smoothstep(elev, 6, 22));
-    this.sun.intensity = 3.0 * day + 0.95 * night; // maanlicht: 's nachts net iets lichter
-    this.sun.color.setRGB(1, 0.95 - dusk * 0.3, 0.86 - dusk * 0.45);
+    // key light: de zon, warmer naarmate hij lager staat
+    const low = 1 - THREE.MathUtils.smoothstep(elev, 10, 50);
+    this.sun.intensity = 3.5 * day + 0.95 * night; // maanlicht: 's nachts net iets lichter
+    this.sun.color.setRGB(1, 0.93 - low * 0.08 - dusk * 0.3, 0.83 - low * 0.16 - dusk * 0.45);
     if (night > 0.5) this.sun.color.setRGB(0.55, 0.65, 1);
-    this.hemi.intensity = 0.7 * day + 0.68 * night;
-    this.hemi.color.setRGB(0.75 * day + 0.25 * night, 0.85 * day + 0.3 * night, 1 * day + 0.55 * night);
-    this.renderer.toneMappingExposure = 0.55 * day + 1.02 * night;
-    if (this.bloom) { this.bloom.strength = 0.18 + night * 0.55; this.bloom.threshold = 0.92 - night * 0.3; }
+    // fill: koele, blauwe lucht in de schaduwen en weinig warm licht van de grond (warm-koudcontrast)
+    this.hemi.intensity = 0.95 * day + 0.68 * night;
+    this.hemi.color.setRGB(0.5 * day + 0.25 * night, 0.66 * day + 0.3 * night, 1 * day + 0.55 * night);
+    this.hemi.groundColor.setRGB(0.3, 0.28, 0.22);
+    this.renderer.toneMappingExposure = 0.62 * day + 1.02 * night;
+    if (this.bloom) { this.bloom.strength = 0.24 + night * 0.5; this.bloom.threshold = 0.88 - night * 0.26; this.bloom.radius = 0.7; }
 
-    const fogDay = new THREE.Color(0xc9d8e6).lerp(new THREE.Color(0xe8b98a), dusk * 0.6);
+    const fogDay = new THREE.Color(0xbfd2e6).lerp(new THREE.Color(0xe8b98a), dusk * 0.6 + low * 0.12);
     this.scene.fog.color.copy(fogDay.lerp(new THREE.Color(0x0b1424), night));
     this.sky.visible = night < 0.97;
     this.scene.background = night >= 0.97 ? new THREE.Color(0x060b16) : null;
@@ -371,7 +377,7 @@ class Game {
     if (night < 0.5) {
       this.envRT = this.pmrem.fromScene(this.envScene, 0, 1, 20000);
       this.scene.environment = this.envRT.texture;
-      this.scene.environmentIntensity = 0.55 * day + 0.08 * night;
+      this.scene.environmentIntensity = 0.38 * day + 0.08 * night; // minder grijze opvulling, de blauwe lucht doet het werk
     } else this.scene.environment = null;
     this.missions?.refresh();
   }
@@ -400,7 +406,7 @@ class Game {
   async dawn() {
     this.dawning = true;
     this.morningAsap = false;
-    try { await this.skipTime(9.5); } finally { this.dawning = false; }
+    try { await this.skipTime(9); } finally { this.dawning = false; }
     this.ui.toast('Goeiemorgen! De zon is weer op.', 2400);
   }
 

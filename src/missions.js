@@ -665,7 +665,7 @@ export class Missions {
       }
       await g.drinkPils();
       await ui.dialog(N, ['Proost! Op Gulpen!']);
-      await g.skipTime(night ? 9.5 : 22.5);
+      await g.skipTime(night ? 15 : 22.5);
       this.done.add('pils');
       this.save();
       this.refresh();
