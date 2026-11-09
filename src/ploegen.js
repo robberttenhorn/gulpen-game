@@ -127,7 +127,8 @@ export function startPloegen(g, f, { limit = 170 } = {}) {
   placeGuide(0);
   // voren: donkere stroken grond achter de ploeg
   const MAXF = 900;
-  const furrowGeo = new THREE.PlaneGeometry(2.4, 0.72); // iets langer dan de stap, zodat de voor doorloopt furrowGeo.rotateX(-Math.PI / 2);
+  const furrowGeo = new THREE.PlaneGeometry(2.4, 0.72); // iets langer dan de stap, zodat de voor doorloopt
+  furrowGeo.rotateX(-Math.PI / 2); // plat op de grond (stond eerst rechtop door een fout)
   const furrows = new THREE.InstancedMesh(furrowGeo, new THREE.MeshStandardMaterial({ color: 0x4e342e, roughness: 1 }), MAXF);
   furrows.count = 0; furrows.frustumCulled = false; furrows.receiveShadow = true;
   g.scene.add(furrows);

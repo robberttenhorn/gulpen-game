@@ -132,10 +132,16 @@ export function buildBierfeest(g) {
     }
   });
 
+  // bomen die het zicht op het podium wegnemen even weghalen: rond het podium, boven het feestvolk
+  // en op de lijn van de bar naar het podium (waar de camera staat)
+  const view = barSpot ? barSpot.front : [sx + mz.nx * 18, sz + mz.nz * 18];
+  const segDist = (x, z, ax, az, bx, bz) => { const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez || 1; const k = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / l2)); return Math.hypot(x - ax - ex * k, z - az - ez * k); };
+  const showTrees = w.hideTrees((x, z) => Math.hypot(x - sx, z - sz) < 11 || segDist(x, z, view[0], view[1], sx, sz) < 7 || Math.hypot(x - (sx + mz.nx * 11), z - (sz + mz.nz * 11)) < 10, [sx, sz], 60);
+
   let t = 0;
   return {
     stage: [sx, sz], stageY: sy, barSpot, crowd, mc,
     update(dt) { t += dt; for (const u of updaters) u(t, dt); },
-    remove() { lights.remove(); g.scene.remove(root); },
+    remove() { lights.remove(); g.scene.remove(root); showTrees(); },
   };
 }

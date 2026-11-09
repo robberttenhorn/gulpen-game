@@ -264,8 +264,10 @@ export function startTappen(g, { need = 10, maxFails = 3, limit = 75, mcLines = 
   const combo = makeCombo(ui.ov);
   let t = 0, served = 0, fails = 0, end = 0, ok = null, pouring = false, beer = 0, foam = 0, wait = 0, mcT = 3, glassN = 0;
   let target = 0.78; // waar de streep zit (bier), schuim komt erbovenop
-  const flow = () => 0.42 + Math.min(0.25, served * 0.025); // steeds iets sneller (de dorst wordt groter)
-  const newGlass = () => { beer = 0; foam = 0; target = rnd(0.72, 0.8); glassN++; };
+  let foamLo = 0.08, foamHi = 0.16, seed = 0, handle = 0;
+  // steeds iets sneller, en de tap sputtert een beetje (dus niet elke keer even snel)
+  const flow = () => (0.5 + Math.min(0.3, served * 0.035)) * (0.7 + 0.6 * Math.abs(Math.sin(t * 6.3 + seed)));
+  const newGlass = () => { beer = 0; foam = 0; target = rnd(0.66, 0.82); foamLo = rnd(0.05, 0.1); foamHi = rnd(0.13, 0.22); seed = Math.random() * 6; glassN++; };
   newGlass();
   const release = () => {
     if (!pouring) return;
@@ -273,18 +275,19 @@ export function startTappen(g, { need = 10, maxFails = 3, limit = 75, mcLines = 
     if (ok !== null || wait > 0 || beer < 0.05) return;
     const W = cv.width;
     const top = beer + foam;
-    const xp = 50, yp = 30;
+    const xp = 72, yp = 40;
     const dBeer = beer - target;
     if (top > 1) { fails++; combo.miss(); flash(ui.ov, 'bad'); g.sfx?.play('splash'); popText(ui.ov, 'Over de rand! Dat plakt...', xp, yp, 'bad big'); }
-    else if (dBeer < -0.08) { fails++; combo.miss(); flash(ui.ov, 'bad'); g.sfx?.play('fail'); popText(ui.ov, 'Een half glas? Boe!', xp, yp, 'bad big'); }
-    else if (foam < 0.06) { served++; const c = combo.hit(); popText(ui.ov, c >= 3 ? `Geen schuim, maar goed... x${c}` : 'Plat bier, maar goed', xp, yp, 'good'); g.sfx?.play('clink'); }
+    else if (dBeer < -0.045) { fails++; combo.miss(); flash(ui.ov, 'bad'); g.sfx?.play('fail'); popText(ui.ov, 'Te weinig! Boe!', xp, yp, 'bad big'); }
+    else if (dBeer > 0.045) { fails++; combo.miss(); flash(ui.ov, 'bad'); g.sfx?.play('fail'); popText(ui.ov, 'Te vol, geen ruimte voor schuim!', xp, yp, 'bad big'); }
+    else if (foam < 0.05) { served++; const c = combo.hit(); popText(ui.ov, c >= 3 ? `Geen schuim, maar goed... x${c}` : 'Plat bier, maar goed', xp, yp, 'good'); g.sfx?.play('clink'); }
     else {
       served++;
-      const perfect = Math.abs(dBeer) < 0.03 && foam > 0.08 && foam < 0.14;
+      const perfect = Math.abs(dBeer) < 0.015 && foam > 0.08 && foam < 0.13;
       const c = combo.hit();
       popText(ui.ov, perfect ? (c >= 3 ? `PERFECT! x${c}` : 'Perfect getapt!') : (c >= 3 ? `Proost! x${c}` : 'Proost!'), xp, yp, perfect ? 'gold big' : 'good big');
       flash(ui.ov, perfect ? 'gold' : 'good'); g.sfx?.play('clink');
-      parts.spawn(W / 2, cv.height * 0.3, 14, { color: '#ffe082', speed: 200, up: 160, size: 5 * devicePixelRatio, life: 0.8, shape: 'circle' });
+      parts.spawn(W * 0.8, cv.height * 0.6, 14, { color: '#ffe082', speed: 200, up: 160, size: 5 * devicePixelRatio, life: 0.8, shape: 'circle' });
     }
     wait = 0.6;
   };
@@ -307,9 +310,9 @@ export function startTappen(g, { need = 10, maxFails = 3, limit = 75, mcLines = 
     else if (pouring && ok === null) {
       // eerst vooral bier, vlak voor het eind komt het schuim
       const f = flow() * dt;
-      // bij de streep zit er dan ongeveer twee vingers schuim op (ca. 0,11)
-      beer += f * 0.86; foam += f * (beer > 0.4 ? 0.16 : 0.08);
-      foam = Math.min(foam, 0.2);
+      // het schuim verschilt per glas: soms komt er veel, soms weinig
+      beer += f * 0.86; foam += f * (beer > 0.4 ? foamHi : foamLo);
+      foam = Math.min(foam, 0.24);
       if (beer + foam > 1.06) release();
     }
     // het schuim zakt een beetje in als je wacht
@@ -323,12 +326,37 @@ export function startTappen(g, { need = 10, maxFails = 3, limit = 75, mcLines = 
     const bg = ctx.createLinearGradient(0, H * 0.3, 0, H);
     bg.addColorStop(0, 'rgba(18,58,36,0)'); bg.addColorStop(0.45, 'rgba(18,58,36,0.75)'); bg.addColorStop(1, 'rgba(18,58,36,0.92)');
     ctx.fillStyle = bg; ctx.fillRect(0, H * 0.3, W, H * 0.7);
-    const gw = Math.min(W * 0.1, 18 * u), gh = gw * 1.9, gx = W / 2 - gw / 2, gy = H - gh - 5 * u;
-    // tapkraan
-    ctx.fillStyle = '#b0bec5'; ctx.fillRect(W / 2 - 2 * u, gy - 14 * u, 4 * u, 10 * u);
-    ctx.fillStyle = '#f2c14e'; ctx.fillRect(W / 2 - 6 * u, gy - 22 * u, 12 * u, 9 * u);
-    ctx.fillStyle = '#123a24'; ctx.font = `800 ${3 * u}px Inter, sans-serif`; ctx.textAlign = 'center'; ctx.fillText('GULPENER', W / 2, gy - 16 * u);
-    if (pouring && wait <= 0 && ok === null) { ctx.fillStyle = '#f9a825'; ctx.fillRect(W / 2 - 0.8 * u, gy - 4 * u, 1.6 * u, gh - beer * gh + 4 * u); }
+    // tap en glas rechts in beeld, zodat het podium in het midden vrij blijft
+    const cxT = W * 0.8;
+    const gw = Math.min(W * 0.1, 18 * u), gh = gw * 1.9, gx = cxT - gw / 2, gy = H - gh - 5 * u;
+    // taptoren met hendel: de hendel kantelt naar voren als je tapt
+    handle += ((pouring && wait <= 0 && ok === null ? 1 : 0) - handle) * Math.min(1, dt * 12);
+    const tx = cxT, ty = gy - 4 * u;
+    const chrome = ctx.createLinearGradient(tx - 3 * u, 0, tx + 3 * u, 0);
+    chrome.addColorStop(0, '#78909c'); chrome.addColorStop(0.45, '#eceff1'); chrome.addColorStop(1, '#607d8b');
+    ctx.fillStyle = chrome;
+    ctx.beginPath(); ctx.roundRect(tx - 2.6 * u, ty - 16 * u, 5.2 * u, 16 * u, 1.2 * u); ctx.fill(); // zuil
+    ctx.beginPath(); ctx.roundRect(tx - 1 * u, ty - 1 * u, 2 * u, 3 * u, 0.6 * u); ctx.fill(); // kraantje
+    ctx.fillStyle = '#455a64'; ctx.fillRect(tx - 5 * u, ty - 17.5 * u, 10 * u, 1.6 * u); // kop van de zuil
+    // hendel
+    ctx.save(); ctx.translate(tx, ty - 17.5 * u); ctx.rotate(-0.15 - handle * 0.75);
+    const hl = 15 * u, hw = 3.4 * u;
+    const hg = ctx.createLinearGradient(-hw / 2, 0, hw / 2, 0);
+    hg.addColorStop(0, '#0b2a18'); hg.addColorStop(0.5, '#1f6b3d'); hg.addColorStop(1, '#0b2a18');
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.moveTo(-hw * 0.35, 0); ctx.lineTo(hw * 0.35, 0); ctx.lineTo(hw / 2, -hl); ctx.lineTo(-hw / 2, -hl); ctx.closePath(); ctx.fill();
+    // naamplaatje: tekst past altijd binnen het plaatje
+    const pw = hw * 0.86, ph = 7.5 * u;
+    ctx.fillStyle = '#f2c14e'; ctx.beginPath(); ctx.roundRect(-pw / 2, -hl + 1.5 * u, pw, ph, 0.6 * u); ctx.fill();
+    ctx.save(); ctx.translate(0, -hl + 1.5 * u + ph / 2); ctx.rotate(-Math.PI / 2);
+    let fs = 2.4 * u; ctx.font = `900 ${fs}px Inter, sans-serif`;
+    const tw = ctx.measureText('GULPENER').width;
+    if (tw > ph * 0.88) { fs *= (ph * 0.88) / tw; ctx.font = `900 ${fs}px Inter, sans-serif`; }
+    ctx.fillStyle = '#123a24'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GULPENER', 0, 0);
+    ctx.restore();
+    ctx.fillStyle = '#0b2a18'; ctx.beginPath(); ctx.arc(0, -hl, hw * 0.55, Math.PI, 0); ctx.fill(); // knop bovenop
+    ctx.restore();
+    if (pouring && wait <= 0 && ok === null) { ctx.fillStyle = '#f9a825'; ctx.fillRect(tx - 0.6 * u, ty + 2 * u, 1.2 * u, Math.max(0, gy + gh * (1 - beer) - ty - 2 * u)); }
     // glas
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(gx, gy, gw, gh);
     ctx.fillStyle = '#f9a825'; ctx.fillRect(gx + 2, gy + gh * (1 - beer), gw - 4, gh * beer);
@@ -337,8 +365,8 @@ export function startTappen(g, { need = 10, maxFails = 3, limit = 75, mcLines = 
     // de streep
     ctx.strokeStyle = '#e53935'; ctx.lineWidth = 0.6 * u;
     ctx.beginPath(); ctx.moveTo(gx - 3 * u, gy + gh * (1 - target)); ctx.lineTo(gx + gw + 3 * u, gy + gh * (1 - target)); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.font = `600 ${2.4 * u}px Inter, sans-serif`; ctx.textAlign = 'left';
-    ctx.fillText('bier tot hier', gx + gw + 4 * u, gy + gh * (1 - target) + u);
+    ctx.fillStyle = '#fff'; ctx.font = `600 ${2.4 * u}px Inter, sans-serif`; ctx.textAlign = 'right';
+    ctx.fillText('bier tot hier', gx - 4 * u, gy + gh * (1 - target) + u);
     if (beer + foam > 1) { ctx.fillStyle = '#fffde7'; ctx.fillRect(gx - 2 * u, gy - 1 * u, gw + 4 * u, 2 * u); }
     parts.draw(ctx);
     ui.score(`🍺 ${served} / ${need}  ·  ${'✗'.repeat(fails)}${'·'.repeat(Math.max(0, maxFails - fails))}  ·  ${Math.max(0, Math.ceil(limit - t))} s`);

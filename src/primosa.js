@@ -86,9 +86,10 @@ export function buildPrimosa(fac, pos) {
   // halve breedte: hoe ver de gevels vanaf de top liggen (langs beide assen), afgerond naar binnen
   const ext = (dx, dz) => ring.map(([x, z]) => Math.abs((x - apex[0]) * dx + (z - apex[2]) * dz));
   const eu = ext(ux, uz).sort((a, b) => b - a), ev = ext(vx, vz).sort((a, b) => b - a);
-  const half = Math.max(8, Math.min(eu[1], ev[1], 20));
+  // de echte piramide is ongeveer de helft van wat de data suggereert: zo'n 18 bij 18 meter en 10 meter hoog
+  const half = Math.min(9, Math.max(6, Math.min(eu[1], ev[1]) / 2));
   const y0 = w.groundAt(apex[0], apex[2]);
-  const height = Math.max(8, apex[1] - y0);
+  const height = 10;
 
   // de dichte piramide uit de data weghalen (driehoeken in dit pand platdrukken)
   for (let i = 0; i + 2 < n; i += 3) {
@@ -99,6 +100,11 @@ export function buildPrimosa(fac, pos) {
   }
   const geo = w.buildingMesh?.geometry;
   if (geo) { geo.attributes.position.data.needsUpdate = true; geo.computeBoundingSphere(); }
+  // botsen: alleen nog tegen de (kleinere) glazen piramide, niet meer tegen het oude, grote pand
+  const sq = [[-half, -half], [half, -half], [half, half], [-half, half]].map(([a, b]) => [apex[0] + ux * a + vx * b, apex[2] + uz * a + vz * b]);
+  fp.ring = sq;
+  fp.minX = Math.min(...sq.map((p) => p[0])); fp.maxX = Math.max(...sq.map((p) => p[0]));
+  fp.minZ = Math.min(...sq.map((p) => p[1])); fp.maxZ = Math.max(...sq.map((p) => p[1]));
 
   const root = new THREE.Group();
   root.position.set(apex[0], y0, apex[2]);
@@ -149,14 +155,15 @@ export function buildPrimosa(fac, pos) {
   cord.rotation.x = Math.PI / 2; cord.position.set(0, 0.85, 1.0);
   art.add(frame, canvas, plate, stand, cord);
   for (let k = 0; k < 6; k++) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.9, 8), frameMat); const a = (k / 6) * Math.PI * 2; p.position.set(Math.sin(a) * 1.6, 0.45, 1.0 + Math.cos(a) * 1.6); art.add(p); }
-  // het schilderij kijkt naar de ingang (de kant van de straat)
+  // de ingang zit aan de kant van Mosaqua; het schilderij kijkt die kant op
+  const mos = (w.meta.pois || []).find((p) => p.id === 'mosaqua');
   const street = w.nearestStreet(apex[0], apex[2]);
-  const toStreet = street ? Math.atan2(street.x - apex[0], street.z - apex[2]) : 0;
+  const toStreet = mos ? Math.atan2(mos.pos[0] - apex[0], mos.pos[1] - apex[2]) : street ? Math.atan2(street.x - apex[0], street.z - apex[2]) : 0;
   art.rotation.y = toStreet - root.rotation.y;
   root.add(art);
   root.traverse((o) => { if (o.isMesh && o !== glass) o.castShadow = true; });
   scene.add(root);
-  // ingang: de kant van de piramide richting de straat, net buiten het glas
+  // ingang: de kant van de piramide richting Mosaqua, net buiten het glas
   const ex = apex[0] + Math.sin(toStreet) * (half + 2.5), ez = apex[2] + Math.cos(toStreet) * (half + 2.5);
   return { center: [apex[0], apex[2]], half, height, entrance: w.resolve(ex, ez, 0.6), group: root };
 }
