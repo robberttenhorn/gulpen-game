@@ -135,6 +135,9 @@ Elke missie onthoudt je beste prestatie, zichtbaar in de lijst op de grote kaart
 | `spel-gestart` | elke keer dat iemand op Speel drukt |
 | `speelminuut` | elke minuut dat het spel in beeld is: het totaal is de speeltijd in minuten |
 | `drie-missies` | één keer per apparaat: hoeveel spelers drie missies halen |
+| `haperend/mobiel/..fps` of `haperend/computer/..fps` | één keer per sessie: het spel liep een tijdje onder 40 beelden per seconde |
+| `soepel/mobiel/..fps` of `soepel/computer/..fps` | één keer per sessie: na twee minuten spelen liep het soepel (ter vergelijking) |
+| `fout/vastgezet` | het vangnet heeft een speler losgelaten die vast stond |
 
 Daarnaast komen fouten anoniem binnen als `fout/...` (bijvoorbeeld `fout/zwart-beeld` of `fout/webgl-weg`), met welke missie er net klaar was. Zo zie je wat er op telefoons misgaat.
 
@@ -177,6 +180,11 @@ Vite + Three.js, geen game-engine.
 - Wegen, stoepen (met stoepranden), fietspaden, parkeervakken en water zijn losse meshes uit de BGT-vlakken die het terrein volgen, met herhalende textures.
 - Omgevingsreflecties uit de lucht (auto's, ramen, water) en op de computer een lichte gloed (bloom), vooral 's avonds.
 - Etalages met een kijkje naar binnen: de ruiten van winkels, cafés en restaurants tonen een kamer erachter (achterwand, zijmuren, vloer, plafond, toonbank en mensen) die meeschuift als je langsloopt (interior mapping, zonder uitbouw). De inrichting hoort bij de zaak: brood bij de bakker, worsten bij de slager, brillen bij de opticien, een bar bij de cafés. 's Avonds brandt er licht.
+- Bewoonde huizen: dichtbij zie je achter de ramen van woonhuizen een kamer (muren, houten vloer, lamp, schilderij, kast, soms een plant), overdag gedempt en 's avonds warm verlicht. Dit zit in de shader van de gebouwen zelf, dus zonder extra objecten.
+- Leven op straat: hondenuitlaters (met lijn), mensen met boodschappentassen, ouders met een kind, fietsers op de weg en mensen op bankjes. Wie ver weg loopt, verhuist naar een straat in jouw buurt, zodat het rond jou levendig blijft zonder extra poppetjes.
+- Straatmeubilair op logische plekken: bankjes en fietsenrekken met de rug of lange kant tegen de gevel of van de rijbaan af, afvalbakken naast bankjes, fietsen in de rekken en bloembakken op de Markt.
+- Begroeiing: struiken, hagen langs voortuinen, graspollen en bloemen in bermen en grasvelden, per vak getekend en alleen in de buurt van de camera.
+- Omgevingsgeluid: geroezemoes en klinkende glazen op de Markt, kabbelend water bij de Gulp, meer vogels in het groen, krekels 's avonds en kerkklokken op het hele uur.
 - Automatische beeldkwaliteit: op een groot of scherp scherm rekent het spel niet met meer pixels dan nodig. Hapert het toch (minder dan ongeveer 48 beelden per seconde), dan zakt de resolutie stapsgewijs en als laatste gaat de gloed uit; loopt het weer soepel, dan wordt het beeld vanzelf weer scherper. De controle op een zwart beeld draait één keer per 10 seconden, omdat die de videokaart even laat wachten.
 - Bomen staan per vak van 200 m: dichtbij echte boommodellen (ez-tree) die zacht wiegen, veraf eenvoudige bomen. Geparkeerde auto's zijn gebundeld, zodat het ook op telefoons draait.
 - Poppetjes zijn in code gebouwd: één vloeiend model met een skelet (heupen, knieën, ellebogen, nek), gezicht, haar, kleding en hoedjes, met animaties voor lopen, rennen, fietsen, zitten, zwaaien, eten en drinken die zacht in elkaar overlopen.

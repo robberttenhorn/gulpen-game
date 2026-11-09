@@ -15,7 +15,7 @@ import { Vehicles, VOLVO_GREY } from './vehicles.js';
 import { Facades } from './facades.js';
 import { Pedestrians } from './pedestrians.js';
 import { Effects, makeFluitje, makeFinishBanner } from './props.js';
-import { statsStart, statsPageview, statsError } from './stats.js';
+import { statsStart, statsPageview, statsError, statsPerf } from './stats.js';
 import { SixSense } from './sixsense.js';
 import { startPenalty as startPenaltyGame } from './penalty.js';
 
@@ -286,6 +286,14 @@ class Game {
     if (q.t < 2) return;
     q.t = 0;
     const fps = 1 / q.avg;
+    // meting (anoniem): lang haperend, of na twee minuten soepel
+    if (this.started && document.getElementById('hud') && !document.getElementById('hud').hidden) {
+      q.play = (q.play || 0) + 2;
+      q.low = fps < 40 ? (q.low || 0) + 2 : 0;
+      const device = isMobile ? 'mobiel' : 'computer';
+      if (q.low >= 10) statsPerf('haperend', device, fps);
+      else if (q.play >= 120) statsPerf('soepel', device, fps);
+    }
     if (fps < 48) {
       q.good = 0;
       if (this.resScale > 0.62) { this.resScale = Math.max(0.6, this.resScale - 0.12); this.applyResolution(); }
@@ -1408,27 +1416,65 @@ class Game {
     this.updateInteractions(dt);
     this.world.hardscape.update(dt);
     this.world.updateTrees(this.camera.position, this.time);
+    this.world.updateVegetation(this.camera.position);
     this.fx.update(dt);
     this.interiors.update(dt);
-    if (!this.interior) this.updateAmbience(dt);
+    if (!this.interior) this.updateAmbience(dt); else if (this.amb) { this.amb.markt?.set(0); this.amb.water?.set(0); }
     this.updateCamera(dt);
     this.updateHud(dt);
     if (this.clouds) { this.clouds.material.uniforms.uTime.value = this.time; this.clouds.position.copy(this.camera.position); }
     this.render();
   }
 
-  // vogeltjes overdag, krekels 's avonds, kerkklokken als je bij de kerk komt
+  // Omgevingsgeluid: geroezemoes op de Markt, kabbelend water bij de Gulp, meer vogels in het groen,
+  // krekels 's avonds, glazen op de terrassen en de kerkklokken (bij de kerk en op elk heel uur).
   updateAmbience(dt) {
+    const p = this.player, w = this.world, night = this.night > 0.5;
+    if (this.sfx.ctx && !this.amb) this.amb = { markt: this.sfx.loop('markt'), water: this.sfx.loop('water'), t: 0, wob: 0 };
+    // omgeving rond de speler, twee keer per seconde bekijken
+    this.ambScan = (this.ambScan ?? 0) - dt;
+    if (this.ambScan <= 0) {
+      this.ambScan = 0.5;
+      let water = 0, green = 0;
+      for (let k = 0; k < 8; k++) for (const r of [8, 18]) {
+        const a = (k / 8) * Math.PI * 2, c = w.classAt(p.x + Math.sin(a) * r, p.z + Math.cos(a) * r);
+        if (c === 'water') water++;
+        if (c === 'gras' || c === 'bos' || c === 'struiken' || c === 'berm') green++;
+      }
+      this.ambWater = water; this.ambGreen = green;
+      this.ambMarkt = this.marktSpot ? Math.hypot(p.x - this.marktSpot[0], p.z - this.marktSpot[1]) : 999;
+    }
+    if (!this.marktSpot) this.marktSpot = w.spotNear(20, 0);
+    if (this.amb) {
+      const busy = this.minigame || this.interior;
+      this.amb.wob += (Math.random() - 0.5) * dt * 3; this.amb.wob = Math.max(-1, Math.min(1, this.amb.wob));
+      const markt = busy ? 0 : (1 - THREE.MathUtils.smoothstep(this.ambMarkt ?? 999, 18, 70)) * (night ? 0.02 : 0.05);
+      this.amb.markt?.set(markt, this.amb.wob);
+      this.amb.water?.set(busy ? 0 : Math.min(1, (this.ambWater || 0) / 6) * 0.035);
+      // glazen die klinken op de terrassen rond de Markt
+      this.amb.t -= dt;
+      if (markt > 0.02 && this.amb.t <= 0) { this.amb.t = 4 + Math.random() * 7; this.sfx.play('clink'); }
+    }
+    // vogels: vaker als er groen om je heen is; 's avonds krekels
     this.ambT = (this.ambT ?? 4) - dt;
     if (this.ambT <= 0) {
-      this.ambT = 3 + Math.random() * 6;
-      if (this.mode !== 'car') this.sfx.play(this.night > 0.5 ? 'cricket' : 'chirp');
+      const g = this.ambGreen || 0;
+      this.ambT = g > 8 ? 1.2 + Math.random() * 2.5 : 3 + Math.random() * 6;
+      if (this.mode !== 'car') this.sfx.play(night ? 'cricket' : 'chirp');
     }
     const ch = this.facades?.church;
     if (ch) {
-      const d = Math.hypot(this.player.x - ch.x, this.player.z - ch.z);
+      const d = Math.hypot(p.x - ch.x, p.z - ch.z);
       this.bellT = Math.max(0, (this.bellT || 0) - dt);
       if (d < 45 && this.bellT <= 0) { this.sfx.play('bells'); this.bellT = 120; }
+      // op elk heel uur (volgens de klok van je apparaat) luiden de klokken, als je in het dorp bent
+      const now = new Date();
+      const hourKey = now.getHours();
+      if (now.getMinutes() === 0 && this.lastHourBell !== hourKey && d < 400) {
+        this.lastHourBell = hourKey;
+        const n = (hourKey % 12) || 12;
+        for (let i = 0; i < Math.min(n, 6); i++) setTimeout(() => this.sfx.play('bells'), i * 1600);
+      }
     }
   }
 
