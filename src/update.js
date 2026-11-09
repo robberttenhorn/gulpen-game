@@ -1,3 +1,4 @@
+import { GAME_NAME } from './config.js';
 // Melding als er een nieuwere versie van de game online staat.
 // Elke build schrijft version.json met een eigen versienummer (zie vite.config.js).
 // De game vergelijkt dat af en toe met zijn eigen nummer; is het anders, dan verschijnt een balk.
@@ -21,7 +22,7 @@ export function startUpdateCheck() {
     const b = document.createElement('button');
     b.id = 'update-bar';
     b.type = 'button';
-    b.innerHTML = '<b>Er is een nieuwe versie van GTA Gullepe!</b><span>Tik om te vernieuwen. Je missies blijven bewaard.</span>';
+    b.innerHTML = `<b>Er is een nieuwe versie van ${GAME_NAME}!</b><span>Tik om te vernieuwen. Je missies blijven bewaard.</span>`;
     b.addEventListener('click', () => location.reload());
     document.body.appendChild(b);
   };

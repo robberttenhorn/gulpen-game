@@ -7,6 +7,7 @@ import { startOpgraving, startBord, startTappen, startWildcamera, startForellen 
 import { buildBierfeest } from './feest.js';
 import { streetSpot } from './missions3.js';
 import { findGulp } from './missions4.js';
+import { startDrone } from './drone.js';
 
 const G = (text, nl) => ({ text, nl });
 
@@ -80,6 +81,14 @@ export function setupGeschiedenis(m, g, add) {
     m.korenField = field;
     add('bioloog', 'Bioloog met verrekijker', w.resolve(...field.street, 0.5), { shirt: 0x558b2f, pants: 0x4e342e, hair: 0xe6c770, hat: 'cap', hatColor: 0x33691e });
   }
+  // dronefotograaf op het plein bij de Sint-Petruskerk, een stukje van de koster af
+  const kerk = (w.meta.pois || []).find((p) => p.id === 'kerk');
+  if (kerk) {
+    const k = m.npcs.koster;
+    let [dx, dz] = w.spotNear(...kerk.pos);
+    if (k && Math.hypot(k.pos.x - dx, k.pos.z - dz) < 8) { const ax = dx - k.pos.x || 1, az = dz - k.pos.z, d = Math.hypot(ax, az) || 1; [dx, dz] = w.resolve(k.pos.x + (ax / d) * 9, k.pos.z + (az / d) * 9, 0.5); }
+    add('dronepiloot', 'Dronefotograaf', [dx, dz], { shirt: 0x37474f, pants: 0x212121, hair: 0x3e2723, hat: 'cap', hatColor: 0xff7043, sleeves: 'short', shoes: 0xffffff });
+  }
   // forellenkweker aan de Gulp, vlak bij de Looierstraat
   const lp = w.streetPath?.('Looierstraat');
   const from = lp?.length ? lp[Math.floor(lp.length / 2)] : [20, -40];
@@ -97,11 +106,12 @@ export function geschiedenisItems(n) {
     { id: 'atelier', npc: n.chef, title: 'Een bord is een schilderij', place: 'Restaurant Atelier, Markt 9', desc: 'Het restaurant zit vol en de souschef is ziek. Maak de borden op precies zoals de chef ze voordoet.' },
     { id: 'bierfeesten', npc: n.voorzitter, title: 'Tappen op de Bierfeesten', place: 'Markt, bij Café Neubourg (alleen \'s avonds)', desc: 'Het grootste feest van het jaar, Feestkabinet staat op het podium, maar de tappers zijn kwijt. Tap jij? Het feest begint pas als het avond is: drink eerst een pilsje bij De Zwarte Ruiter.', nightOnly: true },
     { id: 'korenwolf', npc: n.bioloog, title: 'Zit de korenwolf er nog?', place: 'Velden aan de rand van het dorp', desc: 'Hang wildcamera\'s op in het veld en kijk de nachtfoto\'s na. Zit de korenwolf er nog, of niet?' },
+    { id: 'drone', npc: n.dronepiloot, title: 'Gulpen van bovenaf', place: 'Plein bij de Sint-Petruskerk', desc: 'Vlieg met een drone door de lichtringen over het dorp. Bij de gouden ringen maakt hij luchtfoto\'s voor de VVV.' },
     { id: 'forellen', npc: n.kweker, title: 'Forellen scheppen', place: 'Aan de Gulp, bij de Looierstraat', desc: 'Help de forellenkweker met een bestelling: schep alleen de grote forellen uit de kweekvijver.' },
   ].filter((x) => x.npc);
 }
 
-export const GESCHIEDENIS_MISSION_OF = { conservator: 'primosa', archeoloog: 'romeinen', chef: 'atelier', voorzitter: 'bierfeesten', bioloog: 'korenwolf', kweker: 'forellen' };
+export const GESCHIEDENIS_MISSION_OF = { conservator: 'primosa', archeoloog: 'romeinen', chef: 'atelier', voorzitter: 'bierfeesten', bioloog: 'korenwolf', kweker: 'forellen', dronepiloot: 'drone' };
 
 export const geschiedenisHandlers = {
   // ------------------------------------------------------------ de glazen piramide Primosa
@@ -343,6 +353,31 @@ export const geschiedenisHandlers = {
     } else {
       await ui.dialog(N, [r.wrong >= 3 ? 'Een merel is geen korenwolf, en een konijn ook niet! Nog maar eens kijken.' : 'Niks herkend... Dus zit hij er nou wel of niet? Niemand weet het. Precies zoals altijd. Probeer het nog eens!']);
       this.fail('Geen korenwolf herkend.');
+    }
+  },
+
+  // ------------------------------------------------------------ Gulpen van bovenaf (drone)
+  async dronepiloot(npc, N, ui, g) {
+    const a = await ui.dialog(N, [
+      'Hé! Ik maak luchtbeelden voor een nieuw filmpje van de VVV: Gulpen van bovenaf.',
+      'Alleen trillen mijn handen vandaag als een rietje. Kun jij de drone besturen? Ik heb een route uitgezet met lichtringen: over de Markt, laag over de Gulp, langs de brouwerij, over de glazen piramide, langs Mosaqua en de kerktoren.',
+      'Bij de gouden ringen maakt de drone een foto. Pas op voor windvlagen, en vlieg niet tegen de gevels, dan is de batterij zo leeg.',
+    ], ['Geef mij de afstandsbediening!', 'Ik heb hoogtevrees']);
+    if (a !== 0) { await ui.dialog(N, ['Hoogtevrees? Jij blijft gewoon met je voeten op de grond staan, hoor. Alleen de drone vliegt.']); return; }
+    if (g.mode === 'car') g.exitCar();
+    g.setMode('walk');
+    this.setActive('drone', 'Gulpen van bovenaf', 'Vlieg door alle lichtringen voordat de batterij leeg is. Draaien met links/rechts, stijgen en dalen met omhoog/omlaag. De gouden ringen maken een foto.', '0 ringen');
+    const r = await startDrone(g, { limit: 160 });
+    if (!r || this.active?.id !== 'drone') return;
+    if (r.ok) {
+      await ui.dialog(N, [
+        r.photos >= 3 ? 'Wat een plaatjes! De piramide, de kerktoren en de Markt van bovenaf. Dit wordt het mooiste filmpje dat de VVV ooit heeft gehad.' : 'Alle ringen gehaald! Een paar foto\'s zijn mislukt, maar de beelden zijn prachtig.',
+        'Volgende keer mag je hem ook laten landen. Op het dak van De Zwarte Ruiter, dan krijgen we vast een pilsje.',
+      ]);
+      this.complete('drone', 'Dronepiloot van Gulpen!');
+    } else {
+      await ui.dialog(N, [`Batterij leeg na ${r.rings} van de ${r.total} ringen. Hij hangt nu ergens in een boom bij de Gulp... Grapje, hij is vanzelf teruggevlogen. Nog een keer?`]);
+      this.fail('De batterij van de drone was leeg.');
     }
   },
 

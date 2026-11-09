@@ -105,6 +105,7 @@ export function buildPrimosa(fac, pos) {
   fp.ring = sq;
   fp.minX = Math.min(...sq.map((p) => p[0])); fp.maxX = Math.max(...sq.map((p) => p[0]));
   fp.minZ = Math.min(...sq.map((p) => p[1])); fp.maxZ = Math.max(...sq.map((p) => p[1]));
+  fp.top = y0 + height; // de glazen piramide is lager dan het oude pand
 
   const root = new THREE.Group();
   root.position.set(apex[0], y0, apex[2]);

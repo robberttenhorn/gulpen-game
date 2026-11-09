@@ -1,3 +1,4 @@
+import { GAME_NAME, PLACE } from './config.js';
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -17,6 +18,10 @@ import { Effects, makeFluitje, makeFinishBanner } from './props.js';
 import { statsStart, statsPageview, statsError } from './stats.js';
 import { SixSense } from './sixsense.js';
 import { startPenalty as startPenaltyGame } from './penalty.js';
+
+// naam van het spel en plaatsnaam in het logo (instellen in config.js)
+document.title = GAME_NAME;
+{ const lp = document.getElementById('logo-place'); if (lp) lp.textContent = PLACE; document.querySelector('.logo')?.setAttribute('aria-label', GAME_NAME); }
 import { Sound } from './audio.js';
 import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
@@ -725,7 +730,7 @@ class Game {
       const d = Math.hypot(n.pos.x - p.x, n.pos.z - p.z);
       const o = 1 - THREE.MathUtils.smoothstep(d, 9, 15);
       n.label.material.opacity = o;
-      n.label.visible = o > 0.02;
+      n.label.visible = o > 0.02 && !this.pov;
     }
   }
 
@@ -1847,7 +1852,7 @@ function showReloadBar(title) {
   if (document.querySelector('[data-id="ctx-lost"]')) return;
   const b = document.createElement('button');
   b.id = 'update-bar'; b.type = 'button';
-  b.innerHTML = `<b>${title}</b><span>Tik om GTA Gullepe opnieuw te laden. Je missies blijven bewaard.</span>`;
+  b.innerHTML = `<b>${title}</b><span>Tik om ${GAME_NAME} opnieuw te laden. Je missies blijven bewaard.</span>`;
   b.addEventListener('click', () => location.reload());
   b.dataset.id = 'ctx-lost';
   document.body.appendChild(b);
