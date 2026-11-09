@@ -1,5 +1,6 @@
 // Bouwt de 3D-wereld van Gulpen op uit de open data in public/data/.
 import * as THREE from 'three';
+import { buildVegetation, buildPlanters } from './vegetation.js';
 import { buildHardscape, surfaceLift } from './hardscape.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -135,6 +136,8 @@ export class World {
     this.buildStreetIndex();
     await this.buildTrees();
     this.buildProps();
+    // struiken, hagen, graspollen, bloemen en bloembakken op de Markt
+    try { this.vegetation = buildVegetation(this); this.planters = buildPlanters(this, this.spotNear(20, 0)); } catch (e) { console.warn('begroeiing', e); }
 
     step(0.85, 'Stoepen en straten leggen...');
     this.hardscape = buildHardscape(this, this.scene);
@@ -1095,6 +1098,37 @@ export class World {
     return 1;
   }
 
+  // dichtstbijzijnde gevel binnen maxD: punt op de gevel, normaal naar buiten, afstand en of (x,z) binnen het pand ligt
+  nearestWall(x, z, maxD = 4) {
+    let best = null;
+    for (const k of this.nearbyFootprints(x, z)) {
+      const f = this.footprints[k];
+      if (f.extra) continue;
+      const r = f.ring;
+      for (let i = 0; i < r.length; i++) {
+        const [ax, az] = r[i], [bx, bz] = r[(i + 1) % r.length];
+        const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez;
+        if (l2 < 0.25) continue;
+        const t = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / l2));
+        const px = ax + ex * t, pz = az + ez * t, d = Math.hypot(x - px, z - pz);
+        if (d >= maxD || (best && d >= best.d)) continue;
+        const l = Math.sqrt(l2);
+        let nx = ez / l, nz = -ex / l;
+        if (pointInRing(px + nx * 0.3, pz + nz * 0.3, r)) { nx = -nx; nz = -nz; }
+        best = { px, pz, nx, nz, ux: ex / l, uz: ez / l, d, inside: pointInRing(x, z, r) };
+      }
+    }
+    return best;
+  }
+
+  // een plek die niet op de rijbaan en niet in een pand ligt, zo dicht mogelijk bij (x, z)
+  offRoad(x, z, maxR = 4) {
+    const ok = (a, b) => this.classAt(a, b) !== 'rijbaan' && this.classAt(a, b) !== 'water' && !this.insideBuilding(a, b);
+    if (ok(x, z)) return [x, z];
+    for (let r = 0.5; r <= maxR; r += 0.5) for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2, px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r; if (ok(px, pz)) return [px, pz]; }
+    return null;
+  }
+
   insideBuilding(x, z) {
     for (const i of this.nearbyFootprints(x, z)) if (pointInRing(x, z, this.footprints[i].ring)) return true;
     return false;
@@ -1361,6 +1395,13 @@ export class World {
     return { variants, textures };
   }
 
+  // begroeiing alleen in de buurt tekenen (struiken en gras zie je van ver toch niet)
+  updateVegetation(cam) {
+    if (!this.vegTiles) return;
+    const R = this.isMobile ? 200 : 290;
+    for (const g of this.vegTiles) g.visible = Math.hypot(g.userData.c[0] - cam.x, g.userData.c[1] - cam.z) < R;
+  }
+
   // dichtbij echte bomen, veraf de lichte versie
   updateTrees(cam, time) {
     if (!this.treeTiles) return;
@@ -1395,13 +1436,45 @@ export class World {
       return s ? Math.atan2(s.x - x, s.z - z) : 0;
     };
 
-    // bankjes en picknicktafels
-    const benches = this.objects.furniture.filter((f) => f[0] === 'bank').map(([, x, z]) => [x, z]);
+    // Bankjes en fietsenrekken op een logische plek: staat er een gevel vlakbij (of staat het object er half in),
+    // dan met de rug of lange kant netjes tegen de gevel; anders van de rijbaan af en met de voorkant naar de straat.
+    const settle = (x, z, back) => {
+      const wall = this.nearestWall(x, z, 2.6);
+      if (wall && (wall.inside || wall.d < back + 0.6)) {
+        const sx = wall.px + wall.nx * back, sz = wall.pz + wall.nz * back;
+        if (!this.insideBuilding(sx, sz) && this.classAt(sx, sz) !== 'rijbaan') return { x: sx, z: sz, yaw: Math.atan2(wall.nx, wall.nz), wall };
+      }
+      const o = this.offRoad(x, z, 4);
+      if (!o) return null;
+      return { x: o[0], z: o[1], yaw: faceStreet(o[0], o[1]), wall: null };
+    };
+    const placeSettled = (inst, list) => {
+      list.forEach((sp, i) => {
+        p.set(sp.x, this.groundAt(sp.x, sp.z), sp.z);
+        q.setFromAxisAngle(up, sp.yaw);
+        m.compose(p, q, one);
+        inst.setMatrixAt(i, m);
+      });
+      inst.castShadow = true; inst.receiveShadow = true;
+      this.scene.add(inst);
+    };
+    const benches = this.objects.furniture.filter((f) => f[0] === 'bank').map(([, x, z]) => settle(x, z, 0.55)).filter(Boolean);
+    this.benchSpots = benches; // voor mensen die op een bankje zitten (pedestrians.js)
     const benchGeo = mergeGeometries([
       box(1.8, 0.06, 0.45, 0, 0.45, 0), box(1.8, 0.4, 0.05, 0, 0.72, -0.22, -0.12),
       box(0.06, 0.45, 0.45, -0.8, 0.22, 0), box(0.06, 0.45, 0.45, 0.8, 0.22, 0),
     ]);
-    place(new THREE.InstancedMesh(benchGeo, new THREE.MeshStandardMaterial({ color: 0x7a5636, roughness: 0.75 }), benches.length), benches, faceStreet);
+    placeSettled(new THREE.InstancedMesh(benchGeo, new THREE.MeshStandardMaterial({ color: 0x7a5636, roughness: 0.75 }), benches.length), benches);
+    // afvalbakken: groen, naast ongeveer de helft van de bankjes
+    const bins = [];
+    benches.forEach((b, i) => {
+      if (i % 2) return;
+      const ux = Math.cos(b.yaw), uz = -Math.sin(b.yaw); // langs het bankje
+      const bx = b.x + ux * 1.3, bz = b.z + uz * 1.3;
+      if (!this.insideBuilding(bx, bz) && this.classAt(bx, bz) !== 'rijbaan') bins.push({ x: bx, z: bz, yaw: b.yaw });
+    });
+    const binGeo = mergeGeometries([cyl(0.24, 0.22, 0.85, 0, 0.43, 0), cyl(0.26, 0.26, 0.06, 0, 0.88, 0), cyl(0.03, 0.03, 0.9, 0, 0.45, -0.28)]);
+    placeSettled(new THREE.InstancedMesh(binGeo, new THREE.MeshStandardMaterial({ color: 0x2e5d3a, roughness: 0.6, metalness: 0.2 }), bins.length), bins);
 
     const tables = this.objects.furniture.filter((f) => f[0] === 'picknicktafel').map(([, x, z]) => [x, z]);
     const tableGeo = mergeGeometries([
@@ -1410,14 +1483,37 @@ export class World {
     ]);
     place(new THREE.InstancedMesh(tableGeo, new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 0.8 }), tables.length), tables);
 
-    const racks = this.objects.furniture.filter((f) => f[0] === 'fietsenrek').map(([, x, z]) => [x, z]);
+    const racks = this.objects.furniture.filter((f) => f[0] === 'fietsenrek').map(([, x, z]) => settle(x, z, 0.7)).filter(Boolean);
     const rackParts = [];
     for (let i = 0; i < 5; i++) {
       const g = new THREE.TorusGeometry(0.35, 0.025, 6, 16, Math.PI);
       g.translate(-1 + i * 0.5, 0.35, 0);
-      rackParts.push(g.rotateY(0));
+      rackParts.push(g);
     }
-    place(new THREE.InstancedMesh(mergeGeometries(rackParts), new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.8, roughness: 0.35 }), racks.length), racks, faceStreet);
+    placeSettled(new THREE.InstancedMesh(mergeGeometries(rackParts), new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.8, roughness: 0.35 }), racks.length), racks);
+    // fietsen in de rekken: 2 tot 4 per rek, haaks op het rek, in verschillende kleuren
+    const bikeSpots = [];
+    racks.forEach((r) => {
+      const n = 1 + Math.floor(rand() * 3);
+      const used = new Set();
+      for (let k = 0; k < n; k++) {
+        let slot = Math.floor(rand() * 5); while (used.has(slot)) slot = (slot + 1) % 5; used.add(slot);
+        const off = -1 + slot * 0.5;
+        const ux = Math.cos(r.yaw), uz = -Math.sin(r.yaw);
+        bikeSpots.push({ x: r.x + ux * off, z: r.z + uz * off, yaw: r.yaw + Math.PI / 2 + (rand() - 0.5) * 0.12 });
+      }
+    });
+    const wheel = (zz) => { const g = new THREE.TorusGeometry(0.33, 0.025, 5, 18); g.rotateY(Math.PI / 2); g.translate(0, 0.35, zz); return g; };
+    const bar = (len, y, zz, rx) => { const g = new THREE.CylinderGeometry(0.018, 0.018, len, 5); g.rotateX(rx); g.translate(0, y, zz); return g; };
+    const bikeGeo = mergeGeometries([wheel(0.52), wheel(-0.52), bar(0.95, 0.62, 0, Math.PI / 2), bar(0.55, 0.5, -0.25, 0.5), bar(0.6, 0.55, 0.3, -0.45), box(0.08, 0.04, 0.22, 0, 0.88, -0.3), box(0.5, 0.025, 0.025, 0, 0.98, 0.45)]);
+    const bikes = new THREE.InstancedMesh(bikeGeo, new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.3 }), Math.max(1, bikeSpots.length));
+    const bcol = new THREE.Color();
+    bikeSpots.forEach((b, i) => {
+      p.set(b.x, this.groundAt(b.x, b.z), b.z); q.setFromAxisAngle(up, b.yaw); m.compose(p, q, one); bikes.setMatrixAt(i, m);
+      bikes.setColorAt(i, bcol.set([0x212121, 0x1565c0, 0xc62828, 0xeceff1, 0x2e7d32, 0x6d4c41, 0xf9a825][Math.floor(rand() * 7)]));
+    });
+    bikes.count = bikeSpots.length; bikes.castShadow = !this.isMobile;
+    this.scene.add(bikes);
 
     // lantaarnpalen met arm en armatuur
     const lights = this.objects.lights;

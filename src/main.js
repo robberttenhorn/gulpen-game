@@ -1408,6 +1408,7 @@ class Game {
     this.updateInteractions(dt);
     this.world.hardscape.update(dt);
     this.world.updateTrees(this.camera.position, this.time);
+    this.world.updateVegetation(this.camera.position);
     this.fx.update(dt);
     this.interiors.update(dt);
     if (!this.interior) this.updateAmbience(dt);
