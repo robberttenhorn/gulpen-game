@@ -342,11 +342,11 @@ export function startBonbons(g, { need = 25, maxMistakes = 3, limit = 60 } = {})
     const L = layout(), { W, H, u, r } = L;
     if (ok !== null) { end -= dt; if (end <= 0) { finish({ ok, sorted, mistakes, eaten }); return; } }
     else t += dt;
-    const speed = 0.17 + Math.min(0.25, t * 0.006); // band gaat steeds sneller
+    const speed = 0.21 + Math.min(0.29, t * 0.0075); // band gaat steeds sneller
     if (ok === null) {
       spawn -= dt;
       if (spawn <= 0) {
-        spawn = Math.max(0.5, 1.15 - t * 0.014) * (0.7 + Math.random() * 0.5);
+        spawn = Math.max(0.4, 0.95 - t * 0.014) * (0.7 + Math.random() * 0.5);
         belt.push({ kind: KINDS[Math.floor(Math.random() * KINDS.length)], broken: Math.random() < 0.18, x: 0 });
       }
     }

@@ -150,7 +150,8 @@ export const marktHandlers = {
     const a = await ui.dialog(N, [
       'Pardon! Ik heb hier een wandelkaart van de VVV, maar ik houd hem al een uur ondersteboven, geloof ik.',
       'Iemand zei net "Wablief?" tegen me. Is dat een plaats? Een gerecht? Ik snap er niks van.',
-      'Wil jij me rondleiden? De kerk, de bierbrouwerij en het riviertje. Loop maar voor, ik loop achter je aan. Niet te snel, hè!',
+      'Wil jij me rondleiden? De kerk, de bierbrouwerij en het riviertje. Loop maar voor, ik loop achter je aan.',
+      'Ik waarschuw je wel: ik raak héél snel afgeleid. Een poes, een mooie voordeur... en weg ben ik.',
     ], ['Loop maar mee!', 'Ik ben zelf ook verdwaald']);
     if (a !== 0) { await ui.dialog(N, ['Ook verdwaald? In zo\'n klein dorp? Dan zijn we met z\'n tweeën. Gezellig.']); return; }
     const pois = Object.fromEntries((w.meta.pois || []).map((p) => [p.id, p]));
@@ -170,8 +171,9 @@ export const marktHandlers = {
     }
     if (g.mode === 'car') g.exitCar();
     g.setMode('walk');
-    this.setActive('toerist', 'De verdwaalde toerist', `Loop voor de toerist uit naar ${ordered[0].name}. Hij loopt achter je aan, dus niet te hard rennen. Te voet!`, `0 / ${ordered.length} plekken`);
+    this.setActive('toerist', 'De verdwaalde toerist', `Breng de toerist naar ${ordered[0].name}. Hij raakt snel afgeleid: loopt hij weg naar een poes of een etalage, ga dan terug en roep hem. Te voet!`, `0 / ${ordered.length} plekken`);
     this.active.noVehicles = true;
+    g.updateVehicleButton();
     // de toerist loopt mee als kopie; de echte staat zolang verstopt
     const model = makeCharacter(npc.look);
     const tour = { x: npc.pos.x, z: npc.pos.z, heading: 0, lost: false };
@@ -180,7 +182,27 @@ export const marktHandlers = {
     npc.group.visible = false;
     const lostMarker = { x: tour.x, z: tour.z, color: '#ff7043', glyph: '!', done: true };
     g.tempMarkers = [lostMarker];
-    let idx = 0, right = 0, t = 0, busy = false;
+    let idx = 0, right = 0, t = 0, busy = false, nextDistract = 7 + Math.random() * 4, caught = 0;
+    // dingen waar de toerist door afgeleid raakt
+    const DISTRACT = [
+      ['Ooh, een poes! Pss pss pss...', '🐈'], ['Wat een prachtige voordeur! Even een foto.', '📷'], ['Een vlaai in de etalage! Die moet op de foto.', '📷'],
+      ['Kijk, een vogeltje! Wat is dat voor een?', '🐦'], ['Wacht, mijn veter zit los.', '👟'], ['Wat een schattig huisje! Woont hier een kabouter?', '📷'],
+      ['Ik moet even mijn moeder appen dat ik in Gulpen ben.', '📱'], ['Is dat een echte Limburgse mergelsteen? Even voelen.', '🪨'],
+    ];
+    const BACK = ['"Oh ja, de rondleiding! Sorry, ik raak zo snel afgeleid."', '"Nog één foto... oké, oké, ik kom al!"', '"Wat? O, ja. Waar waren we?"', '"Jij bent een strenge gids, zeg!"'];
+    const flashLight = new THREE.PointLight(0xffffff, 0, 6);
+    model.add(flashLight); flashLight.position.set(0.25, 1.5, 0.4);
+    let flashT = 0;
+    // een plek naast de route waar iets te zien is: van de straat af, niet in een pand, 9 tot 15 meter verderop
+    const pickSpot = () => {
+      for (let k = 0; k < 30; k++) {
+        const a = Math.random() * Math.PI * 2, r = 9 + Math.random() * 6;
+        const x = tour.x + Math.sin(a) * r, z = tour.z + Math.cos(a) * r;
+        if (w.insideBuilding(x, z) || w.blocked(x, z) || w.classAt(x, z) === 'rijbaan') continue;
+        return [x, z];
+      }
+      return null;
+    };
     const trail = []; // jouw looproute: de toerist loopt precies daarover, zo blijft hij niet achter een hoek hangen
     const limit = 75 + ordered.length * 55;
     g.setTarget({ pos: new THREE.Vector3(ordered[0].pos[0], 0, ordered[0].pos[1]) });
@@ -193,7 +215,47 @@ export const marktHandlers = {
       // achter de speler aan lopen
       const d = Math.hypot(p.x - tour.x, p.z - tour.z);
       let sp = 0;
-      if (d > 18 && !tour.lost) { tour.lost = true; lostMarker.done = false; g.ui.toast('"Wacht even! Ik ben geen marathonloper!" Ga terug naar de toerist.', 2600); g.sfx?.play('fail'); }
+      // afgeleid: de toerist loopt weg naar iets moois en blijft daar foto's maken tot je hem roept
+      flashT = Math.max(0, flashT - dt); flashLight.intensity = flashT > 0 ? 6 * flashT / 0.15 : 0;
+      const ds = tour.distract;
+      if (!ds && !busy && !tour.lost && d < 10) {
+        nextDistract -= dt;
+        if (nextDistract <= 0) {
+          const spot = pickSpot();
+          nextDistract = 2;
+          if (spot) {
+            const [line, icon] = DISTRACT[Math.floor(Math.random() * DISTRACT.length)];
+            tour.distract = { x: spot[0], z: spot[1], t: 0, snap: 0.6 };
+            lostMarker.done = false; lostMarker.glyph = icon;
+            g.ui.toast(`"${line}"`, 2600); g.sfx?.play('tally');
+          }
+        }
+      }
+      if (ds) {
+        ds.t += dt;
+        const dd = Math.hypot(ds.x - tour.x, ds.z - tour.z);
+        if (dd > 0.6) {
+          sp = 2.8; tour.heading = Math.atan2(ds.x - tour.x, ds.z - tour.z);
+          [tour.x, tour.z] = w.resolve(tour.x + Math.sin(tour.heading) * sp * dt, tour.z + Math.cos(tour.heading) * sp * dt, 0.4);
+        } else if ((ds.snap -= dt) <= 0) { ds.snap = 1.2 + Math.random(); flashT = 0.15; g.sfx?.play('camera'); }
+        const near = d < 3.6;
+        g.minigame.actionLabel = near ? 'Roep!' : null;
+        if (near && (g.input.consumeAction() || g.input.spacePressed)) {
+          g.input.spacePressed = false;
+          tour.distract = null; lostMarker.done = true; lostMarker.glyph = '!'; trail.length = 0;
+          g.minigame.actionLabel = null;
+          caught++;
+          nextDistract = 9 + Math.random() * 7 - Math.min(4, caught);
+          g.ui.toast(BACK[Math.floor(Math.random() * BACK.length)], 1800); g.sfx?.play('pop');
+        }
+        lostMarker.x = tour.x; lostMarker.z = tour.z;
+        model.position.set(tour.x, w.groundAt(tour.x, tour.z), tour.z);
+        model.rotation.y = tour.heading;
+        model.userData.animate(dt, sp, sp ? 'walk' : 'camera'); // staat foto's te maken
+        if (t > limit && !busy) { finish({ ok: false, right, idx }); }
+        return;
+      }
+      if (d > 26 && !tour.lost) { tour.lost = true; lostMarker.done = false; g.ui.toast('"Wacht even! Ik ben geen marathonloper!" Ga terug naar de toerist.', 2600); g.sfx?.play('fail'); }
       if (tour.lost && d < 7) { tour.lost = false; lostMarker.done = true; trail.length = 0; g.ui.toast('"Daar ben je! Rustig aan, hè."', 1600); }
       const last = trail[trail.length - 1];
       if (!last || Math.hypot(p.x - last[0], p.z - last[1]) > 0.6) trail.push([p.x, p.z]);
@@ -201,7 +263,7 @@ export const marktHandlers = {
         // volgende punt van het spoor (of rechtstreeks naar je toe als het spoor op is)
         while (trail.length > 1 && Math.hypot(trail[0][0] - tour.x, trail[0][1] - tour.z) < 0.5) trail.shift();
         const [gx, gz] = trail.length > 1 ? trail[0] : [p.x, p.z];
-        sp = Math.min(5.2, (d - 2.2) * 2.2);
+        sp = Math.min(6.8, (d - 2.2) * 2.4); // houdt je bij, ook als je rent
         tour.heading = Math.atan2(gx - tour.x, gz - tour.z);
         const step = Math.min(sp * dt, Math.hypot(gx - tour.x, gz - tour.z));
         [tour.x, tour.z] = w.resolve(tour.x + Math.sin(tour.heading) * step, tour.z + Math.cos(tour.heading) * step, 0.4);
@@ -227,6 +289,7 @@ export const marktHandlers = {
           else await ui.dialog(N, [`Echt waar? Dat schrijf ik op... Hoewel, op het bordje staat iets anders. Nou ja.`]);
           if (!g.minigame) return;
           idx++;
+          nextDistract = 4 + Math.random() * 4;
           this.progress(`${idx} / ${ordered.length} plekken`);
           if (idx >= ordered.length) { finish({ ok: true, right, idx }); return; }
           const nx = ordered[idx];
@@ -235,12 +298,13 @@ export const marktHandlers = {
           busy = false;
         })();
       }
-    }, restore, { tour, trail });
+    }, restore, { tour, trail, caught: () => caught, soon: () => { nextDistract = 0; } });
     if (!r || this.active?.id !== 'toerist') return;
     this.active.cleanup = null;
     if (r.ok) {
       await ui.dialog(N, [
         right === ordered.length ? 'Alles goed uitgelegd! Jij moet bij de VVV gaan werken.' : `${right} van de ${ordered.length} goed uitgelegd. De rest zoek ik thuis wel op.`,
+        caught ? `En je hebt me ${caught === 1 ? 'één keer' : caught + ' keer'} teruggehaald. Ik heb wel 200 foto's, hoor. Waarvan 150 van poezen.` : 'Ik ben geen enkele keer afgedwaald! Dat is een record.',
         'Bedankt! Nu ga ik eerst een vlaai eten. Waar was dat ook alweer... Nee, grapje. Ik vind het zelf wel.',
       ]);
       this.complete('toerist', 'Beste gids van Gulpen!', { v: right, unit: `van de ${ordered.length} goed`, high: true });

@@ -67,8 +67,8 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Ploegen op de Gulperberg: met de tractor zes banen zo recht mogelijk omploegen, keren op de kopakker | Akker op de Gulperberg |
 | Grond sjouwen: de voortuin van de krullebol ophogen met drie kruiwagens grond van de straat, zonder te rennen of te scherp de bocht om te gaan | Groeneweg 65 |
 | IJsjes scheppen: bolletjes in de volgorde van het bonnetje op een wiebelende hoorn stapelen, vijf klanten blij maken | IJssalon Mezzaluna, Markt |
-| De verdwaalde toerist: een toerist met een VVV-kaart rondleiden langs de kerk, de brouwerij en de Gulp; hij loopt achter je aan en raakt je kwijt als je te hard rent | VVV, Looierstraat |
-| Bonbons sorteren: 25 bonbons van een steeds snellere band in de doos puur, melk, wit of praliné (met hazelnoot); gebroken bonbons opeten, drie fouten en je bent af | Rousseau Chocolade, Rijksweg |
+| De verdwaalde toerist: een toerist met een VVV-kaart rondleiden langs de kerk, de brouwerij en de Gulp; hij houdt je bij, ook als je rent, maar raakt steeds afgeleid (een poes, een etalage, zijn veter): ga dan terug en roep hem | VVV, Looierstraat |
+| Bonbons sorteren: 25 bonbons van een snelle, steeds snellere band in de doos puur, melk, wit of praliné (met hazelnoot); gebroken bonbons opeten, drie fouten en je bent af | Rousseau Chocolade, Rijksweg |
 | Knuffel kwijt: drie voorbijgangers geven een hint (richting, straat, plek), zoek beer Bobbie en breng hem terug | Top1Toys, Rijksweg |
 | Kunst in de piramide: er komt geen hond op de tentoonstelling af; haal vijf bezoekers (en een hond) voor de Mona Liesje, daarna het verhaal van de veiling | Piramide Primosa, Landsraderweg 7 |
 | De Romeinse weg: graven naar Romeinse vondsten; een getal zegt hoeveel vondsten er in de vakjes eromheen liggen, pas op voor de waterleiding | Oude Akerweg |
