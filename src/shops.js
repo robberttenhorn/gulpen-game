@@ -76,7 +76,7 @@ function shopFacade(fac, f, s) {
   });
   if (s.awning) fac.awning(g, { w, colors: s.awning, stripes: 10, y: 2.65, depth: 1.2 });
   const winW = Math.max(1.0, w - 1.5);
-  fac.shopWindow(g, { w: winW, x: -0.55, h: 1.7, y: 0.7, color: 0xfff0d8 });
+  fac.shopWindow(g, { w: winW, x: -0.55, h: 1.7, y: 0.7, type: s.type, seed: s.sign.length });
   fac.door(g, { x: w / 2 - 0.6, color: new THREE.Color(s.bg).getHex() });
   const wx = -0.55, inWin = (x, y) => [wx + x * (winW / 2 - 0.15), 0.7 + y, 0.16];
   const add = (m) => { g.add(m); return m; };
