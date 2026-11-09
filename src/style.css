@@ -30,10 +30,14 @@ html, body {
 }
 .loading-card { text-align: center; color: #fff; padding: 24px; max-width: 440px; width: 100%; }
 .logo {
-  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: clamp(44px, 13vw, 84px); white-space: nowrap;
-  line-height: 0.9; color: var(--accent); text-shadow: 0 6px 0 var(--accent-dark), 0 14px 30px rgba(0,0,0,.4);
-  transform: rotate(-4deg);
+  margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: clamp(54px, 15vw, 100px); white-space: nowrap;
+  line-height: 0.9; display: inline-flex; flex-direction: column; align-items: center; transform: rotate(-4deg);
 }
+.logo-main { display: inline-flex; align-items: flex-end; letter-spacing: 0.02em; color: var(--accent); text-shadow: 0 6px 0 var(--accent-dark), 0 14px 30px rgba(0,0,0,.4); }
+.logo-pin { width: 0.66em; height: 0.86em; margin: 0 0.02em 0.04em; color: var(--accent); filter: drop-shadow(0 6px 0 var(--accent-dark)) drop-shadow(0 14px 18px rgba(0,0,0,.35)); animation: pin-bob 2.4s ease-in-out infinite; }
+@keyframes pin-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.06em); } }
+/* plaatsnaam op een blauw straatnaambord: groeit mee met de lengte van de naam */
+.logo-place { margin-top: 0.12em; font-size: 0.36em; font-weight: 700; color: #fff; letter-spacing: 0.04em; background: #1d4e9e; padding: 0.08em 0.6em 0.02em; border-radius: 0.22em; box-shadow: 0 0 0 0.07em #fff inset, 0 0 0 0.09em #1d4e9e, 0 0.18em 0.4em rgba(0,0,0,.45); transform: rotate(6deg); text-shadow: none; }
 .tagline { font-family: 'Baloo 2', sans-serif; font-size: 22px; margin: 14px 0 26px; opacity: .9; }
 .bar { height: 10px; background: rgba(255,255,255,.15); border-radius: 99px; overflow: hidden; }
 #loading-bar { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
@@ -49,7 +53,7 @@ html, body {
 /* lage schermen (telefoon gekanteld): compacter, zodat de Speel-knop in beeld blijft */
 @media (max-height: 560px) {
   .loading-card { padding: 12px 24px; max-width: 620px; }
-  .logo { font-size: 46px; }
+  .logo { font-size: 50px; }
   .tagline { font-size: 18px; margin: 6px 0 10px; }
   .intro { font-size: 13px; margin: 0 0 10px; }
   #start-btn { margin-top: 10px; }

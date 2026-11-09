@@ -6,6 +6,23 @@ import { findGulp } from './missions4.js';
 
 const RING_R = 4.2;
 
+function inRing(x, z, r) {
+  let inside = false;
+  for (let a = 0, b = r.length - 1; a < r.length; b = a++) {
+    if ((r[a][1] > z) !== (r[b][1] > z) && x < ((r[b][0] - r[a][0]) * (z - r[a][1])) / (r[b][1] - r[a][1]) + r[a][0]) inside = !inside;
+  }
+  return inside;
+}
+// zit (x, y, z) in een gebouw? (lager dan het dak volgens de gebouwendata)
+function hitsBuilding(w, x, y, z) {
+  for (const k of w.nearbyFootprints(x, z)) {
+    const f = w.footprints[k];
+    if (f.extra || !(y < (f.top ?? w.groundAt(x, z) + 9))) continue;
+    if (x >= f.minX && x <= f.maxX && z >= f.minZ && z <= f.maxZ && inRing(x, z, f.ring)) return true;
+  }
+  return false;
+}
+
 function makeDrone() {
   const g = new THREE.Group();
   const dark = new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.5, metalness: 0.4 });
@@ -51,14 +68,19 @@ export function startDrone(g, { limit = 160 } = {}) {
   if (prim) stops.push({ x: prim.center[0], z: prim.center[1], h: (prim.height || 10) + 7, photo: 'Piramide Primosa', look: [prim.center[0], gy(...prim.center) + 4, prim.center[1]], from: [0, 14, 22] });
   if (pois.mosaqua) stops.push({ x: pois.mosaqua.pos[0] + 12, z: pois.mosaqua.pos[1] + 12, h: 16 });
   if (pois.kerk) {
-    const [kx, kz] = pois.kerk.pos;
+    // de kerktoren (plek volgens TOP10NL, zoals in facades.js); de foto van een eindje afstand, zodat de hele toren erop staat
+    const [kx, kz] = [-177.0, 53.2];
+    let topY = gy(kx, kz) + 40;
+    for (const i of w.nearbyFootprints(kx, kz)) { const f = w.footprints[i]; if (kx >= f.minX && kx <= f.maxX && kz >= f.minZ && kz <= f.maxZ && f.top) topY = f.top; }
     const dx = markt[0] - kx, dz = markt[1] - kz, d = Math.hypot(dx, dz) || 1;
-    stops.push({ x: kx + (dx / d) * 22, z: kz + (dz / d) * 22, h: 30, photo: 'Sint-Petruskerk', look: [kx, gy(kx, kz) + 24, kz] });
+    stops.push({ x: kx + (dx / d) * 26, z: kz + (dz / d) * 26, h: 30, photo: 'Sint-Petruskerk', look: [kx, gy(kx, kz) + (topY - gy(kx, kz)) * 0.55, kz], from: [0, 6, 55] });
   }
   stops.push({ x: markt[0], z: markt[1], h: 13, photo: 'De Markt', look: [markt[0], gy(...markt) + 1, markt[1]], from: [0, 22, 26] });
   const pts = [];
+  // de drone stijgt eerst op boven het plein, zodat je niet meteen tegen een gevel vliegt
+  const sx0 = g.player.x, sz0 = g.player.z, sy0 = gy(sx0, sz0) + 14;
   stops.forEach((s, i) => {
-    const prev = pts[pts.length - 1];
+    const prev = pts[pts.length - 1] || { x: sx0, z: sz0, y: sy0 };
     if (prev) {
       const d = Math.hypot(s.x - prev.x, s.z - prev.z);
       const n = Math.floor(d / 105);
@@ -84,7 +106,7 @@ export function startDrone(g, { limit = 160 } = {}) {
   });
   // ---- de drone
   const drone = makeDrone();
-  let x = g.player.x, z = g.player.z, y = gy(x, z) + 2, heading = Math.atan2(pts[0].x - x, pts[0].z - z), vy = 0, roll = 0, pitch = 0;
+  let x = sx0, z = sz0, y = sy0, heading = Math.atan2(pts[0].x - x, pts[0].z - z), vy = 0, roll = 0, pitch = 0;
   root.add(drone);
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
   const fwd = () => [Math.sin(heading), Math.cos(heading)];
@@ -102,7 +124,7 @@ export function startDrone(g, { limit = 160 } = {}) {
   hud.querySelector('.mini-stop').addEventListener('click', () => g.missions.stop());
   const arrow = hud.querySelector('.dr-arrow');
   const photos = [];
-  let next = 0, t = 0, crashT = 0, gust = null, gustT = 6 + Math.random() * 5, end = 0, ok = null, safe = 2, last = { x, z, y: y + 6, heading };
+  let next = 0, t = 0, crashT = 0, gust = null, gustT = 6 + Math.random() * 5, end = 0, ok = null, safe = 3, last = { x, z, y, heading };
   const pop = (text, cls = '') => { const el = document.createElement('div'); el.className = 'dr-pop ' + cls; el.textContent = text; hud.appendChild(el); setTimeout(() => el.remove(), 1500); };
   const flashEl = () => { const el = document.createElement('div'); el.className = 'dr-flash'; hud.appendChild(el); setTimeout(() => el.remove(), 450); };
   const snap = (p) => {
@@ -165,7 +187,7 @@ export function startDrone(g, { limit = 160 } = {}) {
         }
         // botsen met de grond of een pand
         const ground = gy(x, z);
-        if (crashT <= 0 && safe <= 0 && (y < ground + 0.6 || (w.insideBuilding(x, z) && y < ground + 9))) {
+        if (crashT <= 0 && safe <= 0 && (y < ground + 0.6 || hitsBuilding(w, x, y, z))) {
           crashT = 1.2;
           t += 8; // batterij
           g.sfx?.play('crash'); pop('Boem! −8 s batterij', 'bad');
