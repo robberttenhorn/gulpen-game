@@ -55,7 +55,7 @@ class Game {
     this.input = new Input(this.canvas);
     this.ui = new UI(this.input);
     // tot 10 s na 'Stoppen': gesprekken die niet bij een nieuw gesprek of een lopende missie horen, gaan niet open
-    this.ui.isStale = () => performance.now() < (this.unlockUntil || 0) + 5000 && !this.missions?.talking && !this.missions?.active;
+    this.ui.isStale = () => !!this.unlockUntil && performance.now() < this.unlockUntil + 5000 && !this.missions?.talking && !this.missions?.active;
     this.sfx = new Sound();
     this.ui.sfx = this.sfx;
     this.npcs = [];
