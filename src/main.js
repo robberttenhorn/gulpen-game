@@ -714,7 +714,7 @@ class Game {
       const dp = Math.hypot(l.position.x - pl.x, l.position.z - pl.z);
       const o = l.userData.near ? 1 - THREE.MathUtils.smoothstep(d, 10, 22) : THREE.MathUtils.smoothstep(dp, 12, 20) * (1 - THREE.MathUtils.smoothstep(d, 28, 48));
       l.material.opacity = o;
-      l.visible = o > 0.02;
+      l.visible = o > 0.02 && !this.pov; // bij een vast camerabeeld (podium, vizier) geen naamborden ervoor
     }
     const p = this.player;
     for (const n of this.npcs) {

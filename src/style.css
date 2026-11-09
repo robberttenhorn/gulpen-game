@@ -566,3 +566,7 @@ body.penalty-on #speedo, body.penalty-on #joystick, body.penalty-on #minimap-wra
 /* slotfeest: knop om het feest af te sluiten */
 .finale-bar { position: absolute; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); pointer-events: auto; z-index: 5; }
 .finale-bar button { font: 700 17px 'Baloo 2', Inter, sans-serif; padding: 10px 22px; border: 0; border-radius: 999px; color: #fff; background: linear-gradient(90deg, #e91e63, #ff9800); box-shadow: 0 4px 14px rgba(0,0,0,.45); cursor: pointer; }
+
+/* wildcamera: grote knop "Korenwolf!" */
+.wc-btn { position: absolute; left: 50%; bottom: max(70px, calc(env(safe-area-inset-bottom) + 60px)); transform: translateX(-50%); font: 800 22px 'Baloo 2', Inter, sans-serif; padding: 12px 34px; border: 0; border-radius: 999px; color: #1b2430; background: #f2c14e; box-shadow: 0 4px 14px rgba(0,0,0,.5); cursor: pointer; z-index: 5; }
+.wc-btn:active { transform: translateX(-50%) scale(.96); }

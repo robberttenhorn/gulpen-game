@@ -1,5 +1,6 @@
 // Gedetailleerde gevels en aankleding voor de plekken met missies en interacties.
 import * as THREE from 'three';
+import { buildPrimosa } from './primosa.js';
 import { signTexture } from './textures.js';
 import { makeCart, makeStringLights, makeVlaai } from './props.js';
 import { pointInRing } from './world.js';
@@ -64,7 +65,7 @@ export class Facades {
 
   // Gevelplek voor één adres: de gevel van het pand die bij het adrespunt en de straat hoort,
   // met het midden op de plek van het adres (handig als meerdere winkels in één pand zitten).
-  frameAtAddress(x, z) {
+  frameAtAddress(x, z, streetName = null) {
     const w = this.world;
     let fp = null;
     for (const i of w.nearbyFootprints(x, z)) if (pointInRing(x, z, w.footprints[i].ring)) fp = w.footprints[i];
@@ -78,7 +79,7 @@ export class Facades {
         if (d < bd) { bd = d; fp = f; }
       }
     }
-    const street = w.nearestStreet(x, z);
+    const street = w.nearestStreet(x, z, streetName || undefined) || w.nearestStreet(x, z);
     if (!fp || !street) return null;
     const r = fp.ring;
     let best = null, bs = Infinity;
@@ -436,6 +437,8 @@ export class Facades {
     if (pois.kerk) F('kerk');
     // winkels en bedrijven op hun eigen adres, tankstation en busstation
     buildShops(this, pois);
+    // glazen piramide Primosa (Landsraderweg 7)
+    if (pois.primosa) this.primosa = buildPrimosa(this, pois.primosa.pos);
     this.buildChurch();
     this.buildPitch(pois.fcgulpen.pos);
     this.buildMaria(pois.mariabeeld.pos);

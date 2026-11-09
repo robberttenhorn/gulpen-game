@@ -7,7 +7,7 @@ const COLORS = [0xff1744, 0xffea00, 0x00e676, 0x2979ff, 0xd500f9, 0xff9100];
 
 // Feestverlichting: een mast midden op de Markt met slingers gekleurde lampjes naar palen eromheen,
 // plus een paar gekleurde lampen die de Markt in wisselende kleuren zetten.
-function buildPartyLights(g, cx, cz) {
+export function buildPartyLights(g, cx, cz) {
   const w = g.world;
   const root = new THREE.Group();
   const pole = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.7 });

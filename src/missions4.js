@@ -37,7 +37,7 @@ export const MARKT_MISSION_OF = { ijsjuf: 'ijsjes', toerist: 'toerist', chocolat
 // ------------------------------------------------------------ hulpjes
 
 // het dichtstbijzijnde water (de Gulp) met een begaanbare plek op de oever ernaast
-function findGulp(g, x0, z0) {
+export function findGulp(g, x0, z0) {
   const w = g.world;
   let best = null;
   for (let r = 10; r <= 320 && !best; r += 6) {
@@ -86,7 +86,8 @@ function runWalk(g, update, cleanup, debug = {}) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (r) => { if (done) return; done = true; g.minigame = null; cleanup?.(); resolve(r); };
-    g.minigame = { stop: () => finish(null), update: (dt) => update(dt, finish), debug: { label: null, ...debug } };
+    // het gesprek dat de missie start zet de speler vast; hier loop je juist rond
+    g.minigame = { stop: () => finish(null), update: (dt) => { g.player.lockedFor = false; update(dt, finish); }, debug: { label: null, ...debug } };
   });
 }
 
