@@ -721,6 +721,7 @@ export class World {
           flat varying vec3 vWall;
           varying vec3 vWN;
           varying vec2 vWXZ;
+          varying float vWY;
           float pickN(float h, float n){ return floor(h * n); }`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vB = uv; // gevels: uv.x = meters vanaf het begin van de gevel, uv.y = hoogte boven maaiveld
@@ -731,6 +732,7 @@ export class World {
           vWall = vec3(battr.y * 0.15, battr.z * 0.15, battr.w * 0.25);
           vWN = normal;
           vWXZ = position.xz;
+          vWY = position.y;
           float h = fract(vSeed * 7.13);
           // muren: 0 wit pleister, 1 mergel, 2 rode baksteen, 3 bruine baksteen, 4 gele baksteen, 5 grijs
           if (btype > 1.5) {
@@ -756,6 +758,48 @@ export class World {
           varying vec3 vWN;
           flat varying vec3 vWall;
           varying vec2 vWXZ;
+          varying float vWY;
+          vec3 gInside = vec3(0.0); // kamer achter het raam (voor het avondlicht)
+          float gNear = 0.0;
+          // Kamer achter een raam ("interior mapping"): wuv = plek op het glas (0..1), dT = kijkrichting langs de gevel,
+          // de verticaal en de gevelnormaal (naar buiten). Muren, vloer, plafond met lamp, een schilderij, een kast en soms een plant.
+          vec3 roomView(vec2 wuv, vec3 dT, vec2 wsize, float seed, float night, float lightOn) {
+            vec3 d = vec3(dT.x / wsize.x, dT.y / wsize.y, min(dT.z, -1e-4) / 3.2);
+            float tx = d.x > 0.0 ? (1.0 - wuv.x) / d.x : -wuv.x / min(d.x, -1e-5);
+            float ty = d.y > 0.0 ? (1.0 - wuv.y) / d.y : -wuv.y / min(d.y, -1e-5);
+            float tz = 1.0 / -d.z;
+            float t = min(tx, min(ty, tz));
+            vec3 h = vec3(wuv, 0.0) + d * t;
+            float hs = fract(seed * 7.31);
+            vec3 wallC = mix(vec3(0.82, 0.76, 0.64), vec3(0.62, 0.7, 0.78), hs);
+            wallC = mix(wallC, vec3(0.86, 0.66, 0.5), step(0.72, fract(seed * 3.3)));
+            vec3 col;
+            if (t == tz) {
+              col = wallC;
+              float pic = step(abs(h.x - (0.3 + hs * 0.4)), 0.12) * step(abs(h.y - 0.62), 0.1);
+              col = mix(col, mix(vec3(0.25, 0.4, 0.55), vec3(0.65, 0.35, 0.25), fract(seed * 11.0)), pic);
+              float cab = step(h.y, 0.4) * step(abs(h.x - (0.72 - hs * 0.44)), 0.2);
+              col = mix(col, vec3(0.42, 0.3, 0.2), cab);
+            } else if (t == ty && d.y < 0.0) {
+              col = mix(vec3(0.42, 0.3, 0.19), vec3(0.52, 0.39, 0.26), step(0.5, fract(h.x * 5.0 + floor(-h.z * 3.0) * 0.37)));
+            } else if (t == ty) {
+              col = vec3(0.9);
+              float lampDisc = 1.0 - smoothstep(0.07, 0.11, length(vec2(h.x - 0.5, (h.z + 0.5) * 1.6)));
+              col = mix(col, vec3(1.0, 0.86, 0.62) * (1.0 + 2.5 * lightOn * night), lampDisc);
+            } else {
+              col = wallC * 0.78;
+            }
+            // plant in de hoek, iets achter het glas
+            float tp = 0.22 / -d.z;
+            if (tp < t) {
+              vec3 hp = vec3(wuv, 0.0) + d * tp;
+              float plant = step(0.6, fract(seed * 5.7)) * (1.0 - smoothstep(0.1, 0.13, length(vec2((hp.x - 0.18) * 1.3, hp.y - 0.2))));
+              plant = max(plant, step(0.6, fract(seed * 5.7)) * step(abs(hp.x - 0.18), 0.05) * step(hp.y, 0.12));
+              col = mix(col, vec3(0.13, 0.32, 0.14), plant);
+            }
+            col *= mix(0.55, 1.0, 1.0 + h.z * 0.45);
+            return col;
+          }
           uniform sampler2D uOrtho;
           uniform vec4 uOrthoBox;
           uniform float uOrthoOn;
@@ -881,9 +925,26 @@ export class World {
               // binnenkant: donker met soms gordijnen
               float curtain = step(0.55, r2) * (smoothstep(lo.x + 0.07, lo.x + 0.05, f.x) + smoothstep(hi.x - 0.07, hi.x - 0.05, f.x));
               vec3 inside = mix(vec3(0.015, 0.018, 0.022), srgb(vec3(0.7, 0.62, 0.5)) * 0.35, clamp(curtain, 0.0, 1.0));
+              // dichtbij: echt naar binnen kijken (kamer met lamp, schilderij, kast, plant); veraf het oude, donkere glas
+              vec3 wpos = vec3(vWXZ.x, vWY, vWXZ.y);
+              float camD = distance(wpos, cameraPosition);
+              float lightOn = step(r, 0.58);
+              if (camD < 70.0 && glass > 0.01) {
+                vec3 V = normalize(wpos - cameraPosition);
+                vec3 Nw2 = normalize(vec3(vWN.x, 0.0, vWN.z) + 1e-5);
+                vec3 Tw2 = vec3(-Nw2.z, 0.0, Nw2.x);
+                vec2 wuv = vec2((f.x - lo.x) / (hi.x - lo.x), (f.y - lo.y) / (hi.y - lo.y));
+                vec3 room = roomView(wuv, vec3(dot(V, Tw2), V.y, dot(V, Nw2)), vec2((hi.x - lo.x) * 2.8, (hi.y - lo.y) * 2.9), r2 + id.x * 0.137 + id.y * 0.713 + vSeed, uNight, lightOn);
+                room = mix(room, srgb(vec3(0.75, 0.66, 0.52)), clamp(curtain, 0.0, 1.0) * 0.85); // gordijnen
+                gInside = room;
+                gNear = 1.0 - smoothstep(50.0, 70.0, camD);
+                // overdag gedempt (binnen is het donkerder dan buiten), 's avonds donker tenzij het licht aan is
+                vec3 dayRoom = room * 0.32;
+                inside = mix(inside, mix(dayRoom, room * 0.06, uNight), gNear);
+              }
               inside *= mix(1.0, 0.6, reveal);
               base = mix(base, inside, glass);
-              lit = glass * step(r, 0.58) * uNight;
+              lit = glass * lightOn * uNight;
               opening = clamp((win + frame + sill) * allowed, 0.0, 1.0);
             }
             tnAmt *= (1.0 - opening) * (1.0 - plint);
@@ -948,7 +1009,8 @@ export class World {
             normal = normalize(mat3(viewMatrix) * nw);
           }`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-          totalEmissiveRadiance += vec3(1.0, 0.62, 0.3) * lit * (0.5 + 0.35 * fract(vSeed * 13.7));`);
+          // avondlicht: dichtbij de kamer zelf (warm verlicht), veraf een gelijkmatige warme gloed
+          totalEmissiveRadiance += mix(vec3(1.0, 0.62, 0.3) * (0.5 + 0.35 * fract(vSeed * 13.7)), gInside * vec3(1.15, 0.92, 0.65) * 1.6, gNear) * lit;`);
     };
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;

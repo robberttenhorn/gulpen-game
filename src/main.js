@@ -390,6 +390,7 @@ class Game {
   }
 
   async fade(mid) {
+    this.fading = true;
     const el = document.createElement('div');
     Object.assign(el.style, { position: 'fixed', inset: 0, background: '#000', opacity: 0, transition: 'opacity 1s', zIndex: 15, pointerEvents: 'none' });
     document.body.appendChild(el);
@@ -403,6 +404,7 @@ class Game {
       el.style.opacity = 0;
       await wait(1050);
       el.remove();
+      this.fading = false;
     }
   }
 
@@ -1446,6 +1448,11 @@ class Game {
     const p = this.player, inp = this.input;
     // vlak na 'Stoppen': niets mag je nog vastzetten, tenzij je zelf iets nieuws begint (gesprek, minispel)
     if (p.lockedFor && performance.now() < (this.unlockUntil || 0) && !this.ui.dialogOpen && !this.minigame && !this.race && !this.penalty && !this.missions?.talking && !this.dawning) p.lockedFor = false;
+    // vangnet: sta je langer dan 3 s vast terwijl er niets gebeurt (geen gesprek, minispel, race, eten/drinken of overgang),
+    // dan laat het spel je los. Zo kan een vergeten blokkade je nooit meer laten vastzitten.
+    const idleLock = p.lockedFor && !this.ui.dialogOpen && !this.minigame && !this.race && !this.penalty && !this.missions?.talking && !this.dawning && !p.pose && !this.fading;
+    this.lockIdle = idleLock ? (this.lockIdle || 0) + dt : 0;
+    if (this.lockIdle > 3) { p.lockedFor = false; this.lockIdle = 0; statsError('vastgezet', this.missions?.active?.id || this.lastDone || ''); }
     const busy = this.ui.dialogOpen || p.lockedFor;
     if (inp.consumeVehicle() && !busy) {
       const opts = this.availableModes();

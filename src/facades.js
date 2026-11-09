@@ -1,6 +1,7 @@
 // Gedetailleerde gevels en aankleding voor de plekken met missies en interacties.
 import * as THREE from 'three';
 import { buildPrimosa } from './primosa.js';
+import { makeInteriorWindow } from './interior-window.js';
 import { signTexture } from './textures.js';
 import { makeCart, makeStringLights, makeVlaai } from './props.js';
 import { pointInRing } from './world.js';
@@ -158,13 +159,13 @@ export class Facades {
     parent.add(m, val);
   }
 
-  shopWindow(parent, { w = 2.6, h = 1.8, x = 0, y = 0.6, color = 0xffd9a0 } = {}) {
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0c1014, roughness: 0.05, metalness: 0.2, emissive: color, emissiveIntensity: 0.05 });
-    this.signMats.push({ isWindow: true, mat: glassMat });
+  // Etalageruit met een kijkje naar binnen (zie interior-window.js): type bepaalt de inrichting.
+  shopWindow(parent, { w = 2.6, h = 1.8, x = 0, y = 0.6, type = 'winkel', seed = 1 } = {}) {
     const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.16, h + 0.16, 0.06), std(0x222222));
     frame.position.set(x, y + h / 2, 0.02);
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassMat);
+    const glass = makeInteriorWindow(w, h, type, seed);
     glass.position.set(x, y + h / 2, 0.06);
+    this.signMats.push({ interior: glass });
     parent.add(frame, glass);
   }
 
@@ -192,8 +193,8 @@ export class Facades {
       const g = this.group(f);
       this.sign(g, 'Herberg De Zwarte Ruiter', { w: Math.min(6, f.len - 0.5), h: 0.75, y: 3.3, bg: '#151515', fg: '#d9b25a', font: '700 110px "Baloo 2", serif' });
       this.door(g, { x: 0, color: 0x1c1c1c });
-      this.shopWindow(g, { x: -1.9, w: 1.8 });
-      this.shopWindow(g, { x: 1.9, w: 1.8 });
+      this.shopWindow(g, { x: -1.9, w: 1.8, type: 'cafe', seed: 1 });
+      this.shopWindow(g, { x: 1.9, w: 1.8, type: 'cafe', seed: 2 });
       // uithangbord aan een smeedijzeren arm
       const arm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 1.1), std(0x111111, { metalness: 0.6 }));
       arm.position.set(f.len / 2 - 0.6, 3.9, 0.55);
@@ -213,7 +214,7 @@ export class Facades {
       const w = Math.min(5, f.len - 0.4);
       this.sign(g, 'Friture An + Piet', { w, h: 0.8, y: 3.5, bg: '#c62828', fg: '#ffe082', font: '800 120px "Baloo 2", sans-serif' });
       this.awning(g, { w, colors: ['#c62828', '#fff4e0'] });
-      this.shopWindow(g, { w: w - 1.4, x: -0.6, h: 1.6, y: 0.8 });
+      this.shopWindow(g, { type: 'friture', w: w - 1.4, x: -0.6, h: 1.6, y: 0.8 });
       this.door(g, { x: w / 2 - 0.55, color: 0xb71c1c });
       const cash = this.sign(g, 'ALLEEN CONTANT', { w: 1.2, h: 0.35, y: 1.25, z: 0.1, bg: '#ffeb3b', fg: '#b71c1c', font: '800 150px Inter, sans-serif', glow: false });
       cash.position.x = w / 2 - 0.55; cash.parent.children.at(-2).position.x = w / 2 - 0.55;
@@ -227,7 +228,7 @@ export class Facades {
       const w = Math.min(5, f.len - 0.4);
       this.sign(g, 'Grillroom Pizzeria Salma', { w, h: 0.8, y: 3.5, bg: '#1b5e20', fg: '#ffffff', font: '800 110px "Baloo 2", sans-serif', sub: 'Shoarma · Pizza · Broodje Gulpen', subFont: '600 54px Inter, sans-serif' });
       this.awning(g, { w, colors: ['#2e7d32', '#ffffff', '#c62828', '#ffffff'], stripes: 12 });
-      this.shopWindow(g, { w: w - 1.4, x: 0.6, h: 1.6, y: 0.8, color: 0xffc070 });
+      this.shopWindow(g, { type: 'grill', w: w - 1.4, x: 0.6, h: 1.6, y: 0.8 });
       this.door(g, { x: -w / 2 + 0.55, color: 0x1b5e20 });
     }
 
@@ -238,7 +239,7 @@ export class Facades {
       const w = Math.min(5, f.len - 0.4);
       this.sign(g, 'Cafetaria Zheng', { w, h: 0.8, y: 3.4, bg: '#b71c1c', fg: '#ffd54f', font: '800 120px "Baloo 2", sans-serif' });
       this.awning(g, { w, colors: ['#ffd54f', '#b71c1c'], stripes: 8 });
-      this.shopWindow(g, { w: w - 1.4, x: -0.6, h: 1.6, y: 0.8 });
+      this.shopWindow(g, { type: 'friture', w: w - 1.4, x: -0.6, h: 1.6, y: 0.8 });
       this.door(g, { x: w / 2 - 0.55, color: 0x6d1010 });
     }
 
@@ -248,7 +249,7 @@ export class Facades {
       const g = this.group(f);
       const w = Math.min(7, f.len - 0.4);
       this.sign(g, 'Jef Abels Bikes', { w, h: 0.9, y: 3.6, bg: '#202428', fg: '#ff9800', font: '800 130px "Baloo 2", sans-serif', sub: 'Verkoop · Verhuur · Reparatie', subFont: '600 50px Inter, sans-serif' });
-      this.shopWindow(g, { w: w - 1.6, x: -0.7, h: 2.0, y: 0.4, color: 0xfff3e0 });
+      this.shopWindow(g, { type: 'fietsen', w: w - 1.6, x: -0.7, h: 2.0, y: 0.4 });
       this.door(g, { x: w / 2 - 0.6, color: 0x202428 });
       for (let i = 0; i < 6; i++) {
         const b = this.g.makeBikeModel(i);
@@ -265,8 +266,8 @@ export class Facades {
       const w = Math.min(10, f.len - 0.4);
       this.sign(g, 'Gulpener Bierbrouwerij', { w, h: 1.1, y: 4.6, bg: '#0d3b24', fg: '#e8d9a8', font: '800 120px "Baloo 2", serif', sub: 'sinds 1825', subFont: 'italic 600 60px Inter, serif' });
       this.door(g, { x: 0, color: 0x0d3b24 });
-      this.shopWindow(g, { x: -2.4, w: 2 });
-      this.shopWindow(g, { x: 2.4, w: 2 });
+      this.shopWindow(g, { x: -2.4, w: 2, type: 'brouwerij', seed: 1 });
+      this.shopWindow(g, { x: 2.4, w: 2, type: 'brouwerij', seed: 2 });
       // brouwketels naast het gebouw
       const copper = new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: 1, roughness: 0.28 });
       for (let i = 0; i < 2; i++) {
@@ -344,7 +345,7 @@ export class Facades {
       const w = Math.min(5.5, fr.len - 0.6);
       this.sign(g, name, { w, h: 0.7, y: 3.3, bg, fg, font: '700 110px "Baloo 2", serif' });
       this.door(g, { x: w / 2 - 0.6, color: 0x2a1c12 });
-      this.shopWindow(g, { w: Math.max(1.2, w - 1.6), x: -0.5, h: 1.6, y: 0.8, color: 0xffcf8a });
+      this.shopWindow(g, { type: 'cafe', seed: id.length, w: Math.max(1.2, w - 1.6), x: -0.5, h: 1.6, y: 0.8 });
     }
 
     // Donny's Gezellerie: warm bord, lichtsnoeren en een terrasje
@@ -354,7 +355,7 @@ export class Facades {
       const w = Math.min(6, f.len - 0.4);
       this.sign(g, "Donny's Gezellerie", { w, h: 0.8, y: 3.4, bg: '#2f3a2b', fg: '#f3d9a4', font: 'italic 800 120px "Baloo 2", serif', sub: 'eten · drinken · gezelligheid', subFont: 'italic 600 50px Inter, serif' });
       this.door(g, { x: w / 2 - 0.6, color: 0x2f3a2b });
-      this.shopWindow(g, { w: Math.max(1.4, w - 1.6), x: -0.6, h: 1.8, y: 0.6, color: 0xffc070 });
+      this.shopWindow(g, { type: 'cafe', w: Math.max(1.4, w - 1.6), x: -0.6, h: 1.8, y: 0.6 });
       for (const zOff of [2.2, 4.4]) {
         const l = makeStringLights(Math.min(8, f.len + 2), 14);
         l.position.set(0, 3.0, zOff);
@@ -370,7 +371,7 @@ export class Facades {
       const g = this.group(f);
       const w = Math.min(9, f.len - 0.4);
       this.sign(g, 'PLUS supermarkt', { w, h: 1.0, y: 4.2, bg: '#1b6e3a', fg: '#ffffff', font: '800 140px "Baloo 2", sans-serif' });
-      this.shopWindow(g, { w: w - 1.0, x: 0, h: 2.4, y: 0.3, color: 0xf5f5f0 });
+      this.shopWindow(g, { type: 'supermarkt', w: w - 1.0, x: 0, h: 2.4, y: 0.3 });
       // karretjeshok met een rij wagentjes
       const shed = new THREE.Group();
       shed.position.set(-w / 2 - 3.5, 0, 3);
@@ -397,7 +398,7 @@ export class Facades {
       const w = Math.min(6, f.len - 0.4);
       this.sign(g, 'Bakkerij Paulissen', { w, h: 0.8, y: 3.4, bg: '#f3e6c8', fg: '#5a3a1e', font: '800 120px "Baloo 2", serif', sub: 'brood · vlaai · banket', subFont: '600 50px Inter, serif' });
       this.awning(g, { w, colors: ['#5a3a1e', '#f3e6c8'], stripes: 10 });
-      this.shopWindow(g, { w: Math.max(1.4, w - 1.6), x: -0.6, h: 1.6, y: 0.8, color: 0xffe0b0 });
+      this.shopWindow(g, { type: 'bakker', w: Math.max(1.4, w - 1.6), x: -0.6, h: 1.6, y: 0.8 });
       this.door(g, { x: w / 2 - 0.6, color: 0x5a3a1e });
       // vlaaien op een schap in de etalage
       const shelf = new THREE.Mesh(new THREE.BoxGeometry(Math.max(1.2, w - 1.8), 0.04, 0.3), std(0xffffff));
@@ -418,7 +419,7 @@ export class Facades {
       const w = Math.min(7, f.len - 0.4);
       this.sign(g, 'De Eetwinkel van het Heuvelland', { w, h: 0.9, y: 3.5, bg: '#7a1f1f', fg: '#fff3e0', font: '800 100px "Baloo 2", serif', sub: 'Meertens · slagerij · groente · kaas', subFont: '600 46px Inter, sans-serif' });
       this.awning(g, { w, colors: ['#7a1f1f', '#ffffff'], stripes: 12 });
-      this.shopWindow(g, { w: Math.max(1.4, w - 1.6), x: 0.6, h: 1.6, y: 0.8, color: 0xfff3e0 });
+      this.shopWindow(g, { type: 'deli', w: Math.max(1.4, w - 1.6), x: 0.6, h: 1.6, y: 0.8 });
       this.door(g, { x: -w / 2 + 0.6, color: 0x7a1f1f });
       // kistjes met groente en fruit voor de deur
       const veg = [0xd32f2f, 0x7cb342, 0xff9800, 0x6d4c41, 0xfdd835];
@@ -746,7 +747,8 @@ export class Facades {
 
   setNight(t) {
     for (const m of this.signMats) {
-      if (m.isWindow) m.mat.emissiveIntensity = 0.05 + t * 1.2;
+      if (m.interior) m.interior.userData.setNight(t);
+      else if (m.isWindow) m.mat.emissiveIntensity = 0.05 + t * 1.2;
       else m.emissiveIntensity = t * 0.9;
     }
   }

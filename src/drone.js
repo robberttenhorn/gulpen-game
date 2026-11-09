@@ -169,7 +169,7 @@ export function startDrone(g, { limit = 160 } = {}) {
         const inp = g.input.move;
         // besturing: draaien en stijgen; de drone vliegt zelf vooruit
         const turn = Math.max(-1, Math.min(1, inp.x || 0)), climb = Math.max(-1, Math.min(1, -(inp.y || 0)));
-        heading += turn * 1.5 * dt;
+        heading -= turn * 1.5 * dt; // rechts = rechtsaf (de wereld heeft z naar het zuiden, dus het teken is omgekeerd)
         vy += (climb * 7 - vy) * Math.min(1, dt * 3);
         const speed = crashT > 0 ? 0 : 13 + Math.max(0, -vy) * 0.4; // duiken gaat iets sneller
         const [fx, fz] = fwd();
@@ -213,7 +213,7 @@ export function startDrone(g, { limit = 160 } = {}) {
           r.scale.setScalar(on ? 1 + Math.sin(t * 4) * 0.04 : 1);
         });
         // drone tekenen: kantelt mee met draaien en stijgen
-        roll += (-turn * 0.45 - roll) * Math.min(1, dt * 5);
+        roll += (turn * 0.45 - roll) * Math.min(1, dt * 5); // overhellen in de bocht
         pitch += (climb * -0.18 + 0.12 - pitch) * Math.min(1, dt * 5);
         drone.position.set(x, y, z);
         drone.rotation.set(pitch, heading, roll, 'YXZ');
@@ -235,7 +235,7 @@ export function startDrone(g, { limit = 160 } = {}) {
           let rel = Math.atan2(p.x - x, p.z - z) - heading;
           rel = Math.atan2(Math.sin(rel), Math.cos(rel));
           const up = p.y - y;
-          arrow.style.transform = `translateX(-50%) rotate(${rel}rad)`;
+          arrow.style.transform = `translateX(-50%) rotate(${-rel}rad)`; // positief rel = links van je
           arrow.textContent = Math.abs(up) > 3 && Math.abs(rel) < 0.5 ? (up > 0 ? '⬆' : '⬇') : '▲';
           arrow.classList.toggle('gold', !!p.photo);
         }
