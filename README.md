@@ -76,7 +76,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Tappen op de Bierfeesten: tien Gulpeners precies tot de streep met een kraag van twee vingers schuim (de tap sputtert en het schuim verschilt per glas), met Feestkabinet op het podium | Markt, bij Café Neubourg (alleen 's avonds: overdag stuurt de voorzitter je eerst voor een pilsje naar De Zwarte Ruiter) |
 | Zit de korenwolf er nog?: drie wildcamera's ophangen in het veld en de nachtfoto's nakijken | Velden aan de rand van het dorp |
 | Forellen scheppen: alleen de grote forellen uit de kweekvijver, de kleintjes laten zwemmen | Aan de Gulp, bij de Looierstraat |
-| Gulpen van bovenaf: met een drone door lichtringen over het dorp vliegen (Markt, Gulp, brouwerij, Primosa, Mosaqua, kerktoren); de gouden ringen maken luchtfoto's, die je aan het eind als polaroids ziet. Batterij, windvlagen en botsen tegen gebouwen | Plein bij de Sint-Petruskerk |
+| Gulpen van bovenaf: met een drone door lichtringen over het dorp vliegen (Markt, Gulp, brouwerij, Primosa, Mosaqua, kerktoren); de gouden ringen maken luchtfoto's, die je aan het eind als polaroids ziet. Batterij, windvlagen en botsen tegen gebouwen | Weiland aan de rand van het dorp |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
