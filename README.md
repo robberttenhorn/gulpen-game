@@ -66,6 +66,10 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Badkamer betegelen: het halve huis ligt open en de tegelzetter is aangefietst; leg de tegels volgens het voorbeeld binnen de tijd | Oude Akerweg 43 |
 | Ploegen op de Gulperberg: met de tractor zes banen zo recht mogelijk omploegen, keren op de kopakker | Akker op de Gulperberg |
 | Grond sjouwen: de voortuin van de krullebol ophogen met drie kruiwagens grond van de straat, zonder te rennen of te scherp de bocht om te gaan | Groeneweg 65 |
+| IJsjes scheppen: bolletjes in de volgorde van het bonnetje op een wiebelende hoorn stapelen, vijf klanten blij maken | IJssalon Mezzaluna, Markt |
+| De verdwaalde toerist: een toerist met een VVV-kaart rondleiden langs de kerk, de brouwerij en de Gulp; hij loopt achter je aan en raakt je kwijt als je te hard rent | VVV, Looierstraat |
+| Bonbons sorteren: bonbons van de lopende band in de doos puur, melk of wit; gebroken bonbons opeten | Rousseau Chocolade, Rijksweg |
+| Knuffel kwijt: drie voorbijgangers geven een hint (richting, straat, plek), zoek beer Bobbie en breng hem terug | Top1Toys, Rijksweg |
 
 Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café, de bakkerij, de kerk en de slagerij.
 
@@ -152,7 +156,7 @@ De klussen en teksten staan in `src/missions.js`, de gevels van de zaken in `src
 - **SixSense**: naam opgegeven door de maker. Er staat geen adres in de game; de bus, de flyers en de codes zijn verzonnen. Vraag toestemming voordat de game breed gedeeld wordt.
 - **Het matras van Gulpen**: volledig verzonnen verhaal. Alle loketmedewerkers, de portier, de stagiair, de zenuwachtige jongen, de bakkersgezel, de kok en de keukenverkoper zijn verzonnen rollen.
 - **Joods monument**: staat op de plek van het herdenkingsmonument aan de Beversbergweg volgens de BGT, ongeveer 400 meter ten westen van het gedetailleerde dorpsgebied. Het echte ontwerp is niet nagemaakt: het is een eenvoudige gedenksteen, zonder missie.
-- **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen en Volvo worden bij naam genoemd. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
+- **Merken**: Gulpener, An + Piet, Salma, Zheng, Jef Abels, De Zwarte Ruiter, Sophianum, FC Gulpen, Volvo, IJssalon Mezzaluna, de VVV, Rousseau Chocolade en Top1Toys worden bij naam genoemd. De personen bij Mezzaluna, de VVV, Rousseau en Top1Toys en hun verhalen zijn verzonnen. Vraag toestemming voordat de game breed gedeeld wordt. Er worden geen echte logo's gebruikt.
 - **Mariabeeld**: de plek komt uit de BGT (een monument op 157 m, de top van de Gulperberg). Het beeld zelf is een gestileerde benadering, niet het echte ontwerp.
 - **Hubertusmarkt**: de weetjes (sinds 1544, Hubertusmis in de Sint-Petruskerk, paardenzegening bij het gemeentehuis, zo'n 150 kramen met onder andere gerookte paling) komen uit aankondigingen van de 482e editie in 2026. De Razende Reporter is een verzonnen figuur. De cafés zijn echte zaken rond de Markt; hun gevels en de stamgasten zijn verzonnen.
 - **Het verdwenen armenfonds**: gaat over Joep Haffmans (1943-2007), deken van Gulpen van 1984 tot 2006. De missie gebruikt alleen wat in de berichtgeving stond (L1, Wikipedia, het boek *In Gods naam*): bijna 2 miljoen euro uit de armenkas, dure auto's, dure vakanties en buitenlandse rekeningen. In de game wordt gezegd dat het nooit bewezen is, omdat hij overleed voordat het voor de rechter kwam. De voorwerpen (koffer, bankafschrift, briefje, gouden auto) en de grappen zijn verzonnen.
