@@ -49,6 +49,8 @@ class Game {
 
     this.input = new Input(this.canvas);
     this.ui = new UI(this.input);
+    // tot 10 s na 'Stoppen': gesprekken die niet bij een nieuw gesprek of een lopende missie horen, gaan niet open
+    this.ui.isStale = () => performance.now() < (this.unlockUntil || 0) + 5000 && !this.missions?.talking && !this.missions?.active;
     this.sfx = new Sound();
     this.ui.sfx = this.sfx;
     this.npcs = [];
@@ -61,6 +63,7 @@ class Game {
     this.wobble = 0;
     this.shake = 0;
     this.time = 0;
+    this.actGen = 0; // telt op bij elke 'Stoppen'
 
     addEventListener('resize', () => {
       this.camera.aspect = innerWidth / innerHeight;
@@ -1254,12 +1257,23 @@ class Game {
   dropProp() { this.detachFromHand(this.player.model); }
 
   // Even iets eten: het voorwerp gaat een paar keer naar de mond.
+  // Na 'Stoppen' (missions.stop verhoogt actGen) mag eten of drinken niet verder lopen: anders gaat het
+  // verhaal erna gewoon door met een nieuw gesprek, zonder stopknop. Dan blijft de belofte gewoon hangen.
+  stopped(gen) {
+    if (gen === this.actGen) return false;
+    this.player.pose = null;
+    this.dropProp();
+    return true;
+  }
+
   async eat(prop, seconds = 4) {
     if (this.mode === 'car') this.exitCar();
+    const gen = this.actGen;
     this.holdProp(prop);
     this.player.lockedFor = true;
     this.player.pose = 'eat';
     await wait(seconds * 1000);
+    if (this.stopped(gen)) return new Promise(() => {});
     this.player.pose = null;
     this.dropProp();
     this.player.lockedFor = false;
@@ -1268,15 +1282,18 @@ class Game {
   // Proost! Met een pils in de hand.
   async drinkPils() {
     if (this.mode === 'car') this.exitCar();
+    const gen = this.actGen;
     const glass = makeFluitje();
     this.holdProp(glass);
     this.player.lockedFor = true;
     this.ui.toast('Proost!', 1200);
     this.sfx.play('clink');
     await wait(1300);
+    if (this.stopped(gen)) return new Promise(() => {});
     this.player.pose = 'drink';
     this.sfx.play('gulp');
     await wait(1600);
+    if (this.stopped(gen)) return new Promise(() => {});
     // glas leeg
     glass.userData.beer.scale.y = 0.2;
     glass.userData.beer.position.y = 0.035;
@@ -1284,6 +1301,7 @@ class Game {
     glass.userData.foam.scale.y = 0.3;
     this.player.pose = null;
     await wait(900);
+    if (this.stopped(gen)) return new Promise(() => {});
     this.dropProp();
     this.wobble = 25;
   }
@@ -1421,6 +1439,8 @@ class Game {
 
   updatePlayer(dt) {
     const p = this.player, inp = this.input;
+    // vlak na 'Stoppen': niets mag je nog vastzetten, tenzij je zelf iets nieuws begint (gesprek, minispel)
+    if (p.lockedFor && performance.now() < (this.unlockUntil || 0) && !this.ui.dialogOpen && !this.minigame && !this.race && !this.penalty && !this.missions?.talking && !this.dawning) p.lockedFor = false;
     const busy = this.ui.dialogOpen || p.lockedFor;
     if (inp.consumeVehicle() && !busy) {
       const opts = this.availableModes();
