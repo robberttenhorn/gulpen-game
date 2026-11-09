@@ -233,10 +233,12 @@ export const geschiedenisHandlers = {
       const b = feest.barSpot;
       if (b) {
         g.player.x = b.x; g.player.z = b.z; g.player.heading = b.heading;
-        // camera achter de bar, met zicht op het podium en het feestvolk
+        // camera net voor de bar, wat hoger, met zicht op het podium en het feestvolk
         const sx = feest.stage[0], sz = feest.stage[1];
-        const cx = b.x - Math.sin(b.heading) * 2.2, cz = b.z - Math.cos(b.heading) * 2.2;
-        g.pov = { pos: new THREE.Vector3(cx, g.world.groundAt(cx, cz) + 2.6, cz), look: new THREE.Vector3(sx, feest.stageY + 3, sz), snap: true };
+        const [fx, fz] = b.front;
+        const dx = sx - fx, dz = sz - fz, d = Math.hypot(dx, dz) || 1;
+        const cx = fx - (dx / d) * 2, cz = fz - (dz / d) * 2;
+        g.pov = { pos: new THREE.Vector3(cx, g.world.groundAt(cx, cz) + 3.6, cz), look: new THREE.Vector3(sx, feest.stageY + 2.6, sz), snap: true };
       }
       g.sfx?.startMusic();
     });

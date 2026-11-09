@@ -307,8 +307,9 @@ export function startTappen(g, { need = 10, maxFails = 3, limit = 75, mcLines = 
     else if (pouring && ok === null) {
       // eerst vooral bier, vlak voor het eind komt het schuim
       const f = flow() * dt;
-      beer += f * 0.86; foam += f * (beer > 0.4 ? 0.42 : 0.12);
-      foam = Math.min(foam, 0.22);
+      // bij de streep zit er dan ongeveer twee vingers schuim op (ca. 0,11)
+      beer += f * 0.86; foam += f * (beer > 0.4 ? 0.16 : 0.08);
+      foam = Math.min(foam, 0.2);
       if (beer + foam > 1.06) release();
     }
     // het schuim zakt een beetje in als je wacht
