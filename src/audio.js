@@ -21,6 +21,27 @@ export class Sound {
     this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.keepAlive();
+  }
+
+  // Na wisselen van app zet de browser (vooral Safari op iPhone) het geluid op pauze en start het niet vanzelf weer.
+  // Daarom: zelf pauzeren als het spel uit beeld gaat, en weer aanzetten bij terugkomen of bij de eerstvolgende tik of toets.
+  keepAlive() {
+    const ctx = this.ctx;
+    const wake = () => {
+      if (!ctx || ctx.state === 'running' || ctx.state === 'closed' || document.hidden) return;
+      ctx.resume().catch(() => {});
+      // iOS: een heel kort stil geluidje binnen een tik ontgrendelt het geluid weer
+      try { const b = ctx.createBuffer(1, 1, 22050), src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(0); } catch { /* negeren */ }
+    };
+    for (const ev of ['pointerdown', 'touchend', 'keydown', 'click']) addEventListener(ev, wake, { capture: true, passive: true });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { if (ctx.state === 'running') ctx.suspend().catch(() => {}); } else wake();
+    });
+    addEventListener('pageshow', wake);
+    addEventListener('focus', wake);
+    // valt het geluid onderweg weg (bijv. een telefoontje), dan bij de volgende gelegenheid weer aan
+    ctx.onstatechange = () => { if (ctx.state !== 'running' && !document.hidden) setTimeout(wake, 300); };
   }
 
   setMuted(m) {
