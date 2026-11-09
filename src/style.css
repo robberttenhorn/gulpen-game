@@ -375,24 +375,6 @@ body.touch .mini-overlay.aim .mini-hint { padding-bottom: 140px; }
 @keyframes bm-flash { 0%, 30% { box-shadow: 0 0 0 3px var(--accent); transform: scale(1.02); } 100% { box-shadow: 0 0 0 0 transparent; transform: none; } }
 
 /* ---------- tuutjes trekken ---------- */
-.tt-machine { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 10px; background: radial-gradient(ellipse at 50% 40%, rgba(40,30,30,.55), rgba(0,0,0,.75)); }
-.tt-street { height: 92px; width: min(420px, 92%); display: flex; align-items: center; justify-content: center; }
-.tt-looker { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; opacity: .25; transition: opacity .2s, transform .2s; }
-.tt-looker .tt-face { font-size: 34px; filter: grayscale(1); }
-.tt-looker b { font-family: 'Baloo 2', sans-serif; font-size: 20px; }
-.tt-looker small { font-size: 13px; max-width: 360px; font-style: italic; }
-.tt-looker.komt { opacity: .8; }
-.tt-looker.kijkt { opacity: 1; transform: scale(1.12); }
-.tt-looker.kijkt .tt-face { filter: none; animation: tt-blink 0.4s steps(2) infinite; }
-.tt-looker.kijkt b { color: #ff8a80; }
-.tt-box { position: relative; width: 170px; height: 230px; border-radius: 10px; background: linear-gradient(#c62828, #8e1515); box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.2); }
-.tt-window { position: absolute; left: 18px; right: 18px; top: 18px; height: 80px; border-radius: 6px; background: #fff7f9; color: #b71c1c; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.tt-window small { font-family: Inter, sans-serif; font-weight: 600; font-size: 11px; color: #6d4c41; }
-.tt-knob { position: absolute; left: 50%; top: 122px; width: 58px; height: 58px; margin-left: -29px; border-radius: 50%; background: conic-gradient(#cfd8dc 0 25%, #90a4ae 0 50%, #cfd8dc 0 75%, #90a4ae 0); box-shadow: 0 3px 8px rgba(0,0,0,.4); transition: transform .12s; }
-.tt-slot { position: absolute; left: 50%; bottom: 14px; width: 70px; height: 14px; margin-left: -35px; border-radius: 4px; background: #2a0a0a; }
-.tt-meters { display: flex; gap: 22px; align-items: center; font-weight: 700; font-size: 14px; }
-.tt-meters .bar { display: inline-block; width: 140px; height: 12px; margin-left: 6px; border-radius: 6px; background: rgba(255,255,255,.25); vertical-align: middle; overflow: hidden; }
-.tt-meters .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd54f, #7cb342); }
 .tt-shame { font-size: 20px; }
 
 /* ---------- bommetje: jurykaartjes ---------- */
@@ -444,25 +426,6 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 .crosshair.hit::before, .crosshair.hit::after { background: #ff5252; }
 .crosshair.hit { border-color: #ff5252; animation: fx-bump .3s ease-out; }
 
-/* tuutjes: persoon loopt van opzij binnen en blijft staren */
-.tt-street { position: relative; overflow: hidden; }
-.tt-looker { position: absolute; left: 50%; top: 0; display: flex; align-items: center; gap: 10px; opacity: 1 !important; transform: translateX(-240%); transition: transform .8s ease-out; }
-.tt-looker.komt { transform: translateX(-120%); }
-.tt-looker.kijkt { transform: translateX(-50%) scale(1.15) !important; }
-.tt-person { display: flex; flex-direction: column; align-items: center; animation: tt-walk .35s ease-in-out infinite; }
-.tt-looker.kijkt .tt-person { animation: none; }
-.tt-head { font-size: 38px; line-height: 1; }
-.tt-body { width: 26px; height: 30px; border-radius: 10px 10px 4px 4px; background: #546e7a; margin-top: -4px; }
-@keyframes tt-walk { 50% { transform: translateY(-4px) rotate(3deg); } }
-.tt-bubble { background: rgba(255,255,255,.95); color: #1b2430; text-shadow: none; border-radius: 12px; padding: 6px 10px; max-width: 260px; display: none; flex-direction: column; text-align: left; }
-.tt-looker.komt .tt-bubble, .tt-looker.kijkt .tt-bubble { display: flex; }
-.tt-looker.kijkt .tt-bubble b { color: #c62828; }
-.tt-warn { position: absolute; right: 8px; top: 8px; width: 34px; height: 34px; border-radius: 50%; background: #ffb300; color: #1b2430; font-weight: 900; font-size: 22px; display: grid; place-items: center; opacity: 0; }
-.tt-warn.on { opacity: 1; animation: tt-blink .3s steps(2) infinite; }
-.tt-knob i { position: absolute; left: 50%; top: 4px; width: 6px; height: 18px; margin-left: -3px; border-radius: 3px; background: #455a64; }
-.tt-pack { position: absolute; left: 50%; bottom: 10px; font-size: 30px; transform: translate(-50%, -20px) scale(0); opacity: 0; }
-.tt-pack.drop { animation: tt-drop .8s cubic-bezier(.3,1.6,.5,1) forwards; }
-@keyframes tt-drop { 0% { transform: translate(-50%, -40px) scale(.3); opacity: 1; } 60% { transform: translate(-50%, 30px) scale(1.3); } 100% { transform: translate(-50%, 24px) scale(1.1); opacity: 1; } }
 
 /* stempelen */
 .st-desk { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 60%, #6d4c41, #3e2723); cursor: pointer; }
@@ -482,9 +445,6 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 .st-handle { top: -10px; width: 34px; height: 60px; border-radius: 16px 16px 6px 6px; background: linear-gradient(90deg, #5d4037, #8d6e63, #5d4037); margin-left: 0; }
 .st-foot { top: 46px; width: 74px; height: 22px; border-radius: 4px; background: #263238; margin-left: 0; box-shadow: 0 6px 12px rgba(0,0,0,.4); }
 /* tuutjes: ballonnetje naast de persoon, niet erachter */
-.tt-street { height: 120px; width: min(520px, 96%); }
-.tt-looker { flex-direction: row !important; align-items: center; top: 10px; white-space: normal; }
-.tt-bubble { min-width: 170px; }
 @media (max-height: 560px) {
   .tt-machine { gap: 6px; padding: 4px; }
   .tt-street { height: 96px; }
@@ -602,3 +562,76 @@ body.touch .drone-hud .dr-hint { bottom: 150px; }
 .dr-photos figcaption { color: #1b2430; text-shadow: none; font: 700 13px 'Baloo 2', sans-serif; text-align: center; margin-top: 6px; }
 @keyframes dr-in { from { opacity: 0; transform: translateY(30px) rotate(var(--r)) scale(.8); } to { opacity: 1; transform: rotate(var(--r)); } }
 #toast.long { font-size: clamp(17px, 2.6vw, 22px); max-width: min(560px, 86vw); line-height: 1.3; padding: 12px 18px; background: rgba(15, 22, 32, .72); border-radius: 14px; text-shadow: none; white-space: normal; }
+
+/* tuutjes trekken: straatje met de DA-gevel, de automaat en de jongen; voorbijgangers lopen over de stoep */
+.tz-scene { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px 10px 4px; background: radial-gradient(ellipse at 50% 35%, rgba(60,40,36,.55), rgba(0,0,0,.78)); }
+.tz-street { position: relative; width: min(520px, 100%); height: clamp(250px, 46vh, 340px); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  background: linear-gradient(#8a4a3a 0 72%, #6c6a66 72% 74%, #a39f97 74% 100%); }
+.tz-street::before { content: ''; position: absolute; inset: 0 0 26% 0; opacity: .35;
+  background: repeating-linear-gradient(0deg, transparent 0 11px, rgba(255,235,220,.5) 11px 12px), repeating-linear-gradient(90deg, transparent 0 23px, rgba(255,235,220,.35) 23px 24px); }
+.tz-shop { position: absolute; left: 6%; top: 26%; width: 38%; height: 42%; border: 5px solid #f4f1ea; border-radius: 4px; background: linear-gradient(160deg, #cfe3ef, #8fb2c6 55%, #6f93a8); box-shadow: inset 0 0 0 2px rgba(0,0,0,.15); }
+.tz-shop::after { content: 'DA'; position: absolute; left: 50%; top: 6px; transform: translateX(-50%); padding: 0 10px; border-radius: 4px; background: #fff; color: #c8102e; font: 800 18px 'Baloo 2', sans-serif; }
+.tz-shop i { position: absolute; bottom: 8%; width: 14%; height: 22%; border-radius: 3px; background: #f8bbd0; }
+.tz-box { position: absolute; right: 22%; top: 25%; width: 92px; height: 132px; border-radius: 8px; background: linear-gradient(#d32f2f, #8e1515); box-shadow: 0 6px 14px rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.25); transform-origin: 50% 100%; }
+.tz-window { position: absolute; left: 9px; right: 9px; top: 9px; height: 40px; border-radius: 4px; background: #fff7f9; color: #b71c1c; font: 800 14px/1 'Baloo 2', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.tz-window small { font: 600 8px Inter, sans-serif; color: #6d4c41; }
+.tz-box.glow .tz-window { box-shadow: 0 0 12px 3px rgba(255,235,59,.8); }
+.tz-knob { position: absolute; left: 50%; top: 58px; width: 38px; height: 38px; margin-left: -19px; border-radius: 50%; background: conic-gradient(#eceff1 0 25%, #90a4ae 0 50%, #eceff1 0 75%, #90a4ae 0); box-shadow: 0 3px 6px rgba(0,0,0,.45), inset 0 0 0 3px rgba(0,0,0,.08); }
+.tz-knob i { position: absolute; left: 50%; top: 3px; width: 5px; height: 13px; margin-left: -2.5px; border-radius: 3px; background: #37474f; }
+.tz-slot { position: absolute; left: 50%; bottom: 9px; width: 48px; height: 10px; margin-left: -24px; border-radius: 3px; background: #2a0a0a; }
+.tz-pack { position: absolute; left: 50%; bottom: 4px; width: 30px; height: 20px; margin-left: -15px; border-radius: 3px; background: linear-gradient(135deg, #f06292, #ad1457); box-shadow: 0 2px 4px rgba(0,0,0,.4); transform: translateY(-14px) scale(.4); opacity: 0; }
+.tz-pack.drop { animation: tz-drop .7s cubic-bezier(.3,1.6,.5,1) forwards; }
+@keyframes tz-drop { 0% { transform: translateY(-14px) scale(.4); opacity: 1; } 60% { transform: translateY(26px) scale(1.25) rotate(-12deg); opacity: 1; } 100% { transform: translateY(22px) scale(1.1) rotate(-8deg); opacity: 1; } }
+.tz-boy { position: absolute; right: 7%; bottom: 14%; display: flex; flex-direction: column; align-items: center; transition: transform .15s; }
+.tz-boy .tz-face { font-size: 36px; line-height: 1; }
+.tz-boy .tz-torso { width: 30px; height: 34px; margin-top: -4px; border-radius: 12px 12px 4px 4px; background: #7cb342; }
+.tz-boy .tz-legs { width: 26px; height: 22px; background: linear-gradient(90deg, #283593 0 44%, transparent 44% 56%, #283593 56%); }
+.tz-boy.crank { animation: tz-crank .18s ease-in-out; }
+@keyframes tz-crank { 50% { transform: translateX(-4px) rotate(-6deg); } }
+.tz-boy.innocent { animation: tz-whistle 1s ease-in-out infinite; }
+@keyframes tz-whistle { 50% { transform: rotate(4deg); } }
+.tz-note { position: absolute; right: 9%; bottom: 40%; font-size: 18px; color: #fff; animation: tz-note 1.2s ease-out forwards; pointer-events: none; }
+@keyframes tz-note { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(-30px, -50px) rotate(-20deg); opacity: 0; } }
+.tz-walker { position: absolute; bottom: 9%; left: -20%; display: flex; flex-direction: column; align-items: center; will-change: left; }
+.tz-walker .tz-face { font-size: 38px; line-height: 1; }
+.tz-walker .tz-torso { width: 30px; height: 36px; margin-top: -4px; border-radius: 12px 12px 4px 4px; background: #546e7a; }
+.tz-walker .tz-legs { width: 26px; height: 24px; background: linear-gradient(90deg, #37474f 0 44%, transparent 44% 56%, #37474f 56%); }
+.tz-walker.walking .tz-face, .tz-walker.walking .tz-torso { animation: tz-bob .32s ease-in-out infinite; }
+.tz-walker.walking .tz-legs { animation: tz-step .32s steps(2) infinite; }
+@keyframes tz-bob { 50% { transform: translateY(-3px); } }
+@keyframes tz-step { 50% { transform: scaleX(.6); } }
+.tz-walker .tz-eyes { position: absolute; top: -22px; font-size: 18px; opacity: 0; transition: opacity .15s; }
+.tz-walker.staring .tz-eyes { opacity: 1; animation: tt-blink .5s steps(2) infinite; }
+.tz-walker.staring { filter: drop-shadow(0 0 8px rgba(255,82,82,.8)); }
+/* tekstballon: altijd binnen het straatje, met een puntje naar wie er praat */
+.tz-bubble { position: absolute; left: 4%; right: 4%; top: 4%; display: none; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.96); color: #1b2430; text-shadow: none; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.tz-bubble.on { display: block; animation: fx-bump .25s ease-out; }
+.tz-bubble b { display: block; font: 800 16px/1.2 'Baloo 2', sans-serif; }
+.tz-bubble small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.3; font-style: italic; }
+.tz-bubble.bad b { color: #c62828; }
+.tz-bubble.ok b { color: #2e7d32; }
+.tz-bubble::after { content: ''; position: absolute; bottom: -9px; left: var(--tail, 50%); margin-left: -9px; border: 9px solid transparent; border-bottom: 0; border-top-color: rgba(255,255,255,.96); }
+.tz-alarm { position: absolute; left: 50%; top: 6%; margin-left: -90px; width: 180px; justify-content: center; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #ffb300; color: #1b2430; font-weight: 800; font-size: 13px; text-shadow: none; opacity: 0; transform: translateY(-8px); transition: opacity .15s, transform .15s; }
+.tz-alarm.on { opacity: 1; transform: none; animation: tt-blink .35s steps(2) infinite; }
+.tz-meters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; align-items: center; font-weight: 700; font-size: 14px; }
+.tz-meters .bar { display: inline-block; width: 150px; height: 14px; margin-left: 6px; border-radius: 7px; background: rgba(255,255,255,.22); vertical-align: middle; overflow: hidden; }
+.tz-meters .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd54f, #7cb342); }
+.tz-meters .bar.hot i { background: linear-gradient(90deg, #ffd54f, #ff7043); }
+
+/* ---------- terug naar start: altijd in beeld en altijd te bedienen (ook in minispellen, gesprekken en tussenfilmpjes) ---------- */
+#btn-home {
+  position: fixed; top: max(12px, env(safe-area-inset-top)); right: 254px; z-index: 60; width: 42px; height: 42px; border-radius: 50%;
+  border: 0; background: rgba(255, 250, 240, 0.94); color: var(--ink); box-shadow: var(--shadow); pointer-events: auto;
+  display: grid; place-items: center; cursor: pointer; touch-action: manipulation;
+}
+#btn-home:active { transform: scale(.92); }
+#home-confirm { position: fixed; top: calc(max(12px, env(safe-area-inset-top)) + 50px); right: 160px; z-index: 61; display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 14px; background: rgba(255, 250, 240, 0.97); color: var(--ink); box-shadow: var(--shadow); font-weight: 700; font-size: 14px; pointer-events: auto; }
+#home-confirm[hidden] { display: none; }
+#home-confirm button { border: 0; border-radius: 999px; padding: 6px 14px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
+#home-yes { background: #e8a33c; color: #1b2430; }
+#home-no { background: rgba(27, 36, 48, .1); color: var(--ink); }
+@media (max-width: 640px) { #btn-home { top: calc(max(12px, env(safe-area-inset-top)) + 46px); right: 132px; width: 38px; height: 38px; } #home-confirm { top: calc(max(12px, env(safe-area-inset-top)) + 92px); right: 12px; font-size: 13px; } }
+/* in een minispel staat bovenaan de titelbalk met Stoppen: dan linksonder, boven de uitleg */
+body.pov #btn-home { top: auto; right: auto; left: 12px; bottom: calc(64px + env(safe-area-inset-bottom)); }
+body.pov #home-confirm { top: auto; right: auto; left: 12px; bottom: calc(112px + env(safe-area-inset-bottom)); }

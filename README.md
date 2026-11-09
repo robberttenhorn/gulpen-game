@@ -18,7 +18,7 @@ Open daarna de link die Vite toont (meestal http://localhost:5173).
 - Mobiel: joystick links, slepen op de rechterhelft om te kijken, knoppen rechtsonder. Tik op de minikaart voor de grote kaart.
 
 **Vervoer**: lopen (ongeveer 15 km/u, rennen 23 km/u), skateboard (34 km/u), fiets (45 km/u, na het afstellen bij Jef Abels sneller) en auto's (tot 120 km/u). De fiets heb je altijd bij je: druk op de knop Fiets (of F).
-Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart).
+Overal staan auto's waar je in kunt stappen: op parkeerplaatsen en op opritten door het hele dorp, bij elke start op andere plekken. Er zijn ook sportwagens, en op het boerenland staat een tractor. Op de oprit van Ringweg 38 staat altijd een grijze Volvo XC40 (die staat niet op de kaart). Ringweg 38 heeft een voor- en achtertuin die zijn nagebouwd naar de luchtfoto (PDOK, 8 cm per pixel), het kadaster en de BGT (src/tuin38.js): een oprit van rode klinkers, een plantvak met buxushaagje, een boom met roodbruin blad, een berging, een vijver met stenen rand, twee terrassen, een gazon, moestuinbakken, een bakstenen muur langs de wei en een haag aan de westkant. Welke plant of welk meubel het precies is, is een interpretatie van de luchtfoto.
 Water kun je niet in. Er rijdt verkeer over het echte wegennet en er lopen dorpsbewoners rond.
 
 ## Missies
@@ -82,7 +82,9 @@ Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café
 
 **Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer dag zodra je een andere missie begint, als je een nachtmissie haalt, stopt of die mislukt, met nog een pilsje, en anders na 2 minuten zonder missie. Bij elke start van de game is het 11 uur 's ochtends. De avondmissies zijn de Nachtburgemeester, de Nacht van Gulpen en de Gulpener Bierfeesten.
 
-**Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit.
+**Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit. Wissel je van app en kom je terug, dan gaat het geluid vanzelf weer aan.
+
+**Terug naar start**: naast de geluidsknop staat een knop met een huisje. Die is altijd in beeld (in een minispel linksonder) en brengt je na een korte bevestiging terug naar het startpunt. Een lopende missie, minispel, gesprek, race of rit stopt dan, en ook als er iets is vastgelopen kun je zo altijd weer verder.
 
 **Besturing**: fiets, skateboard en auto sturen zoals een voertuig: vooruit is gas (of trappen), achteruit is remmen, links en rechts is sturen. Met toetsen lopen gas en sturen geleidelijk op; de joystick heeft een dode zone in het midden en stuurt bij een kleine uitslag maar een klein beetje.
 

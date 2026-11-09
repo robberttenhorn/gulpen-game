@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng } from './world.js';
+import { inTuin38 } from './tuin38.js';
 
 export function buildVegetation(w) {
   const rand = rng(777);
@@ -25,6 +26,7 @@ export function buildVegetation(w) {
   for (let gx = box.x0; gx <= box.x1; gx += step) {
     for (let gz = box.z0; gz <= box.z1; gz += step) {
       const x = gx + (rand() - 0.5) * step, z = gz + (rand() - 0.5) * step;
+      if (inTuin38(x, z)) continue; // die tuin is apart nagebouwd (tuin38.js)
       const c = cls(x, z);
       if (c === 'struiken') { if (rand() < 0.55 * pB && !w.insideBuilding(x, z)) bushes.push([x, z, 0.7 + rand() * 0.9]); continue; }
       if (c === 'erf') {
