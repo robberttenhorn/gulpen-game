@@ -1162,6 +1162,34 @@ export class World {
     }
   }
 
+  // Bomen tijdelijk verbergen waar test(x, z) waar is (bijv. tussen camera en podium bij een feest).
+  // Geeft een functie terug die ze weer terugzet.
+  hideTrees(test, near = [0, 0], radius = 120) {
+    const saved = [];
+    const m = new THREE.Matrix4(), p = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (const t of this.treeTiles || []) {
+      if (Math.hypot(t.cx - near[0], t.cz - near[1]) > radius + 150) continue;
+      for (const grp of [t.far, t.near]) for (const im of grp.children) {
+        if (!im.isInstancedMesh) continue;
+        let changed = false;
+        for (let i = 0; i < im.count; i++) {
+          im.getMatrixAt(i, m);
+          p.setFromMatrixPosition(m);
+          if (!test(p.x, p.z)) continue;
+          saved.push([im, i, m.clone()]);
+          im.setMatrixAt(i, zero);
+          changed = true;
+        }
+        if (changed) im.instanceMatrix.needsUpdate = true;
+      }
+    }
+    return () => {
+      const touched = new Set();
+      for (const [im, i, mm] of saved) { im.setMatrixAt(i, mm); touched.add(im); }
+      touched.forEach((im) => { im.instanceMatrix.needsUpdate = true; });
+    };
+  }
+
   // Boomsoorten: vooraf gemaakt met ez-tree (tools/bake-trees.cjs) en als klein bestand geladen.
   // Ontbreekt dat bestand, dan maken we ze hier ter plekke (dan wordt ez-tree zelf geladen, ~4 MB).
   async makeTreeVariants() {

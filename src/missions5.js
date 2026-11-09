@@ -71,7 +71,8 @@ export function setupGeschiedenis(m, g, add) {
   if (oak) add('archeoloog', 'Archeologe', oak, { shirt: 0xc8a26b, pants: 0x5d4037, hair: 0x6d4c41, hairStyle: 'long', female: true, hat: 'cap', hatColor: 0x8d6e63 });
   const at = spotAt(g, 'atelier', 2.2, -1.2);
   if (at) add('chef', 'Chef van Restaurant Atelier', at, { shirt: 0xffffff, pants: 0x212121, apron: 0x212121, hair: 0x3e2723, hat: 'chef', hatColor: 0xffffff });
-  const mc = spotAt(g, 'mezzaluna', 3.2, -4.5);
+  // de MC wacht bij Café Neubourg (het podium komt pas tijdens de missie bij Mezzaluna)
+  const mc = spotAt(g, 'neubourg', 3, 0) || spotAt(g, 'mezzaluna', 3.2, -4.5);
   if (mc) add('feestmc', 'MC van Feestkabinet', mc, { shirt: 0xff4fd8, pants: 0x111111, hair: 0x3e2723, sleeves: 'short', shoes: 0xffffff });
   // bioloog aan de rand van het dorp, bij een veld
   const field = findField(g, g.startPos || [0, 0]);
@@ -215,7 +216,7 @@ export const geschiedenisHandlers = {
     if (a !== 0) { await ui.dialog(N, ['Meedrinken kan pas als iemand tapt, hè! Kom maar terug als je dorst krijgt.']); return; }
     if (g.mode === 'car') g.exitCar();
     g.setMode('walk');
-    this.setActive('bierfeesten', 'Tappen op de Bierfeesten', 'Houd ingedrukt om te tappen en laat los als het bier bij de streep staat, met een kraag van twee vingers schuim. Tien goede biertjes!', '0 / 10 biertjes');
+    this.setActive('bierfeesten', 'Tappen op de Bierfeesten', 'Houd ingedrukt om te tappen en laat los als het bier precies bij de streep staat, met een kraag van twee vingers schuim. Let op: de tap sputtert en het schuim verschilt per glas. Tien goede biertjes!', '0 / 10 biertjes');
     let feest = null;
     const upd = (dt) => feest?.update(dt);
     const restore = () => {

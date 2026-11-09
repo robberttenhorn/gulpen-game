@@ -73,7 +73,7 @@ Alle missies staan tegelijk open. Je kiest zelf de volgorde. Op de grote kaart z
 | Kunst in de piramide: er komt geen hond op de tentoonstelling af; haal vijf bezoekers (en een hond) voor de Mona Liesje, daarna het verhaal van de veiling | Piramide Primosa, Landsraderweg 7 |
 | De Romeinse weg: graven naar Romeinse vondsten; een getal zegt hoeveel vondsten er in de vakjes eromheen liggen, pas op voor de waterleiding | Oude Akerweg |
 | Een bord is een schilderij: drie gangen precies zo opmaken als de chef ze voordoet | Restaurant Atelier, Markt 9 |
-| Tappen op de Bierfeesten: tien Gulpeners met een kraag van twee vingers schuim, met Feestkabinet op het podium | Markt (Gulpener Bierfeesten) |
+| Tappen op de Bierfeesten: tien Gulpeners precies tot de streep met een kraag van twee vingers schuim (de tap sputtert en het schuim verschilt per glas), met Feestkabinet op het podium | Markt (Gulpener Bierfeesten) |
 | Zit de korenwolf er nog?: drie wildcamera's ophangen in het veld en de nachtfoto's nakijken | Velden aan de rand van het dorp |
 | Forellen scheppen: alleen de grote forellen uit de kweekvijver, de kleintjes laten zwemmen | Aan de Gulp, bij de Looierstraat |
 
