@@ -48,7 +48,7 @@ function gnomeSpotsNear(g, x, z, n = 5, rMin = 20, rMax = 75) {
   return out;
 }
 
-function streetSpot(g, name, at = 0.5, side = 3.2) {
+export function streetSpot(g, name, at = 0.5, side = 3.2) {
   const path = g.world.streetPath(name);
   if (!path || path.length < 2) return null;
   let total = 0;

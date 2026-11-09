@@ -37,7 +37,7 @@ export const MARKT_MISSION_OF = { ijsjuf: 'ijsjes', toerist: 'toerist', chocolat
 // ------------------------------------------------------------ hulpjes
 
 // het dichtstbijzijnde water (de Gulp) met een begaanbare plek op de oever ernaast
-function findGulp(g, x0, z0) {
+export function findGulp(g, x0, z0) {
   const w = g.world;
   let best = null;
   for (let r = 10; r <= 320 && !best; r += 6) {
