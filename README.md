@@ -1,11 +1,11 @@
-> **Dit is de HD-proefversie van Locals: Gulpen.** Een kopie van [gulpen-game](https://github.com/robberttenhorn/gulpen-game) om te kijken hoe ver de game richting filmische, realistische graphics kan, terwijl hij in de browser blijft draaien. De echte game staat los hiervan en wordt hier niet door geraakt.
-> Verschillen met het origineel: de voortgang wordt apart bewaard (opslagnamen beginnen met `gulpehd-`), de anonieme telling staat uit en de titel is "Locals: Gulpen HD".
+> **Deze code draait op twee plekken:** de echte game ([gulpen-game](https://github.com/robberttenhorn/gulpen-game)) en de HD-proefversie (gulpen-game-hd). Het adres bepaalt welke van de twee het is (`src/config.js`), dus dezelfde code kan naar beide worden gepubliceerd.
+> Op de proefversie wordt de voortgang apart bewaard (opslagnamen beginnen met `gulpehd-`), staat de anonieme telling uit en is de titel "Locals: Gulpen HD". Op de echte game zijn de opslagnamen dezelfde als altijd (`gulpe-`), zodat niemand zijn voortgang kwijtraakt, en staat de telling aan.
 
 ## Wat er in de HD-versie anders is
 
 Het volledige verslag met voor- en na-beelden staat in [`docs/hd/VERSLAG.md`](docs/hd/VERSLAG.md), de bronnen in [`docs/hd/BRONNEN.md`](docs/hd/BRONNEN.md). De gameplay en alle missies zijn ongewijzigd. In het kort:
 
-- **Beeldkwaliteit in drie standen** (`src/quality.js`): `hoog` op de computer, `laag` op de telefoon, `midden` ertussenin. Kiezen kan op het startscherm of met `?kwaliteit=hoog|midden|laag` achter het adres (wordt onthouden; `?kwaliteit=auto` zet het terug). Hapert het spel, dan schakelt het zelf stap voor stap af: eerst scherptediepte en zonnestralen, dan minder pixels, dan ambient occlusion, dan het verre gras en een kleinere schaduwkaart, en pas als laatste de hele nabewerking. In de stand `hoog` gebeurt dat pas onder ongeveer 27 beelden per seconde.
+- **Beeldkwaliteit in drie standen** (`src/quality.js`): `hoog` op de computer, `laag` op de telefoon, `midden` ertussenin. Kiezen kan op het startscherm, tijdens het spelen via het tandwiel rechtsboven (Instellingen; de game laadt dan opnieuw), of met `?kwaliteit=hoog|midden|laag` achter het adres (wordt onthouden; `?kwaliteit=auto` zet het terug). Hapert het spel, dan schakelt het zelf stap voor stap af: eerst scherptediepte en zonnestralen, dan minder pixels, dan ambient occlusion, dan het verre gras en een kleinere schaduwkaart, en pas als laatste de hele nabewerking. In de stand `hoog` gebeurt dat pas onder ongeveer 27 beelden per seconde.
 - **Lucht** (`src/sky.js`): gefotografeerde hemels van Poly Haven: overdag blauw met stapelwolken, 's nachts sterren en de Melkweg. De lucht levert ook het hemellicht en de reflecties. Eerst laadt een lichte versie, daarna op de computer de fijne.
 - **Licht en atmosfeer** (`src/main.js`, `src/lighting.js`): fellere zon tegenover koel hemellicht, een grote stabiele schaduwkaart, luchtperspectief en hoogtemist in het dal.
 - **Nabewerking** (`src/post.js`): ambient occlusion, zonnestralen, scherptediepte tijdens gesprekken, bloom, filmische tone mapping, kleurcorrectie, vignet en korrel.
@@ -160,7 +160,7 @@ Elke missie onthoudt je beste prestatie, zichtbaar in de lijst op de grote kaart
 
 ## Bezoekers tellen
 
-`src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. Het dashboard staat op https://10horn.goatcounter.com. Leeg je `GOATCOUNTER_CODE` in `src/stats.js`, dan staat de telling uit.
+`src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. Het dashboard staat op https://10horn.goatcounter.com. De code staat in `src/config.js` (`GOATCOUNTER`); op de HD-proefversie is die leeg en staat de telling dus uit.
 
 | In het GoatCounter-dashboard | Betekenis |
 |---|---|

@@ -1,4 +1,5 @@
 // Alles wat over het 3D-beeld heen ligt: dialogen, opdrachtkaart, straatnaambord, minikaart.
+import { STORE } from './config.js';
 const $ = (id) => document.getElementById(id);
 
 export class UI {
@@ -12,7 +13,7 @@ export class UI {
     });
     // vertaling van Gulpense zinnen aan/uit (onthouden per apparaat)
     this.translate = true;
-    try { this.translate = localStorage.getItem('gulpehd-vertaling') !== 'uit'; } catch { /* geen opslag */ }
+    try { this.translate = localStorage.getItem(STORE + 'vertaling') !== 'uit'; } catch { /* geen opslag */ }
     const tr = $('dialog-tr');
     const sync = () => {
       tr.textContent = this.translate ? 'Vertaling aan' : 'Vertaling uit';
@@ -22,7 +23,7 @@ export class UI {
     tr.addEventListener('click', (e) => {
       e.stopPropagation();
       this.translate = !this.translate;
-      try { localStorage.setItem('gulpehd-vertaling', this.translate ? 'aan' : 'uit'); } catch { /* negeren */ }
+      try { localStorage.setItem(STORE + 'vertaling', this.translate ? 'aan' : 'uit'); } catch { /* negeren */ }
       sync();
     });
     this.syncTranslation = sync;
@@ -35,10 +36,10 @@ export class UI {
       card.classList.toggle('collapsed', c);
       btn.setAttribute('aria-expanded', String(!c));
       btn.setAttribute('aria-label', c ? 'Missie uitklappen' : 'Missie inklappen');
-      try { localStorage.setItem('gulpehd-quest-collapsed', c ? '1' : '0'); } catch (e) { /* geen opslag */ }
+      try { localStorage.setItem(STORE + 'quest-collapsed', c ? '1' : '0'); } catch (e) { /* geen opslag */ }
     };
     let start = false;
-    try { start = localStorage.getItem('gulpehd-quest-collapsed') === '1'; } catch (e) { /* geen opslag */ }
+    try { start = localStorage.getItem(STORE + 'quest-collapsed') === '1'; } catch (e) { /* geen opslag */ }
     set(start);
     const toggle = (e) => { e.stopPropagation(); set(!card.classList.contains('collapsed')); };
     btn.addEventListener('click', toggle);

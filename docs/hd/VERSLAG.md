@@ -277,3 +277,12 @@ Wat dit betekent:
 - **Binnenruimtes**: niet aangepakt, behalve dat ze de nieuwe nabewerking meekrijgen.
 - **Laadtijd**: gecomprimeerde texturen (KTX2) en het vooraf compileren van shaders in stapjes zouden het laden korter en rustiger maken.
 - **WebGPU**: een overstap blijft mogelijk, maar is een project op zich (alle eigen shaders herschrijven).
+
+## Na de eerste test: klaar om naar de echte game te gaan
+
+Op verzoek, na het testen van de proefversie:
+
+- **Eén code voor beide plekken** (`src/config.js`). Het adres bepaalt of het de echte game of de proefversie is. Op de echte game zijn de opslagnamen weer `gulpe-...` (dezelfde als altijd), heet de game "Locals: Gulpen" en staat de anonieme telling aan; op de proefversie blijft alles zoals het was (`gulpehd-...`, telling uit, "Locals: Gulpen HD"). Daardoor raakt niemand zijn voortgang kwijt als deze code op `gulpen-game` komt te staan. Getest: een opslag in het formaat van de echte game (`gulpe-missies-v2`) wordt ingelezen en de missies staan als gedaan.
+- **Instellingen tijdens het spelen**: een tandwiel rechtsboven opent een klein paneel met de beeldkwaliteit (Hoog, Midden, Laag). Bij een andere keuze laadt de game opnieuw in die stand en begin je bij het startpunt; afgeronde missies blijven bewaard. Het tandwiel is er alleen tijdens vrij rondlopen, niet in minispellen of tussenfilmpjes.
+- **Telefoon**: begint standaard in de stand Laag (dat was al zo); wie zelf iets anders kiest, houdt die keuze.
+- De echte game (`gulpen-game`) is hierbij niet aangeraakt. De hoofdtak daar is niet verder gegaan sinds de kopie is gemaakt, dus de proefversie kan er zonder samenvoegwerk overheen.

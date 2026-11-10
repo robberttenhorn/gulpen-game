@@ -186,6 +186,17 @@ class Game {
       document.getElementById('home-yes').addEventListener('click', (e) => { e.stopPropagation(); hide(); this.goHome(); });
       document.getElementById('home-no').addEventListener('click', (e) => { e.stopPropagation(); hide(); });
     }
+    // instellingen: beeldkwaliteit kiezen tijdens het spelen (de game laadt dan opnieuw in de gekozen stand)
+    {
+      const gb = document.getElementById('btn-settings'), sp = document.getElementById('settings-panel');
+      for (const el of [gb, sp]) for (const ev of ['pointerdown', 'touchstart']) el.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
+      gb.addEventListener('click', (e) => { e.stopPropagation(); sp.hidden = !sp.hidden; });
+      document.getElementById('settings-close').addEventListener('click', (e) => { e.stopPropagation(); sp.hidden = true; });
+      for (const b of sp.querySelectorAll('.sp-row button')) {
+        b.classList.toggle('on', b.dataset.q === Q.name);
+        b.addEventListener('click', (e) => { e.stopPropagation(); if (b.dataset.q !== Q.name) setQuality(b.dataset.q); else sp.hidden = true; });
+      }
+    }
     const sb = document.getElementById('btn-sound');
     const syncSound = () => { sb.classList.toggle('off', this.sfx.muted); sb.setAttribute('aria-label', this.sfx.muted ? 'Geluid aanzetten' : 'Geluid uitzetten'); };
     sb.addEventListener('click', () => { this.sfx.setMuted(!this.sfx.muted); syncSound(); });

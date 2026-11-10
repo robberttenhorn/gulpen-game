@@ -5,7 +5,8 @@
 // - 'laag'   : telefoon. Eenvoudig en soepel: kleine texturen, geen nabewerking behalve kleurcorrectie.
 // De stand volgt uit het apparaat, of uit ?kwaliteit=hoog|midden|laag in de adresbalk (dat wordt onthouden).
 // De automatische regeling in main.js (adaptQuality) zakt tijdens het spelen verder af als het hapert.
-const KEY = 'gulpehd-kwaliteit';
+import { STORE } from './config.js';
+const KEY = STORE + 'kwaliteit';
 
 export const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
 
