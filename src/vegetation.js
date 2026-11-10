@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { rng } from './world.js';
 import { inTuin38 } from './tuin38.js';
 import { Q } from './quality.js';
+import { leafTexture, leafyMaterial } from './foliage.js';
 
 export function buildVegetation(w) {
   const rand = rng(777);
@@ -76,7 +77,7 @@ export function buildVegetation(w) {
   // Zo krijgen hagen en struiken een rafelige, bladerige rand in plaats van een strak blok. Op de telefoon alleen de kern.
   const leafTex = Q.laag ? null : leafTexture();
   const shellMat = (cut) => { const mt = new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: cut, roughness: 0.9, side: THREE.DoubleSide }); if (Q.msaa) mt.alphaToCoverage = true; return mt; };
-  const coreMat = new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: Q.laag });
+  const coreMat = Q.laag ? new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }) : leafyMaterial();
   // struiken: platgedrukte, ruwe bollen
   const bushShape = (r, detail, uvScale) => {
     const g = new THREE.IcosahedronGeometry(r, detail);
@@ -187,33 +188,4 @@ export function buildPlanters(w, markt) {
   });
   for (const im of [tub, soil, bloom]) { im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); w.scene.add(im); }
   return spots.length;
-}
-
-// Bladtextuur voor de schillen van hagen en struiken: losse blaadjes op een doorzichtige achtergrond.
-// De dekking loopt per blad van het midden (vol) naar de rand (dun): een hogere drempel geeft dus kleinere blaadjes.
-export function leafTexture(size = 256, n = 230, seed = 5) {
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const g = c.getContext('2d');
-  const rand = rng(seed);
-  for (let i = 0; i < n; i++) {
-    const x = rand() * size, y = rand() * size, r = 7 + rand() * 9, a = rand() * Math.PI, hue = 80 + rand() * 45, li = 38 + rand() * 30;
-    for (const ox of [-size, 0, size]) for (const oy of [-size, 0, size]) {
-      if (x + ox < -r * 2 || x + ox > size + r * 2 || y + oy < -r * 2 || y + oy > size + r * 2) continue;
-      g.save();
-      g.translate(x + ox, y + oy); g.rotate(a); g.scale(1, 0.48);
-      const grd = g.createRadialGradient(0, 0, 0, 0, 0, r);
-      grd.addColorStop(0, `hsla(${hue},45%,${li}%,1)`);
-      grd.addColorStop(0.55, `hsla(${hue},45%,${li - 6}%,0.8)`);
-      grd.addColorStop(1, `hsla(${hue},45%,${li - 12}%,0.25)`);
-      g.fillStyle = grd;
-      g.beginPath(); g.moveTo(-r, 0); g.quadraticCurveTo(0, -r * 1.25, r, 0); g.quadraticCurveTo(0, r * 1.25, -r, 0); g.fill();
-      g.restore();
-    }
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
-  return t;
 }

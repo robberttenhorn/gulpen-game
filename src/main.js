@@ -290,6 +290,7 @@ class Game {
     const night = 1 - day;
     this.night = night;
     const lightsOn = THREE.MathUtils.smoothstep(night, 0.4, 1);
+    this.world.wet = lightsOn * 0.85; // 's avonds is de straat nat (na een bui): glans, plassen en spiegelende lantaarns
     this.world.setNight(lightsOn);
     this.facades?.setNight(lightsOn);
     this.cars?.setNight(lightsOn);

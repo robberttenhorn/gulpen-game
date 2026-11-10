@@ -958,7 +958,7 @@ export class World {
             tnAmt *= (1.0 - opening) * (1.0 - plint);
             // vuil en schaduw onderaan de gevel
             base *= mix(0.72, 1.0, smoothstep(vWall.x, vWall.x + 1.2, hgt));
-            rough = mix(rough, 0.18, glass);
+            rough = mix(rough, 0.06, glass); // glad glas: de lucht spiegelt erin
           } else {
             // daken
             vec2 dir = normalize(vec2(vWN.x, -vWN.z) + 1e-4);

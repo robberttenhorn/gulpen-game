@@ -4,7 +4,7 @@ import * as THREE from 'three';
 
 // De lucht spiegelt in de game maar zwak (scene.environmentIntensity is laag gehouden voor de rest van het dorp).
 // Lak en glas leven juist van die spiegeling, dus die krijgen hier een eigen versterking.
-const SPIEGEL_LAK = 1.9, SPIEGEL_GLAS = 1.8;
+const SPIEGEL_LAK = 0.85, SPIEGEL_GLAS = 0.9; // afgestemd op de fotografische lucht (omgevingssterkte rond 1)
 
 // De omgevingskaart bevat alleen lucht. In het echt spiegelt een auto opzij en omlaag de straat, gevels en groen,
 // en die zijn donkerder: daarom wordt de spiegeling zwakker naarmate de gespiegelde richting lager ligt.

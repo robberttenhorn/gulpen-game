@@ -78,10 +78,13 @@ async function shot(page, v, hour, file) {
     p.heading = v.yaw + Math.PI; p.speed = 0;
     if (v.car && g.volvo) {
       // naast de Volvo XC40 op de oprit van Ringweg 38, schuin van voren
-      const c = g.volvo, h = c.heading + 0.65;
-      p.x = c.x + Math.sin(h) * 4.6; p.z = c.z + Math.cos(h) * 4.6; p.heading = h + Math.PI;
-      v = { ...v, yaw: h, pitch: 0.12 };
-      g.camDistSave ??= g.camDist; g.camDist = 2.2;
+      const c = g.volvo, h = c.heading + 0.1;
+      const cx = c.x + Math.sin(h) * 8.6, cz = c.z + Math.cos(h) * 8.6; // camera schuin voor de auto
+      p.x = c.x + Math.sin(h + 0.75) * 4.4; p.z = c.z + Math.cos(h + 0.75) * 4.4; // speler ernaast
+      const yaw = Math.atan2(cx - p.x, cz - p.z);
+      p.heading = yaw + Math.PI;
+      v = { ...v, yaw, pitch: 0.16 };
+      g.camDistSave ??= g.camDist; g.camDist = Math.hypot(cx - p.x, cz - p.z);
     } else if (g.camDistSave != null) { g.camDist = g.camDistSave; g.camDistSave = null; }
     g.camYaw = v.yaw; g.camPitch = v.pitch; g.lastManualLook = g.time + 1e6;
     if (g.timeOfDay !== hour) { g.timeOfDay = hour; g.applyTime(); }

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Earcut } from 'three/src/extras/Earcut.js';
 import { makeTextures } from './textures.js';
 import { keepNormals } from './lighting.js';
+import { Q } from './quality.js';
 
 // klasse -> [texture, wereldmaat van één herhaling in meters, hoogte boven terrein, polygonOffset]
 const LAYERS = {
@@ -59,6 +60,7 @@ export function buildHardscape(world, scene) {
     if (t.normalMap) mat.normalScale.set(0.8, 0.8);
     if (t.color) mat.color.copy(t.color);
     world.applyAO?.(mat);
+    if (Q.natteWeg && world.applyAO) wetSurface(mat);
     const m = new THREE.Mesh(geo, mat);
     m.receiveShadow = true;
     scene.add(m);
@@ -80,11 +82,28 @@ export function buildHardscape(world, scene) {
   let waterMat = null;
   if (wgeo) {
     const wn = waterNormals();
+    // De Gulp en de vijvers: donker, helder water dat de lucht spiegelt (sterker naarmate je er vlakker overheen kijkt),
+    // met twee lagen fijne rimpels die tegen elkaar in schuiven. De rimpels liggen in wereldmaten, dus overal even fijn.
     waterMat = new THREE.MeshStandardMaterial({
-      color: 0x24414c, roughness: 0.06, metalness: 0.1, normalMap: wn, envMapIntensity: 1.2,
+      color: 0x1d3530, roughness: 0.06, metalness: 0, normalMap: wn, envMapIntensity: 1.5,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
     });
-    waterMat.normalScale.set(0.35, 0.35);
+    waterMat.userData.time = { value: 0 };
+    waterMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uWaterT = waterMat.userData.time;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vWaterP;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWaterP = (modelMatrix * vec4(position, 1.0)).xz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vWaterP;\nuniform float uWaterT;')
+        .replace('#include <normal_fragment_maps>', `
+          {
+            vec2 r1 = texture2D(normalMap, vWaterP * 0.42 + vec2(uWaterT * 0.035, uWaterT * 0.02)).xy * 2.0 - 1.0;
+            vec2 r2 = texture2D(normalMap, vWaterP * 1.15 - vec2(uWaterT * 0.05, -uWaterT * 0.03)).xy * 2.0 - 1.0;
+            vec2 rp = (r1 * 0.6 + r2 * 0.4) * 0.16;
+            normal = normalize(mat3(viewMatrix) * normalize(vec3(rp.x, 1.0, rp.y)));
+          }`);
+    };
     const m = new THREE.Mesh(wgeo, waterMat);
     m.receiveShadow = true;
     scene.add(m);
@@ -103,10 +122,7 @@ export function buildHardscape(world, scene) {
 
   return {
     update(dt) {
-      if (waterMat) {
-        waterMat.normalMap.offset.x += dt * 0.02;
-        waterMat.normalMap.offset.y += dt * 0.035;
-      }
+      if (waterMat) waterMat.userData.time.value += dt;
     },
   };
 }
@@ -362,7 +378,16 @@ function buildMarkings(world) {
 }
 
 function waterNormals() {
+  // naadloos herhalende rimpels: een som van golfjes in willekeurige richtingen (hele golfgetallen = naadloos)
   const size = 256;
+  const waves = [];
+  let sd = 4711;
+  const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  for (let i = 0; i < 18; i++) {
+    const kx = Math.round((rnd() - 0.5) * 14), ky = Math.round((rnd() - 0.5) * 14);
+    if (!kx && !ky) continue;
+    waves.push([kx, ky, rnd() * Math.PI * 2, 1 / Math.hypot(kx, ky)]);
+  }
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
@@ -370,11 +395,11 @@ function waterNormals() {
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const u = (x / size) * Math.PI * 2, v = (y / size) * Math.PI * 2;
-      const dx = Math.cos(u * 3 + Math.sin(v * 2)) * 0.5 + Math.cos(u * 7 + v * 3) * 0.25;
-      const dy = Math.sin(v * 4 + Math.cos(u * 2)) * 0.5 + Math.sin(v * 9 - u * 2) * 0.2;
+      let dx = 0, dy = 0;
+      for (const [kx, ky, ph, a] of waves) { const cs = Math.cos(kx * u + ky * v + ph) * a; dx += cs * kx; dy += cs * ky; }
       const i = (y * size + x) * 4;
-      img.data[i] = (dx * 0.5 + 0.5) * 255;
-      img.data[i + 1] = (dy * 0.5 + 0.5) * 255;
+      img.data[i] = Math.max(0, Math.min(255, (dx * 0.16 + 0.5) * 255));
+      img.data[i + 1] = Math.max(0, Math.min(255, (dy * 0.16 + 0.5) * 255));
       img.data[i + 2] = 255;
       img.data[i + 3] = 255;
     }
@@ -382,8 +407,63 @@ function waterNormals() {
   ctx.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(1, 1);
   return t;
+}
+
+// Natte straat ('s avonds, na een bui): het wegdek wordt donkerder en glanst, in de plassen spiegelt de lucht,
+// en elke lantaarn krijgt een lange lichtveeg op het natte wegdek. Die veeg is een echte spiegeling: voor elk
+// punt op de weg wordt uitgerekend welke lantaarn daar in de spiegel zou staan (via de lichtkaart uit lighting.js).
+function wetSurface(mat) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, r) => {
+    prev?.call(mat, shader, r);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        float wetH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float wetN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(wetH(i), wetH(i + vec2(1, 0)), f.x), mix(wetH(i + vec2(0, 1)), wetH(i + vec2(1, 1)), f.x), f.y); }
+        float wetPud = 0.0; float wetAmt = 0.0;`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        #ifdef LOCALS_LAMPS
+          wetAmt = texelFetch(uGlobals, ivec2(0, 0), 0).y;
+          if (wetAmt > 0.01) {
+            float pn = wetN(vAOxz * 0.21) * 0.6 + wetN(vAOxz * 0.83) * 0.4;
+            wetPud = smoothstep(0.57, 0.7, pn) * wetAmt;
+            roughnessFactor = mix(mix(roughnessFactor, 0.45, wetAmt * 0.6), 0.05, wetPud);
+            diffuseColor.rgb *= mix(1.0, 0.7, wetAmt) * mix(1.0, 0.72, wetPud);
+          }
+        #endif`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        normal = normalize(mix(normal, nonPerturbedNormal, wetPud * 0.92));`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        #ifdef LOCALS_LAMPS
+          if (wetAmt > 0.01) {
+            vec4 wetG = texelFetch(uGlobals, ivec2(0, 0), 0);
+            if (wetG.x > 0.01) {
+              mat3 wV2W = transpose(mat3(viewMatrix));
+              vec3 wP = cameraPosition + wV2W * (-vViewPosition);
+              float camH = max(0.3, cameraPosition.y - wP.y);
+              vec2 wQ = cameraPosition.xz + (wP.xz - cameraPosition.xz) * (camH + 5.85) / camH;
+              vec4 wBox = texelFetch(uGlobals, ivec2(1, 0), 0);
+              vec2 wUV = (wQ - wBox.xy) / wBox.zw;
+              if (wUV.x > 0.0 && wUV.x < 1.0 && wUV.y > 0.0 && wUV.y < 1.0) {
+                ivec2 wTS = textureSize(uLampMap, 0);
+                ivec2 wTC = ivec2(wUV * vec2(wTS));
+                vec4 wL = texelFetch(uLampMap, wTC, 0);
+                if (wL.a > 0.0) {
+                  vec2 wCen = wBox.xy + (vec2(wTC) + 0.5) / vec2(wTS) * wBox.zw;
+                  vec3 wDir = normalize(vec3(wCen.x + wL.x, wL.z, wCen.y + wL.y) - wP);
+                  vec3 wR = reflect(normalize(wP - cameraPosition), vec3(0.0, 1.0, 0.0));
+                  float wS = pow(max(dot(wR, wDir), 0.0), mix(260.0, 1600.0, wetPud));
+                  totalEmissiveRadiance += vec3(1.0, 0.74, 0.46) * (wS * wL.a * wetG.x * (0.5 * wetAmt + 3.0 * wetPud));
+                }
+              }
+            }
+          }
+        #endif`);
+  };
+  const key = mat.customProgramCacheKey?.bind(mat);
+  mat.customProgramCacheKey = () => 'wet' + (key ? key() : '');
 }
 
 // Hoogte van het loopoppervlak (stoepen liggen iets hoger dan de weg).
