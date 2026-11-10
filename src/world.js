@@ -1349,7 +1349,7 @@ export class World {
           float sway = sin(uTime * 1.3 + ph + position.y * 0.05) * 0.5 + sin(uTime * 2.7 + ph * 1.7) * 0.25;
           transformed.xz += sway * 0.012 * max(0.0, position.y) * vec2(1.0, 0.6);`);
       // achterkant van een blad niet donker maken (de normalen wijzen al naar buiten)
-      shader.fragmentShader = shader.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;'));
     };
     const tris = ((bg.index ? bg.index.count : 0) + (lg.index ? lg.index.count : 0)) / 3;
     console.info(`boom ${v.name}: ${Math.round(tris)} driehoeken`);
@@ -1640,6 +1640,7 @@ export class World {
     out.forEach(([x, z]) => put(x, z));
     const road = (c) => c === 'rijbaan' || c === 'klinkers' || c === 'parkeer' || c === 'fietspad';
     const b = this.coreBox;
+    const start = this.spotNear(5, 25);
     let side = 1;
     for (const [name, line] of this.roads) {
       if (!name || /voetpad|fietspad/i.test(name)) continue;
@@ -1662,6 +1663,7 @@ export class World {
             if (d >= 9) continue;
             const lx = px + nx * sd * (d + 0.45), lz = pz + nz * sd * (d + 0.45);
             if (this.classAt(lx, lz) === 'water' || this.insideBuilding(lx, lz) || near(lx, lz, 21)) continue;
+            if (Math.hypot(lx - start[0], lz - start[1]) < 12) continue; // niet pal voor de camera op het startpunt
             const wall = this.nearestWall(lx, lz, 0.5);
             if (wall) continue;
             out.push([lx, lz]); put(lx, lz);
@@ -1721,7 +1723,7 @@ export class World {
     if (Q.laag) return;
     const b = this.coreBox, res = 2, R = 25;
     const W = Math.ceil((b.x1 - b.x0) / res), H = Math.ceil((b.z1 - b.z0) / res);
-    const best = new Float32Array(W * H).fill(1e9);
+    const best = new Float32Array(W * H);
     const data = new Uint16Array(W * H * 4);
     const hf = THREE.DataUtils.toHalfFloat;
     const src = [];
@@ -1731,16 +1733,22 @@ export class World {
       src.push([x + Math.sin(yaw) * 1.1, z + Math.cos(yaw) * 1.1, this.groundAt(x, z) + 5.85, 1]);
     }
     for (const e of this.extraLights || []) src.push(e);
+    // per vakje wint de bron die daar op de grond het meeste licht geeft (zelfde formule als in de shader):
+    // zo zit er op de grens tussen twee lampen geen sprong in het licht
+    const sm = (a, c, v) => { const t = Math.min(1, Math.max(0, (v - a) / (c - a))); return t * t * (3 - 2 * t); };
     for (const [x, z, y, power] of src) {
       const c0 = Math.max(0, Math.floor((x - R - b.x0) / res)), c1 = Math.min(W - 1, Math.floor((x + R - b.x0) / res));
       const r0 = Math.max(0, Math.floor((z - R - b.z0) / res)), r1 = Math.min(H - 1, Math.floor((z + R - b.z0) / res));
+      const gy = this.groundAt(x, z);
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
         const cx = b.x0 + (c + 0.5) * res, cz = b.z0 + (r + 0.5) * res;
-        // een zwakkere bron (etalage) telt als verder weg, zodat een lantaarn vlakbij wint
-        const d = Math.hypot(cx - x, cz - z) / Math.sqrt(power);
+        const h = y - gy, d2 = (cx - x) ** 2 + (cz - z) ** 2 + h * h;
+        if (d2 >= 620) continue;
+        const dy = h / Math.sqrt(d2);
+        const val = power * (1 - d2 / 620) / (1 + d2 * 0.028) * sm(0.2, 0.85, dy) * dy;
         const i = r * W + c;
-        if (d >= R || d >= best[i]) continue;
-        best[i] = d;
+        if (val <= best[i]) continue;
+        best[i] = val;
         data[i * 4] = hf(x - cx); data[i * 4 + 1] = hf(z - cz); data[i * 4 + 2] = hf(y); data[i * 4 + 3] = hf(power);
       }
     }

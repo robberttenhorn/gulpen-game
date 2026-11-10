@@ -61,3 +61,35 @@ Er is ook een test die alle missies kort naloopt (`tools/hd-missies.cjs`): naar 
 - Tone mapping AgX in plaats van ACES: gaf een flets, grijzig beeld. Teruggezet naar ACES met een eigen kleurcorrectie erachter.
 - De eerste lucht (Kloofendal 38d, half bewolkt met sluierwolken) had precies de goede zonnestand maar oogde grijs. Vervangen door Kloofendal 48d (blauw met stapelwolken). Daar staat de zon 10 graden hoger dan in het spel; in plaats van de zon in het spel hoger te zetten (dan worden de schaduwen korter en verdwijnt het lage, warme licht) wordt de foto in de hoogte iets opgerekt, zodat de zon op de foto op 37 graden staat.
 - De eerste nachtinstelling was melkachtig (te veel bloom en mist die oplichtte richting de maan). Bloom en mist zijn 's nachts teruggeschroefd.
+
+## Stap 2: de avond (lantaarns die echt licht geven) en de poppetjes
+
+**Lantaarns en avondlicht**
+- De kaartdata (BGT) bevat voor heel Gulpen maar 40 lantaarns; de meeste straten waren 's avonds dus donker. `streetLamps()` in `src/world.js` zet er langs alle straten bij: om de 30 meter, om en om links en rechts, net naast de rijbaan, nooit vlak bij een bestaande lantaarn en niet pal voor de camera op het startpunt.
+- De lantaarns geven nu echt licht op straat, gevels, auto's en mensen, zonder honderden echte lampen (dat kan een browser niet aan). De truc (`bakeLamps()` in `src/world.js`, shader in `src/lighting.js`): één kaart van het dorp met per vakje van 2 meter de lichtbron die daar het meeste licht geeft. Elk materiaal leest één vakje en rekent het licht van die ene lamp precies uit (afstand, richting, kegel naar beneden). Etalages zijn ook lichtbronnen en verlichten de stoep ervoor.
+- Onder elke lantaarn hangt een zachte lichtkegel in de avondnevel. De oude platte lichtvlek op de grond is er alleen nog op de telefoon.
+- Stoepranden en wegmarkering kregen geen zon- of lantaarnlicht: three.js keerde hun normaal om omdat ze van twee kanten getekend worden. Dat is hersteld (ook overdag zijn stoepranden nu licht aan de zonkant). Dezelfde reparatie bij het blad van de bomen: de bestaande aanpassing daarvoor deed in de praktijk niets, omdat het stukje shader op dat moment nog niet was ingevoegd.
+
+| | Voor | Na |
+| --- | --- | --- |
+| Rijksweg, avond | ![](voor/computer-avond-rijksweg.jpg) | ![](stap2/computer-avond-rijksweg.jpg) |
+| Markt, avond | ![](voor/computer-avond-markt.jpg) | ![](stap2/computer-avond-markt.jpg) |
+
+Geprobeerd en aangepast: de eerste lichtkegels waren harde, goed zichtbare 'feesthoedjes'. Ze hebben nu een eigen shader die uitdooft naar de rand. De eerste versie van de lichtkaart koos per vakje de dichtstbijzijnde lamp; dat gaf een zichtbare sprong op de grens tussen een etalage en een lantaarn. Nu wint de lamp die daar het meeste licht geeft, en is de overgang onzichtbaar.
+
+**Poppetjes** (gemaakt door een hulpagent in een eigen werkkopie, daarna samengevoegd; details in `docs/hd/poppetjes/NOTITIES.md`)
+- Lopen, joggen, rennen en zitten komen nu uit echte motion capture van Carnegie Mellon University (opnamen 35_01, 35_17, 09_01 en 14_31), omgerekend naar het eigen skelet met `tools/bake-mocap.mjs`. De stap loopt mee met de afgelegde afstand, zodat voeten bij loopsnelheid niet meer schuiven (gemeten op de testpagina: 0,04 m/s bij 1,3 m/s; de oude versie gaf 1,9 tot 3 m/s).
+- Nieuw lichaam: borstkas, taille, bekken, kuiten, hals, kaaklijn, oren, neus, ogen met oogleden, handen met vingers en duim, schoenen met zool, kleding met boord en zomen. 5768 driehoeken per poppetje op de computer (was 3662), op de telefoon 3662.
+- Fietsen zit niet in de CMU-data en is berekend gebleven, maar nu met het bekken op het zadel, voeten op meedraaiende trappers en handen aan het stuur.
+- Niet opgelost: bij volle sprint (6,5 m/s) schuift de standvoet nog, omdat de snelste opname 3,6 m/s is. Op bankjes hangen de voeten ongeveer 7 cm boven de grond. Het MakeHuman-basismodel is niet geprobeerd.
+
+| | Voor | Na |
+| --- | --- | --- |
+| Lopen | ![](poppetjes/voor-lopen.jpg) | ![](poppetjes/na-lopen.jpg) |
+| Rij | ![](poppetjes/voor-rij-schuin.jpg) | ![](poppetjes/na-rij-schuin.jpg) |
+
+**Hagen en struiken**: een kern met daaromheen dunne schillen met losse blaadjes (uitgeknipt met een bladtextuur die in code wordt gemaakt). Dat geeft een bladerige, rafelige rand in plaats van een strak blok, en kost minder driehoeken dan de oude hagen (48 in plaats van 244 per stuk).
+
+![](stap2/computer-dag-tuin38.jpg)
+
+**Test**: alle 51 missies nagelopen met `tools/hd-missies.cjs`: geen fouten.

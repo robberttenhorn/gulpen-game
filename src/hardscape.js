@@ -116,7 +116,8 @@ function keepNormals(mat) {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (shader, r) => {
     prev?.call(mat, shader, r);
-    shader.fragmentShader = shader.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
+    // (het stukje shader wordt pas later ingevoegd, dus hier het hele blok vervangen)
+    shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;'));
   };
   const key = mat.customProgramCacheKey?.bind(mat);
   mat.customProgramCacheKey = () => 'kn' + (key ? key() : '');
