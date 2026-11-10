@@ -2,9 +2,10 @@
 // Heb je ze alle drie, dan komt er een zwarte bus met een grote roze 6 voorrijden. Instappen,
 // de bus rijdt een hoekje om, staat vijf seconden te schommelen en te piepen, en daarna stap je
 // vanzelf weer uit. Niets expliciets: je ziet alleen de bus van buiten.
+import { STORE } from './config.js';
 import * as THREE from 'three';
 
-const KEY = 'gulpe-sixsense';
+const KEY = STORE + 'sixsense';
 const CODES = ['SIX-GULPE', 'SIX-VLAAI', 'SIX-ALAAF'];
 const PINK = '#ff3d9a';
 

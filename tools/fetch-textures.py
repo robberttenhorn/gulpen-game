@@ -30,7 +30,7 @@ TEXTURES = {
     'pannen_antraciet': 'grey_roof_tiles',
     'bitumen': 'asphalt_02',
     # bestrating
-    'asfalt': 'asphalt_02',
+    'asfalt': 'clean_asphalt',
     'klinkers': 'herringbone_pavement',
     'tegels': 'concrete_tiles',
     'parkeer': 'concrete_pavers',

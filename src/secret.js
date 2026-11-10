@@ -2,7 +2,8 @@
 // Op de grote kaart 7 keer snel (binnen 3 seconden) op 'Gulpen' tikken: aan. Nog eens 7 keer: uit.
 // Daarna staat bij elke missie op de grote kaart een knop 'Ga erheen', en geeft tikken op een leeg punt van de kaart
 // een knop 'Ga hierheen'. De keuze blijft bewaard op dat apparaat.
-const KEY = 'gulpe-snelreis';
+import { STORE } from './config.js';
+const KEY = STORE + 'snelreis';
 
 export function setupSecret(bigmap, game) {
   let on = false;

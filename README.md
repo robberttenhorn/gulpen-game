@@ -1,3 +1,30 @@
+> **Deze code draait op twee plekken:** de echte game ([gulpen-game](https://github.com/robberttenhorn/gulpen-game)) en de HD-proefversie (gulpen-game-hd). Het adres bepaalt welke van de twee het is (`src/config.js`), dus dezelfde code kan naar beide worden gepubliceerd.
+> Op de proefversie wordt de voortgang apart bewaard (opslagnamen beginnen met `gulpehd-`), staat de anonieme telling uit en is de titel "Locals: Gulpen HD". Op de echte game zijn de opslagnamen dezelfde als altijd (`gulpe-`), zodat niemand zijn voortgang kwijtraakt, en staat de telling aan.
+
+## Wat er in de HD-versie anders is
+
+Het volledige verslag met voor- en na-beelden staat in [`docs/hd/VERSLAG.md`](docs/hd/VERSLAG.md), de bronnen in [`docs/hd/BRONNEN.md`](docs/hd/BRONNEN.md). De gameplay en alle missies zijn ongewijzigd. In het kort:
+
+- **Beeldkwaliteit in drie standen** (`src/quality.js`): `hoog` op de computer, `laag` op de telefoon, `midden` ertussenin. Kiezen kan op het startscherm, tijdens het spelen via het tandwiel rechtsboven (Instellingen; de game laadt dan opnieuw), of met `?kwaliteit=hoog|midden|laag` achter het adres (wordt onthouden; `?kwaliteit=auto` zet het terug). Hapert het spel, dan schakelt het zelf stap voor stap af: eerst scherptediepte en zonnestralen, dan minder pixels, dan ambient occlusion, dan het verre gras en een kleinere schaduwkaart, en pas als laatste de hele nabewerking. In de stand `hoog` gebeurt dat pas onder ongeveer 27 beelden per seconde.
+- **Lucht** (`src/sky.js`): gefotografeerde hemels van Poly Haven: overdag blauw met stapelwolken, 's nachts sterren en de Melkweg. De lucht levert ook het hemellicht en de reflecties. Eerst laadt een lichte versie, daarna op de computer de fijne.
+- **Licht en atmosfeer** (`src/main.js`, `src/lighting.js`): fellere zon tegenover koel hemellicht, een grote stabiele schaduwkaart, luchtperspectief en hoogtemist in het dal.
+- **Nabewerking** (`src/post.js`): ambient occlusion, zonnestralen, scherptediepte tijdens gesprekken, bloom, filmische tone mapping, kleurcorrectie, vignet en korrel.
+- **Avond**: lantaarns langs alle straten die echt licht geven op straat, gevels, auto's en mensen (één lichtkaart in plaats van honderden lampen), zachte lichtkegels, etalages die de stoep verlichten, en een natte straat waarin elke lantaarn spiegelt.
+- **Wereld**: gras dat je echt ziet staan rond de speler (`src/grass.js`), bladerige hagen en struiken (`src/vegetation.js`, `src/foliage.js`), water met fijne rimpels dat de lucht spiegelt (`src/hardscape.js`), dakranden met overstek en goot, schoorstenen en ramen die terugliggen in de muur (`src/world.js`), en rustig asfalt.
+- **Poppetjes** (`src/character.js`, `src/mocap.js`): nieuw lichaam, en lopen, joggen, rennen en zitten uit echte motion capture (Carnegie Mellon University).
+- **Auto's** (`src/vehicles.js`, `src/carmodel.js`, `src/cartypes.js`, `src/carmat.js`): carrosserie met rondingen, glas met interieur, draaiende en sturende wielen, lampen die 's avonds aangaan, Nederlandse kentekens (verzonnen).
+- **WebGL 2 is de enige route.** Er is bewust niet overgestapt op WebGPU; het verslag legt uit waarom.
+
+Hulpscripts voor deze versie:
+
+| Script | Wat het doet |
+| --- | --- |
+| `tools/hd-shots.cjs` | vaste screenshots (dag, avond, computer en telefoon) en een meting per beeld |
+| `tools/hd-missies.cjs` | loopt alle missies kort na en meldt fouten |
+| `tools/fetch-hdri.py` | haalt de luchten op van Poly Haven en zet ze om |
+| `tools/bake-mocap.mjs` | haalt de motion capture op en rekent die om naar het skelet van de poppetjes |
+| `tools/poppetje-*.{html,js,cjs}`, `tools/auto-*.{html,js,cjs}` | losse testpagina's voor poppetjes en auto's |
+
 # Locals: Gulpen
 
 Een browsergame die zich afspeelt in het echte Gulpen (Zuid-Limburg). Het dorp is opgebouwd uit open overheidsdata:
@@ -83,7 +110,7 @@ Bij de kroegentocht, de vlaaien en de slager ga je ook naar binnen: in een café
 
 **Dag en nacht**: de tijd loopt niet vanzelf. Het wordt avond na de missie Pilsje bij De Zwarte Ruiter (en tijdens de finale). Het wordt weer dag zodra je een andere missie begint, als je een nachtmissie haalt, stopt of die mislukt, met nog een pilsje, en anders na 2 minuten zonder missie. Bij elke start van de game is het 11 uur 's ochtends. De avondmissies zijn de Nachtburgemeester, de Nacht van Gulpen en de Gulpener Bierfeesten.
 
-**Licht**: het spel begint midden op de middag (15 uur), met een lagere, warme zon en langere schaduwen. De schaduwen worden opgevuld met koel blauw licht van de lucht, langs de randen van poppetjes, bomen, auto's en gevels loopt een heldere rand (het sterkst als je tegen de zon in kijkt; bij bladeren schijnt het licht groen door het blad), en verderop wordt alles zachter door mist die richting de zon warm kleurt (src/lighting.js). Achter de etalages brandt ook overdag warm licht.
+**Licht**: het spel begint midden op de middag (15 uur), met een lage, warme zon en lange schaduwen. De schaduwen worden opgevuld met koel licht van de echte lucht, langs de randen van poppetjes, bomen, auto's en gevels loopt een heldere rand (het sterkst als je tegen de zon in kijkt), en verderop wordt alles zachter door nevel die richting de zon warm kleurt (src/lighting.js). Kijk je richting de zon, dan zie je zonnestralen langs daken en bomen. Achter de etalages brandt ook overdag warm licht. 's Avonds branden de lantaarns langs alle straten, is de straat nat en spiegelen de lampen in de plassen.
 
 **Geluid**: alle geluiden worden in de browser opgewekt (WebAudio): voetstappen, fietsbel, motor, deuren, munten, proosten, kerkklokken, vogels en krekels. Met de knop met de luidspreker zet je het geluid uit. Wissel je van app en kom je terug, dan gaat het geluid vanzelf weer aan.
 
@@ -111,11 +138,13 @@ NODE_USE_ENV_PROXY=1 npm run data   # NODE_USE_ENV_PROXY alleen nodig achter een
 | [NWB](https://www.pdok.nl) (Rijkswaterstaat) via PDOK | Wegennet met straatnamen | CC0 |
 | [Luchtfoto](https://www.beeldmateriaal.nl) (Beeldmateriaal Nederland) via PDOK | Zomerluchtfoto 25 cm: groen, akkers, bos, dakkleuren en het Heuvelland rondom | CC BY 4.0 |
 | [ez-tree](https://github.com/dgreenheck/ez-tree) (Daniel Greenheck) | Boommodellen met schors- en bladtexturen | MIT |
-| [Poly Haven](https://polyhaven.com) | Fototexturen voor baksteen, mergel, pleister, leien, dakpannen, asfalt, klinkers en tegels (namen en makers in `public/data/tex/tex.json`) | CC0 |
+| [Poly Haven](https://polyhaven.com) | Fototexturen voor baksteen, mergel, pleister, leien, dakpannen, asfalt, klinkers en tegels (namen en makers in `public/data/tex/tex.json`), en de luchten voor dag en nacht (`public/data/sky/sky.json`) | CC0 |
+| [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu) | Bewegingen van de poppetjes: lopen, joggen, rennen en zitten | vrij te gebruiken (zie `docs/hd/BRONNEN.md`) |
 
 Voor de 3D BAG en de luchtfoto is bronvermelding verplicht (CC BY 4.0). Die staat op het laadscherm.
 
 Texturen opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-textures.py` (Python met Pillow).
+Luchten opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-hdri.py` (Python met Pillow en NumPy).
 Luchtfoto opnieuw ophalen: `SSL_CERT_FILE=... python3 tools/fetch-ortho.py` (Python met Pillow).
 Bomen opnieuw maken: `npm run build`, `npx vite preview --port 4173` en dan `node tools/bake-trees.cjs` (Playwright). Zonder `public/data/trees/` maakt de game de bomen zelf, maar laadt dan ~4 MB extra.
 
@@ -131,7 +160,7 @@ Elke missie onthoudt je beste prestatie, zichtbaar in de lijst op de grote kaart
 
 ## Bezoekers tellen
 
-`src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. Het dashboard staat op https://10horn.goatcounter.com. Leeg je `GOATCOUNTER_CODE` in `src/stats.js`, dan staat de telling uit.
+`src/stats.js` telt anoniem via [GoatCounter](https://www.goatcounter.com): geen cookies en geen persoonsgegevens, alleen tellers. Het dashboard staat op https://10horn.goatcounter.com. De code staat in `src/config.js` (`GOATCOUNTER`); op de HD-proefversie is die leeg en staat de telling dus uit.
 
 | In het GoatCounter-dashboard | Betekenis |
 |---|---|

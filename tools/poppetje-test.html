@@ -1,0 +1,15 @@
+<!doctype html>
+<!-- Losse testpagina voor de poppetjes (komt niet in de productie-build).
+     Starten: npx vite --port 4182 --strictPort   en dan   node tools/poppetje-shots.cjs
+     of open http://localhost:4182/tools/poppetje-test.html?mode=walk&speed=1.3 om het bewegend te zien. -->
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>Poppetjes-test</title>
+  <style>html, body { margin: 0; background: #9aa3ad; overflow: hidden; } canvas { display: block; }</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script type="module" src="./poppetje-test.js"></script>
+</body>
+</html>

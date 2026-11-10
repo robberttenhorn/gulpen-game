@@ -3,6 +3,7 @@
 // Echte personen laten we weg: in de zaken staan verzonnen rollen ("de monteur", "de kok").
 // De Nachtburgemeester en de man bij het Mariabeeld zijn verzonnen figuren.
 
+import { STORE } from './config.js';
 import * as THREE from 'three';
 import { makeCharacter, makeKeg, makeBike } from './character.js';
 import { runTikTok, ORDERS, formatViews } from './tiktok.js';
@@ -16,7 +17,7 @@ import { setupGeschiedenis, geschiedenisItems, geschiedenisHandlers, GESCHIEDENI
 import { setupKnotwilg, knotwilgItems, knotwilgHandlers, KNOTWILG_MISSION_OF } from './knotwilg.js';
 import { makeSuitcase, makeBankStatement, makeCart, makeVlaaiStack, makeBorrelplank, makeMeatPackage, makeFrikandel, makePuntzak, makeBroodje, makePackage, makeShadyPackage, makeVlaai, makeSnuifdoos, makeDeliveryBag, makeTvCamera, makePitchfork, makeWrench, makeRod, makeFluitje, makeStampPost, makeLantern } from './props.js';
 
-const SAVE_KEY = 'gulpe-missies-v2';
+const SAVE_KEY = STORE + 'missies-v2';
 
 // Gulpense zin met Nederlandse vertaling. De Gulpense woorden komen uit de woordenlijst Gulpens
 // van mijnwoordenboek.nl (door bezoekers samengesteld). Laat ze nakijken door een Gulpenaar.
@@ -34,12 +35,12 @@ export class Missions {
     } catch { /* geen opslag beschikbaar */ }
     // beste tijd of score per missie: { id: { v, unit, high } }
     this.best = {};
-    try { this.best = JSON.parse(localStorage.getItem('gulpe-records')) || {}; } catch { /* geen opslag */ }
+    try { this.best = JSON.parse(localStorage.getItem(STORE + 'records')) || {}; } catch { /* geen opslag */ }
   }
 
   save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify([...this.done])); } catch { /* negeren */ }
-    try { localStorage.setItem('gulpe-records', JSON.stringify(this.best)); } catch { /* negeren */ }
+    try { localStorage.setItem(STORE + 'records', JSON.stringify(this.best)); } catch { /* negeren */ }
   }
 
   // record bijwerken; geeft 'nieuw' (eerste keer), 'record' (verbeterd) of null terug

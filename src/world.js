@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { buildVegetation, buildPlanters } from './vegetation.js';
 import { buildHardscape, surfaceLift } from './hardscape.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { setLampMap, setLampGlobals, keepNormals } from './lighting.js';
+import { Q } from './quality.js';
 
 const DATA = import.meta.env.BASE_URL + 'data/';
 // versienummer van deze build achter elk databestand: nieuwe code krijgt nooit een oud (bewaard) bestand
@@ -126,7 +128,9 @@ export class World {
     const [bBuf, footprints, photo] = await Promise.all([fetchBin('buildings.bin'), fetchJson('footprints.json'), photoP]);
     this.photo = photo;
     this.buildBuildings(bBuf);
+    if (!Q.laag) { try { this.buildRoofTrim(); } catch (e) { console.warn('dakranden', e); } }
     this.setupCollision(footprints);
+    if (!Q.laag) { try { this.buildChimneys(); } catch (e) { console.warn('schoorstenen', e); } }
     this.paintBuilding([190985.6, 314375.8]); // Ringweg 38 (RD-coördinaten): roodbruine baksteen
     this.buildAO();
 
@@ -532,6 +536,7 @@ export class World {
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWorld = position.xz;');
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
+          #define GRASS_SHADE ${Q.gras ? '0.8' : '1.0'}
           varying vec2 vWorld;
           uniform sampler2D uOrtho;
           uniform vec4 uOrthoBox;
@@ -574,6 +579,8 @@ export class World {
             oc = mix(vec3(dot(oc, vec3(0.3, 0.55, 0.15))), oc, 1.12) * 1.12;
             float soft = (1.0 - paved) * uOrthoOn;
             diffuseColor.rgb = mix(diffuseColor.rgb, oc * blade * mix(1.0, 0.92 + fine * 0.16, green), soft);
+            // dichtbij staat er echt gras op (grass.js): de grond eronder iets donkerder, als de schaduw tussen de sprieten
+            diffuseColor.rgb *= mix(1.0, GRASS_SHADE, green * soft * (1.0 - smoothstep(20.0, 32.0, distance(vWorld, cameraPosition.xz))));
             diffuseColor.rgb *= texture2D(uAO, (vWorld - uOrthoBox.xy) / uOrthoBox.zw).r;
           }`);
     };
@@ -913,31 +920,43 @@ export class World {
               rough = mix(rough, 0.5, door * allowed);
             } else {
               vec2 lo = vec2(0.32, 0.32), hi = vec2(0.68, 0.84);
-              float win = boxMask(f, lo, hi, aa);
-              float frame = boxMask(f, lo - 0.025, hi + vec2(0.025, 0.02), aa) - win;
-              float sill = boxMask(f, vec2(0.3, lo.y - 0.045), vec2(0.7, lo.y - 0.01), aa);
-              // roeden: één staander en een kalf
-              float mull = boxMask(f, vec2(0.493, lo.y), vec2(0.507, hi.y), aa) + boxMask(f, vec2(lo.x, 0.655), vec2(hi.x, 0.668), aa);
-              mull = clamp(mull, 0.0, 1.0) * win;
-              // diepte: schaduw bovenin de dagkant
-              float reveal = smoothstep(hi.y, hi.y - 0.06, f.y) ;
-              glass = win * allowed * (1.0 - mull);
-              vec3 frameCol = r2 < 0.75 ? srgb(vec3(0.9, 0.89, 0.86)) : srgb(vec3(0.12, 0.13, 0.13));
-              base = mix(base, frameCol, (frame + mull) * allowed);
-              base = mix(base, srgb(vec3(0.6, 0.59, 0.56)), sill * allowed);
-              // binnenkant: donker met soms gordijnen
-              float curtain = step(0.55, r2) * (smoothstep(lo.x + 0.07, lo.x + 0.05, f.x) + smoothstep(hi.x - 0.07, hi.x - 0.05, f.x));
-              vec3 inside = mix(vec3(0.015, 0.018, 0.022), srgb(vec3(0.7, 0.62, 0.5)) * 0.35, clamp(curtain, 0.0, 1.0));
-              // dichtbij: echt naar binnen kijken (kamer met lamp, schilderij, kast, plant); veraf het oude, donkere glas
+              vec2 loO = lo - 0.025, hiO = hi + vec2(0.025, 0.02); // buitenmaat van het kozijn = de opening in de muur
+              // Het raam ligt 11 cm terug in de muur. Van dichtbij wordt uitgerekend waar de kijklijn het teruggelegde
+              // raam raakt: je ziet dan de zijkant van de muur (de negge) en het raam verschuift mee als je erlangs loopt.
               vec3 wpos = vec3(vWXZ.x, vWY, vWXZ.y);
               float camD = distance(wpos, cameraPosition);
+              vec3 V = normalize(wpos - cameraPosition);
+              vec3 Nw2 = normalize(vec3(vWN.x, 0.0, vWN.z) + 1e-5);
+              vec3 Tw2 = vec3(-Nw2.z, 0.0, Nw2.x);
+              // loopt de gevelmaat (vB.x) met Tw2 mee of ertegenin? Dat verschilt per gevel; de afgeleiden vertellen het.
+              float uDir = dot(Tw2, dFdx(wpos)) * dFdx(vB.x) + dot(Tw2, dFdy(wpos)) * dFdy(vB.x) < 0.0 ? -1.0 : 1.0;
+              vec3 dT = vec3(dot(V, Tw2) * uDir, V.y, dot(V, Nw2));
+              vec2 shiftM = dT.xy / max(-dT.z, 0.2) * 0.11 * (1.0 - smoothstep(35.0, 60.0, camD));
+              shiftM *= min(1.0, 0.3 / max(length(shiftM), 1e-4));
+              vec2 fr = f + shiftM / vec2(2.8, 2.9);
+              float inO = boxMask(f, loO, hiO, aa);
+              float hitO = boxMask(fr, loO, hiO, aa);
+              float win = boxMask(fr, lo, hi, aa);
+              float frame = clamp(hitO - win, 0.0, 1.0);
+              float sill = boxMask(f, vec2(0.3, lo.y - 0.045), vec2(0.7, lo.y - 0.01), aa);
+              // roeden: één staander en een kalf
+              float mull = boxMask(fr, vec2(0.493, lo.y), vec2(0.507, hi.y), aa) + boxMask(fr, vec2(lo.x, 0.655), vec2(hi.x, 0.668), aa);
+              mull = clamp(mull, 0.0, 1.0) * win;
+              // diepte: schaduw bovenin de dagkant
+              float reveal = smoothstep(hi.y, hi.y - 0.06, fr.y) ;
+              glass = win * inO * allowed * (1.0 - mull);
+              vec3 frameCol = r2 < 0.75 ? srgb(vec3(0.9, 0.89, 0.86)) : srgb(vec3(0.12, 0.13, 0.13));
+              // de negge: bovenin donker (onderkant van de latei), opzij in de schaduw, onderin licht (de vensterbank loopt door)
+              vec3 jamb = base * (fr.y > hiO.y ? 0.45 : (fr.y < loO.y ? 1.0 : 0.66));
+              vec3 content = mix(base, frameCol, clamp(frame + mull, 0.0, 1.0));
+              // binnenkant: donker met soms gordijnen
+              float curtain = step(0.55, r2) * (smoothstep(lo.x + 0.07, lo.x + 0.05, fr.x) + smoothstep(hi.x - 0.07, hi.x - 0.05, fr.x));
+              vec3 inside = mix(vec3(0.015, 0.018, 0.022), srgb(vec3(0.7, 0.62, 0.5)) * 0.35, clamp(curtain, 0.0, 1.0));
+              // dichtbij: echt naar binnen kijken (kamer met lamp, schilderij, kast, plant); veraf het oude, donkere glas
               float lightOn = step(r, 0.58);
               if (camD < 70.0 && glass > 0.01) {
-                vec3 V = normalize(wpos - cameraPosition);
-                vec3 Nw2 = normalize(vec3(vWN.x, 0.0, vWN.z) + 1e-5);
-                vec3 Tw2 = vec3(-Nw2.z, 0.0, Nw2.x);
-                vec2 wuv = vec2((f.x - lo.x) / (hi.x - lo.x), (f.y - lo.y) / (hi.y - lo.y));
-                vec3 room = roomView(wuv, vec3(dot(V, Tw2), V.y, dot(V, Nw2)), vec2((hi.x - lo.x) * 2.8, (hi.y - lo.y) * 2.9), r2 + id.x * 0.137 + id.y * 0.713 + vSeed, uNight, lightOn);
+                vec2 wuv = vec2((fr.x - lo.x) / (hi.x - lo.x), (fr.y - lo.y) / (hi.y - lo.y));
+                vec3 room = roomView(wuv, dT, vec2((hi.x - lo.x) * 2.8, (hi.y - lo.y) * 2.9), r2 + id.x * 0.137 + id.y * 0.713 + vSeed, uNight, lightOn);
                 room = mix(room, srgb(vec3(0.75, 0.66, 0.52)), clamp(curtain, 0.0, 1.0) * 0.85); // gordijnen
                 gInside = room;
                 gNear = 1.0 - smoothstep(50.0, 70.0, camD);
@@ -946,14 +965,16 @@ export class World {
                 inside = mix(inside, mix(dayRoom, room * 0.06, uNight), gNear);
               }
               inside *= mix(1.0, 0.6, reveal);
-              base = mix(base, inside, glass);
+              content = mix(content, inside, win * (1.0 - mull));
+              base = mix(base, mix(jamb, content, hitO), inO * allowed);
+              base = mix(base, srgb(vec3(0.6, 0.59, 0.56)), sill * allowed);
               lit = glass * lightOn * uNight;
-              opening = clamp((win + frame + sill) * allowed, 0.0, 1.0);
+              opening = clamp((inO + sill) * allowed, 0.0, 1.0);
             }
             tnAmt *= (1.0 - opening) * (1.0 - plint);
             // vuil en schaduw onderaan de gevel
             base *= mix(0.72, 1.0, smoothstep(vWall.x, vWall.x + 1.2, hgt));
-            rough = mix(rough, 0.18, glass);
+            rough = mix(rough, 0.06, glass); // glad glas: de lucht spiegelt erin
           } else {
             // daken
             vec2 dir = normalize(vec2(vWN.x, -vWN.z) + 1e-4);
@@ -1020,6 +1041,125 @@ export class World {
     mesh.receiveShadow = true;
     this.scene.add(mesh);
     this.buildingMesh = mesh;
+  }
+
+  // Dakranden: de daken uit de 3D BAG eindigen precies op de gevel, waardoor huizen op dozen lijken.
+  // Hier krijgt elke vrije rand van een dak een overstek (het dak steekt 28 cm uit) met een boeibord eronder:
+  // langs de dakvoet een zinken goot, langs de schuine kanten een lichte windveer, bij platte daken een daktrim.
+  // Het overstek werpt een echte schaduw op de gevel.
+  buildRoofTrim() {
+    const { f32, i8, n, stride } = this.bld;
+    const key = (i) => Math.round(f32[i * 7] * 50) + ',' + Math.round(f32[i * 7 + 1] * 50) + ',' + Math.round(f32[i * 7 + 2] * 50);
+    const edges = new Map();
+    for (let v = 0; v < n; v += 3) {
+      if (i8[v * stride + 23] !== 1) continue; // alleen dakvlakken
+      const k = [key(v), key(v + 1), key(v + 2)];
+      for (let e = 0; e < 3; e++) {
+        const a = v + e, b = v + (e + 1) % 3, c = v + (e + 2) % 3;
+        const id = k[e] < k[(e + 1) % 3] ? k[e] + '|' + k[(e + 1) % 3] : k[(e + 1) % 3] + '|' + k[e];
+        const rec = edges.get(id);
+        if (rec) rec.count++; else edges.set(id, { a, b, c, count: 1 });
+      }
+    }
+    const pos = [], col = [], nrm = [];
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), N = new THREE.Vector3(), E = new THREE.Vector3(), O = new THREE.Vector3(), T = new THREE.Vector3();
+    const quad = (p0, p1, p2, p3, nn, c) => {
+      for (const p of [p0, p1, p2, p0, p2, p3]) { pos.push(p.x, p.y, p.z); nrm.push(nn.x, nn.y, nn.z); col.push(c[0], c[1], c[2]); }
+    };
+    const P = () => new THREE.Vector3();
+    for (const { a, b, c, count } of edges.values()) {
+      if (count !== 1) continue;
+      A.set(f32[a * 7], f32[a * 7 + 1], f32[a * 7 + 2]); B.set(f32[b * 7], f32[b * 7 + 1], f32[b * 7 + 2]); C.set(f32[c * 7], f32[c * 7 + 1], f32[c * 7 + 2]);
+      E.subVectors(B, A);
+      const len = E.length();
+      if (len < 0.5) continue;
+      N.set(i8[a * stride + 20], i8[a * stride + 21], i8[a * stride + 22]).normalize();
+      if (N.y < 0.2) continue;
+      // richting in het dakvlak, van het dak af
+      O.crossVectors(N, E).normalize();
+      if (O.dot(T.subVectors(C, A)) > 0) O.negate();
+      const flat = N.y > 0.97, eave = Math.abs(E.y) / len < 0.08;
+      const w = flat ? 0.1 : 0.28, drop = flat ? 0.22 : eave ? 0.16 : 0.14;
+      // het overstek ligt een fractie boven het dak (anders flikkert het tegen het dakvlak)
+      const up = T.copy(N).multiplyScalar(0.015);
+      const a0 = P().copy(A).add(up).addScaledVector(O, -0.05), b0 = P().copy(B).add(up).addScaledVector(O, -0.05);
+      const a1 = P().copy(A).add(up).addScaledVector(O, w), b1 = P().copy(B).add(up).addScaledVector(O, w);
+      const a2 = P().copy(a1), b2 = P().copy(b1); a2.y -= drop; b2.y -= drop;
+      const a3 = P().copy(A).addScaledVector(O, 0.0), b3 = P().copy(B); a3.y -= drop * 0.9; b3.y -= drop * 0.9;
+      const dark = [0.035, 0.036, 0.04], board = flat ? [0.2, 0.2, 0.21] : eave ? [0.16, 0.17, 0.18] : [0.62, 0.61, 0.58];
+      quad(a0, b0, b1, a1, N, dark);                                   // bovenkant: verlengde van het dak
+      const out = P().set(O.x, 0, O.z).normalize();
+      quad(a1, b1, b2, a2, out, board);                                // boeibord, goot of windveer
+      quad(a2, b2, b3, a3, P().set(0, -1, 0), [0.3, 0.3, 0.3]);       // onderkant van het overstek
+    }
+    if (!pos.length) return;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.computeBoundingSphere();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.1, side: THREE.DoubleSide });
+    keepNormals(mat);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    this.scene.add(mesh);
+    this.roofTrim = mesh;
+    console.info(`dakranden: ${pos.length / 9} driehoeken`);
+  }
+
+  // Schoorstenen: op de meeste gewone huizen met een schuin dak komt een gemetselde schoorsteen bij de nok.
+  // De plek volgt uit het dak zelf: het hoogste punt van het dak boven het pand, een stukje naar het midden toe.
+  buildChimneys() {
+    const { f32, i8, n, stride } = this.bld;
+    // per pand het hoogste en laagste dakpunt
+    const top = new Map();
+    for (let v = 0; v < n; v += 3) {
+      if (i8[v * stride + 23] !== 1) continue;
+      const cx = (f32[v * 7] + f32[(v + 1) * 7] + f32[(v + 2) * 7]) / 3, cz = (f32[v * 7 + 2] + f32[(v + 1) * 7 + 2] + f32[(v + 2) * 7 + 2]) / 3;
+      let fi = -1;
+      for (const i of this.nearbyFootprints(cx, cz)) if (pointInRing(cx, cz, this.footprints[i].ring)) { fi = i; break; }
+      if (fi < 0) continue;
+      let rec = top.get(fi);
+      if (!rec) top.set(fi, rec = { max: -1e9, min: 1e9, x: 0, z: 0 });
+      for (let k = 0; k < 3; k++) {
+        const y = f32[(v + k) * 7 + 1];
+        if (y > rec.max) { rec.max = y; rec.x = f32[(v + k) * 7]; rec.z = f32[(v + k) * 7 + 2]; }
+        if (y < rec.min) rec.min = y;
+      }
+    }
+    const rand = rng(1907);
+    const spots = [];
+    for (const [fi, r] of top) {
+      const f = this.footprints[fi];
+      const area = (f.maxX - f.minX) * (f.maxZ - f.minZ);
+      if (area < 35 || area > 420 || r.max - r.min < 1.6 || rand() > 0.7) continue;
+      // een stukje van het hoogste punt naar het midden van het pand: dan staat hij op het dak en niet op de rand
+      const mx = (f.minX + f.maxX) / 2, mz = (f.minZ + f.maxZ) / 2;
+      const d = Math.hypot(mx - r.x, mz - r.z) || 1, k = Math.min(1.3, d * 0.5) / d;
+      // recht met het huis mee: de richting van de langste gevel
+      let best = 0, ang = 0;
+      for (let i = 0; i < f.ring.length; i++) {
+        const [ax, az] = f.ring[i], [bx, bz] = f.ring[(i + 1) % f.ring.length], l = Math.hypot(bx - ax, bz - az);
+        if (l > best) { best = l; ang = Math.atan2(bx - ax, bz - az); }
+      }
+      spots.push([r.x + (mx - r.x) * k, r.max, r.z + (mz - r.z) * k, rand(), ang]);
+    }
+    if (!spots.length) return;
+    const body = new THREE.BoxGeometry(0.55, 2.3, 0.55).translate(0, -0.45, 0); // steekt 70 cm boven de nok uit, de rest zit in het dak
+    const cap = new THREE.BoxGeometry(0.68, 0.08, 0.68).translate(0, 0.72, 0);
+    const pot = new THREE.CylinderGeometry(0.09, 0.11, 0.3, 8).translate(0, 0.9, 0);
+    const bodies = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ roughness: 0.9 }), spots.length);
+    const caps = new THREE.InstancedMesh(mergeGeometries([cap, pot]), new THREE.MeshStandardMaterial({ color: 0x3b3a39, roughness: 0.8 }), spots.length);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+    const bricks = [0x6e3b2c, 0x5a3327, 0x7a5a45, 0x8a8478, 0x4a3a33];
+    spots.forEach(([x, y, z, r, ang], i) => {
+      p.set(x, y, z); q.setFromAxisAngle(up, ang);
+      m.compose(p, q, one);
+      bodies.setMatrixAt(i, m); caps.setMatrixAt(i, m);
+      bodies.setColorAt(i, col.set(bricks[Math.floor(r * bricks.length) % bricks.length]));
+    });
+    for (const im of [bodies, caps]) { im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); this.scene.add(im); }
+    console.info(`schoorstenen: ${spots.length}`);
   }
 
   // ------------------------------------------------------------ botsingen
@@ -1333,6 +1473,7 @@ export class World {
     const leafMat = new THREE.MeshStandardMaterial({
       map: v.leafMap, color: leafColor, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85,
     });
+    if (Q.msaa) leafMat.alphaToCoverage = true; // zachtere bladranden (alleen met kantverzachting in de nabewerking)
     leafMat.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = time;
       // zacht wiegen in de wind (per boom een andere fase)
@@ -1347,7 +1488,7 @@ export class World {
           float sway = sin(uTime * 1.3 + ph + position.y * 0.05) * 0.5 + sin(uTime * 2.7 + ph * 1.7) * 0.25;
           transformed.xz += sway * 0.012 * max(0.0, position.y) * vec2(1.0, 0.6);`);
       // achterkant van een blad niet donker maken (de normalen wijzen al naar buiten)
-      shader.fragmentShader = shader.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;'));
     };
     const tris = ((bg.index ? bg.index.count : 0) + (lg.index ? lg.index.count : 0)) / 3;
     console.info(`boom ${v.name}: ${Math.round(tris)} driehoeken`);
@@ -1374,7 +1515,7 @@ export class World {
   // begroeiing alleen in de buurt tekenen (struiken en gras zie je van ver toch niet)
   updateVegetation(cam) {
     if (!this.vegTiles) return;
-    const R = this.isMobile ? 200 : 290;
+    const R = Q.begroeiingBereik;
     for (const g of this.vegTiles) g.visible = Math.hypot(g.userData.c[0] - cam.x, g.userData.c[1] - cam.z) < R;
   }
 
@@ -1383,7 +1524,7 @@ export class World {
     if (!this.treeTiles) return;
     if (this.treeTime) this.treeTime.value = time;
     // per boom kiezen: binnen R de echte boom, daarbuiten de grove. Alleen opnieuw indelen als de camera een paar meter verplaatst is.
-    const R = this.isMobile ? 120 : 200;
+    const R = this.treeRange = Q.boomBereik;
     const last = this._treeCam;
     if (last && Math.hypot(last[0] - cam.x, last[1] - cam.z) < 3) return;
     this._treeCam = [cam.x, cam.z];
@@ -1399,11 +1540,29 @@ export class World {
     }
   }
 
+  // Bomen tijdelijk weghalen (bijv. rond het podium van de Bierfeesten, zodat ze het zicht niet blokkeren).
+  // pred(x, z) zegt welke bomen weg moeten, binnen straal R rond het middelpunt. Geeft een functie terug die ze terugzet.
+  hideTrees(pred, [cx, cz], R) {
+    const hidden = [];
+    const tiles = (this.treeTiles || []).filter((t) => Math.hypot(Math.max(t.minX - cx, 0, cx - t.maxX), Math.max(t.minZ - cz, 0, cz - t.maxZ)) < R);
+    for (const t of tiles) for (const r of t.recs) {
+      if (!r.hidden && Math.hypot(r.x - cx, r.z - cz) < R && pred(r.x, r.z)) { r.hidden = true; hidden.push(r); }
+    }
+    const refresh = () => {
+      const cam = this._treeCam || [cx, cz];
+      const RR = this.treeRange || (this.isMobile ? 120 : 200);
+      for (const t of tiles) this.splitTreeTile(t, { x: cam[0], z: cam[1] }, RR);
+    };
+    refresh();
+    return () => { for (const r of hidden) r.hidden = false; refresh(); };
+  }
+
   splitTreeTile(t, cam, R) {
     let fc = 0;
     const nc = t.nearMeshes.map(() => 0);
     const tm = t.trunk.instanceMatrix.array, cm = t.canopy.instanceMatrix.array, cc = t.canopy.instanceColor?.array;
     for (const r of t.recs) {
+      if (r.hidden) continue;
       const nm = r.vi >= 0 ? t.nearMeshes[r.vi] : null;
       if (nm && Math.hypot(r.x - cam.x, r.z - cam.z) < R) {
         const i = nc[r.vi]++;
@@ -1529,8 +1688,9 @@ export class World {
     bikes.count = bikeSpots.length; bikes.castShadow = !this.isMobile;
     this.scene.add(bikes);
 
-    // lantaarnpalen met arm en armatuur
-    const lights = this.objects.lights;
+    // lantaarnpalen met arm en armatuur: die uit de kaart (BGT), aangevuld langs alle straten
+    const lights = this.streetLamps();
+    this.lampList = lights;
     const poleGeo = mergeGeometries([
       cyl(0.06, 0.1, 6, 0, 3, 0), cyl(0.04, 0.04, 1.2, 0, 6, 0.55, Math.PI / 2),
       box(0.3, 0.12, 0.5, 0, 5.98, 1.1),
@@ -1538,7 +1698,7 @@ export class World {
     const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.5, metalness: 0.6 }), lights.length);
     const lampGeo = new THREE.BoxGeometry(0.24, 0.04, 0.42);
     lampGeo.translate(0, 5.9, 1.1);
-    this.lampMaterial = new THREE.MeshStandardMaterial({ color: 0xfff1d0, emissive: 0xffc070, emissiveIntensity: 0 });
+    this.lampMaterial = new THREE.MeshStandardMaterial({ color: 0xfff1d0, emissive: 0xffb866, emissiveIntensity: 0 });
     const lamps = new THREE.InstancedMesh(lampGeo, this.lampMaterial, lights.length);
     const lightYaw = (x, z) => faceStreet(x, z);
     lights.forEach(([x, z], i) => {
@@ -1567,7 +1727,9 @@ export class World {
       glows.setMatrixAt(i, m);
     });
     glows.renderOrder = 2;
-    this.scene.add(glows);
+    // op de computer geven de lantaarns echt licht (zie bakeLamps); de platte lichtvlek is er alleen nog voor de telefoon
+    if (Q.laag) this.scene.add(glows);
+    else this.buildLampCones(lights, lightYaw);
 
     // verkeersborden, paaltjes en vlaggenmasten
     const poleList = this.objects.poles || [];
@@ -1596,8 +1758,141 @@ export class World {
 
   setNight(t) {
     this.nightUniform.value = t;
-    if (this.lampMaterial) this.lampMaterial.emissiveIntensity = t * 3;
+    if (this.lampMaterial) this.lampMaterial.emissiveIntensity = t * 7;
     if (this.glowMaterial) this.glowMaterial.opacity = t * 0.55;
+    if (this.coneMaterial) { this.coneMaterial.uniforms.opacity.value = t * 0.16; this.coneMesh.visible = t > 0.02; }
+    setLampGlobals(t, this.wet || 0);
+  }
+
+  // De kaart levert maar een handvol lantaarns. Hier komen er langs alle straten bij: om de 30 meter,
+  // om en om links en rechts, net naast de rijbaan, en nooit vlak bij een lantaarn die er al staat.
+  streetLamps() {
+    const out = this.objects.lights.map(([x, z]) => [x, z]);
+    const cell = 24, grid = new Map();
+    const key = (x, z) => Math.floor(x / cell) + ',' + Math.floor(z / cell);
+    const put = (x, z) => { const k = key(x, z); if (!grid.has(k)) grid.set(k, []); grid.get(k).push([x, z]); };
+    const near = (x, z, d) => {
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const [px, pz] of grid.get((cx + i) + ',' + (cz + j)) || []) if (Math.hypot(px - x, pz - z) < d) return true;
+      return false;
+    };
+    out.forEach(([x, z]) => put(x, z));
+    const road = (c) => c === 'rijbaan' || c === 'klinkers' || c === 'parkeer' || c === 'fietspad';
+    const b = this.coreBox;
+    const start = this.spotNear(5, 25);
+    let side = 1;
+    for (const [name, line] of this.roads) {
+      if (!name || /voetpad|fietspad/i.test(name)) continue;
+      let acc = 12;
+      for (let i = 0; i + 3 < line.length; i += 2) {
+        const ax = line[i], az = line[i + 1], bx = line[i + 2], bz = line[i + 3];
+        const len = Math.hypot(bx - ax, bz - az);
+        if (len < 0.5) continue;
+        const dx = (bx - ax) / len, dz = (bz - az) / len, nx = -dz, nz = dx;
+        for (let s = 0; s < len; s += 2) {
+          acc += 2;
+          if (acc < 30) continue;
+          const px = ax + dx * s, pz = az + dz * s;
+          if (px < b.x0 + 20 || px > b.x1 - 20 || pz < b.z0 + 20 || pz > b.z1 - 20) continue;
+          if (!road(this.classAt(px, pz))) continue;
+          for (const sd of [side, -side]) {
+            // rand van de rijbaan zoeken
+            let d = 1.5;
+            while (d < 9 && road(this.classAt(px + nx * sd * d, pz + nz * sd * d))) d += 0.5;
+            if (d >= 9) continue;
+            const lx = px + nx * sd * (d + 0.45), lz = pz + nz * sd * (d + 0.45);
+            if (this.classAt(lx, lz) === 'water' || this.insideBuilding(lx, lz) || near(lx, lz, 21)) continue;
+            if (Math.hypot(lx - start[0], lz - start[1]) < 12) continue; // niet pal voor de camera op het startpunt
+            const wall = this.nearestWall(lx, lz, 0.5);
+            if (wall) continue;
+            out.push([lx, lz]); put(lx, lz);
+            acc = 0; side = -side;
+            break;
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  // Zachte lichtkegel onder elke lantaarn: je ziet het licht in de avondnevel hangen.
+  buildLampCones(lights, yawOf) {
+    const geo = new THREE.CylinderGeometry(0.12, 2.9, 5.7, 20, 1, true);
+    geo.translate(0, 5.85 - 2.85, 0);
+    // bovenaan helder, onderaan uitgedoofd
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) { const k = Math.pow(Math.max(0, pos.getY(i) / 5.85), 2.2); col[i * 3] = k; col[i * 3 + 1] = k * 0.74; col[i * 3 + 2] = k * 0.42; }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    // eigen shader: de kegel dooft uit naar zijn rand (waar je er schuin langs kijkt), zodat je geen harde vorm ziet
+    this.coneMaterial = new THREE.ShaderMaterial({
+      uniforms: { opacity: { value: 0 } },
+      vertexShader: `attribute vec3 color; varying vec3 vCol; varying vec3 vN; varying vec3 vV;
+        void main(){
+          vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+          vN = normalize(mat3(instanceMatrix) * normal);
+          vV = normalize(cameraPosition - wp.xyz);
+          vCol = color;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }`,
+      fragmentShader: `uniform float opacity; varying vec3 vCol; varying vec3 vN; varying vec3 vV;
+        void main(){
+          float edge = abs(dot(normalize(vN), normalize(vV)));
+          gl_FragColor = vec4(vCol * opacity * edge * edge * edge, 1.0);
+        }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    });
+    const im = new THREE.InstancedMesh(geo, this.coneMaterial, lights.length);
+    const m = new THREE.Matrix4();
+    lights.forEach(([x, z], i) => {
+      const yaw = yawOf(x, z);
+      m.makeTranslation(x + Math.sin(yaw) * 1.1, this.groundAt(x, z), z + Math.cos(yaw) * 1.1);
+      im.setMatrixAt(i, m);
+    });
+    im.visible = false; im.renderOrder = 3;
+    im.computeBoundingSphere();
+    this.scene.add(im);
+    this.coneMesh = im;
+  }
+
+  // extra lichtbron (bijv. een etalage): plek, hoogte boven de grond en sterkte
+  addLightSource(x, z, h = 2.7, power = 0.7) { (this.extraLights ||= []).push([x, z, this.groundAt(x, z) + h, power]); }
+
+  // Kaart met lichtbronnen voor het lantaarnlicht (zie lighting.js): per vakje van 2 m de dichtstbijzijnde bron.
+  bakeLamps() {
+    if (Q.laag) return;
+    const b = this.coreBox, res = 2, R = 25;
+    const W = Math.ceil((b.x1 - b.x0) / res), H = Math.ceil((b.z1 - b.z0) / res);
+    const best = new Float32Array(W * H);
+    const data = new Uint16Array(W * H * 4);
+    const hf = THREE.DataUtils.toHalfFloat;
+    const src = [];
+    for (const [x, z] of this.lampList || []) {
+      const s = this.nearestStreet(x, z);
+      const yaw = s ? Math.atan2(s.x - x, s.z - z) : 0;
+      src.push([x + Math.sin(yaw) * 1.1, z + Math.cos(yaw) * 1.1, this.groundAt(x, z) + 5.85, 1]);
+    }
+    for (const e of this.extraLights || []) src.push(e);
+    // per vakje wint de bron die daar op de grond het meeste licht geeft (zelfde formule als in de shader):
+    // zo zit er op de grens tussen twee lampen geen sprong in het licht
+    const sm = (a, c, v) => { const t = Math.min(1, Math.max(0, (v - a) / (c - a))); return t * t * (3 - 2 * t); };
+    for (const [x, z, y, power] of src) {
+      const c0 = Math.max(0, Math.floor((x - R - b.x0) / res)), c1 = Math.min(W - 1, Math.floor((x + R - b.x0) / res));
+      const r0 = Math.max(0, Math.floor((z - R - b.z0) / res)), r1 = Math.min(H - 1, Math.floor((z + R - b.z0) / res));
+      const gy = this.groundAt(x, z);
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+        const cx = b.x0 + (c + 0.5) * res, cz = b.z0 + (r + 0.5) * res;
+        const h = y - gy, d2 = (cx - x) ** 2 + (cz - z) ** 2 + h * h;
+        if (d2 >= 620) continue;
+        const dy = h / Math.sqrt(d2);
+        const val = power * (1 - d2 / 620) / (1 + d2 * 0.028) * sm(0.2, 0.85, dy) * dy;
+        const i = r * W + c;
+        if (val <= best[i]) continue;
+        best[i] = val;
+        data[i * 4] = hf(x - cx); data[i * 4 + 1] = hf(z - cz); data[i * 4 + 2] = hf(y); data[i * 4 + 3] = hf(power);
+      }
+    }
+    setLampMap(data, W, H, [b.x0, b.z0, W * res, H * res]);
+    console.info(`lantaarnlicht: ${src.length} lichtbronnen`);
   }
 
   // ------------------------------------------------------------ straatnamen

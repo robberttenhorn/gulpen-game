@@ -3,6 +3,8 @@
 import * as THREE from 'three';
 import { Earcut } from 'three/src/extras/Earcut.js';
 import { makeTextures } from './textures.js';
+import { keepNormals } from './lighting.js';
+import { Q } from './quality.js';
 
 // klasse -> [texture, wereldmaat van één herhaling in meters, hoogte boven terrein, polygonOffset]
 const LAYERS = {
@@ -41,8 +43,8 @@ export function buildHardscape(world, scene) {
     if (name === 'water') { water.push(rings); continue; }
     const layer = LAYERS[name];
     if (!layer) continue;
+    if (name === 'voetpad') { const sm = rings.map(smoothRing); (buckets[name] ||= []).push(sm); curbs.push(sm); continue; }
     (buckets[name] ||= []).push(rings);
-    if (name === 'voetpad') curbs.push(rings);
   }
 
   const meshes = [];
@@ -57,7 +59,9 @@ export function buildHardscape(world, scene) {
     });
     if (t.normalMap) mat.normalScale.set(0.8, 0.8);
     if (t.color) mat.color.copy(t.color);
+    else if (texName === 'asfalt' && ph) mat.color.setScalar(1.3); // het schone asfalt is van zichzelf erg donker
     world.applyAO?.(mat);
+    if (Q.natteWeg && world.applyAO) wetSurface(mat);
     const m = new THREE.Mesh(geo, mat);
     m.receiveShadow = true;
     scene.add(m);
@@ -67,9 +71,10 @@ export function buildHardscape(world, scene) {
   // stoepranden: verticale randjes langs de stoepen
   const curbGeo = buildCurbs(world, curbs);
   if (curbGeo) {
-    const m = new THREE.Mesh(curbGeo, new THREE.MeshStandardMaterial({ map: tx.band.map, color: 0xd8d4cc, roughness: 0.7 }));
+    const m = new THREE.Mesh(curbGeo, new THREE.MeshStandardMaterial({ map: tx.band.map, color: 0xd8d4cc, roughness: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12 }));
     m.receiveShadow = true;
     m.castShadow = false;
+    keepNormals(m.material);
     scene.add(m);
   }
 
@@ -78,11 +83,28 @@ export function buildHardscape(world, scene) {
   let waterMat = null;
   if (wgeo) {
     const wn = waterNormals();
+    // De Gulp en de vijvers: donker, helder water dat de lucht spiegelt (sterker naarmate je er vlakker overheen kijkt),
+    // met twee lagen fijne rimpels die tegen elkaar in schuiven. De rimpels liggen in wereldmaten, dus overal even fijn.
     waterMat = new THREE.MeshStandardMaterial({
-      color: 0x24414c, roughness: 0.06, metalness: 0.1, normalMap: wn, envMapIntensity: 1.2,
+      color: 0x1d3530, roughness: 0.06, metalness: 0, normalMap: wn, envMapIntensity: 1.5,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
     });
-    waterMat.normalScale.set(0.35, 0.35);
+    waterMat.userData.time = { value: 0 };
+    waterMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uWaterT = waterMat.userData.time;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vWaterP;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWaterP = (modelMatrix * vec4(position, 1.0)).xz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vWaterP;\nuniform float uWaterT;')
+        .replace('#include <normal_fragment_maps>', `
+          {
+            vec2 r1 = texture2D(normalMap, vWaterP * 0.42 + vec2(uWaterT * 0.035, uWaterT * 0.02)).xy * 2.0 - 1.0;
+            vec2 r2 = texture2D(normalMap, vWaterP * 1.15 - vec2(uWaterT * 0.05, -uWaterT * 0.03)).xy * 2.0 - 1.0;
+            vec2 rp = (r1 * 0.6 + r2 * 0.4) * 0.16;
+            normal = normalize(mat3(viewMatrix) * normalize(vec3(rp.x, 1.0, rp.y)));
+          }`);
+    };
     const m = new THREE.Mesh(wgeo, waterMat);
     m.receiveShadow = true;
     scene.add(m);
@@ -95,15 +117,13 @@ export function buildHardscape(world, scene) {
       color: 0xf2f0e8, roughness: 0.6, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12,
     }));
     m.receiveShadow = true;
+    keepNormals(m.material);
     scene.add(m);
   }
 
   return {
     update(dt) {
-      if (waterMat) {
-        waterMat.normalMap.offset.x += dt * 0.02;
-        waterMat.normalMap.offset.y += dt * 0.035;
-      }
+      if (waterMat) waterMat.userData.time.value += dt;
     },
   };
 }
@@ -184,38 +204,137 @@ function drapePolys(world, polys, lift, uvSize, maxEdge) {
   return geo;
 }
 
+// gladstrijken: eerst piepkleine uitstulpingen weg (Douglas-Peucker), dan hoeken afronden (Chaikin)
+const simplify = (p, tol) => {
+  if (p.length < 3) return p;
+  const keep = new Array(p.length).fill(false); keep[0] = keep[p.length - 1] = true;
+  const st = [[0, p.length - 1]];
+  while (st.length) {
+    const [i0, i1] = st.pop();
+    const [ax, az] = p[i0], [bx, bz] = p[i1], L = Math.hypot(bx - ax, bz - az) || 1e-6;
+    let best = -1, bd = 0;
+    for (let i = i0 + 1; i < i1; i++) { const d = Math.abs((bx - ax) * (az - p[i][1]) - (ax - p[i][0]) * (bz - az)) / L; if (d > bd) { bd = d; best = i; } }
+    if (bd > tol) { keep[best] = true; st.push([i0, best], [best, i1]); }
+  }
+  return p.filter((_, i) => keep[i]);
+};
+const chaikin = (p, closed) => {
+  if (p.length < 3) return p;
+  const out = closed ? [] : [p[0]];
+  const m = closed ? p.length : p.length - 1;
+  for (let i = 0; i < m; i++) {
+    const a = p[i], b = p[(i + 1) % p.length];
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const f = Math.min(0.25, 0.6 / Math.max(L, 0.01)); // lange rechte stukken blijven recht, alleen de hoek wordt rond
+    out.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], [a[0] + (b[0] - a[0]) * (1 - f), a[1] + (b[1] - a[1]) * (1 - f)]);
+  }
+  if (!closed) out.push(p.at(-1));
+  return out;
+};
+
+// Een stoepvlak gladstrijken: de kaart heeft punten op 10 cm afgerond, waardoor randen trapjes kregen.
+// Dubbele punten weg, kleine trapjes eruit, en de hoeken licht afgerond. Gebruikt voor het vlak én de stoeprand.
+function smoothRing(ring) {
+  const pts = [];
+  for (let i = 0; i < ring.length; i += 2) {
+    const p = [ring[i], ring[i + 1]];
+    if (!pts.length || Math.hypot(p[0] - pts.at(-1)[0], p[1] - pts.at(-1)[1]) > 0.01) pts.push(p);
+  }
+  if (pts.length > 1 && Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) < 0.01) pts.pop();
+  if (pts.length < 4) return ring;
+  // Douglas-Peucker werkt op een open lijn: knip de ring bij het verste punt van het begin
+  let far = 0, fd = 0;
+  pts.forEach((p, i) => { const d = Math.hypot(p[0] - pts[0][0], p[1] - pts[0][1]); if (d > fd) { fd = d; far = i; } });
+  const A = simplify(pts.slice(0, far + 1), 0.13), B = simplify(pts.slice(far).concat([pts[0]]), 0.13);
+  let q = A.concat(B.slice(1, -1));
+  if (q.length < 3) return ring;
+  q = chaikin(chaikin(q, true), true);
+  const out = [];
+  for (const p of q) out.push(p[0], p[1]);
+  out.push(q[0][0], q[0][1]);
+  return out;
+}
+
+// Stoepranden: alleen waar de stoep aan een lager vlak grenst (weg, parkeervak, fietspad, gras, erf).
+// Geen randjes tussen twee stukken stoep of tegen een gevel. De rand volgt een gladgestreken lijn
+// (kleine hoekjes uit de kaart eruit, hoeken afgerond) en heeft een echt profiel: voorkant, afgeronde
+// bovenrand en een smal bovenvlak dat net over de stoep valt.
 function buildCurbs(world, polys) {
-  const pos = [], uv = [], nrm = [];
-  const step = 3;
+  const chains = [];
+  const side = (ax, az, bx, bz) => {
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 0.05) return 0;
+    const nx = (bz - az) / len, nz = -(bx - ax) / len, mx = (ax + bx) / 2, mz = (az + bz) / 2;
+    for (const d of [0.6, 0.9]) {
+      const ca = world.classAt(mx + nx * d, mz + nz * d), cb = world.classAt(mx - nx * d, mz - nz * d);
+      const low = (c) => c && c !== 'voetpad' && c !== 'brug' && !world.insideBuilding(mx - nx * d * Math.sign(c === cb ? 1 : -1), mz - nz * d * Math.sign(c === cb ? 1 : -1));
+      if (ca === 'voetpad' && low(cb)) return 1; // stoep aan de kant van +n, ernaast iets lagers (weg, gras, erf)
+      if (cb === 'voetpad' && low(ca)) return -1;
+    }
+    return 0;
+  };
   for (const rings of polys) {
     for (const ring of rings) {
-      for (let i = 0; i < ring.length - 2; i += 2) {
-        const ax = ring[i], az = ring[i + 1], bx = ring[i + 2], bz = ring[i + 3];
-        const len = Math.hypot(bx - ax, bz - az);
-        if (len < 0.05) continue;
-        const nx = (bz - az) / len, nz = -(bx - ax) / len;
-        const parts = Math.max(1, Math.ceil(len / step));
-        for (let k = 0; k < parts; k++) {
-          const t0 = k / parts, t1 = (k + 1) / parts;
-          const x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0;
-          const x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
-          const g0 = world.heightAt(x0, z0), g1 = world.heightAt(x1, z1);
-          const v = [
-            [x0, g0 - 0.05, z0], [x1, g1 - 0.05, z1], [x1, g1 + CURB_H, z1],
-            [x0, g0 - 0.05, z0], [x1, g1 + CURB_H, z1], [x0, g0 + CURB_H, z0],
-          ];
-          // beide kanten zichtbaar maken door dubbel te tekenen (ringen kunnen beide kanten op lopen)
-          for (const flip of [false, true]) {
-            const order = flip ? [0, 2, 1, 3, 5, 4] : [0, 1, 2, 3, 4, 5];
-            for (const o of order) {
-              pos.push(...v[o]);
-              const s = flip ? -1 : 1;
-              nrm.push(nx * s, 0, nz * s);
-              uv.push((o === 1 || o === 2 || o === 4 ? len / parts : 0) * 2, v[o][1] - g0);
-            }
-          }
-        }
+      const pts = [];
+      for (let i = 0; i < ring.length; i += 2) pts.push([ring[i], ring[i + 1]]);
+      if (pts.length > 1 && Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) < 0.01) pts.pop();
+      const n = pts.length;
+      if (n < 2) continue;
+      const sides = pts.map((p, i) => side(p[0], p[1], pts[(i + 1) % n][0], pts[(i + 1) % n][1]));
+      // ketens van opeenvolgende randen met dezelfde stoepkant
+      let start = sides.findIndex((v, i) => v !== sides[(i - 1 + n) % n]);
+      if (start < 0) { if (sides[0]) chains.push({ pts: pts.slice(), closed: true, s: sides[0] }); continue; }
+      let cur = null;
+      for (let k = 0; k < n; k++) {
+        const i = (start + k) % n;
+        if (sides[i] && (!cur || cur.s !== sides[i])) { cur = { pts: [pts[i]], closed: false, s: sides[i] }; chains.push(cur); }
+        if (!sides[i]) { cur = null; continue; }
+        cur.pts.push(pts[(i + 1) % n]);
       }
+    }
+  }
+  // profiel (dwars op de rand): [afstand naar de stoep toe, hoogte boven het maaiveld]
+  const PROF = [[0, -0.06], [0, CURB_H - 0.035], [0.012, CURB_H - 0.012], [0.035, CURB_H + 0.004], [0.16, CURB_H + 0.006]];
+  const pos = [], nrm = [], uv = [], idx = [];
+  const maxSeg = 1.5;
+  for (const c of chains) {
+    let p = simplify(c.pts, 0.03);
+    if (p.length < 2) continue;
+    // lange stukken opdelen zodat de rand het terrein volgt
+    const q = [];
+    const m = c.closed ? p.length : p.length - 1;
+    for (let i = 0; i < m; i++) {
+      const a = p[i], b = p[(i + 1) % p.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const k = Math.max(1, Math.ceil(L / maxSeg));
+      for (let j = 0; j < k; j++) q.push([a[0] + (b[0] - a[0]) * (j / k), a[1] + (b[1] - a[1]) * (j / k)]);
+    }
+    if (!c.closed) q.push(p.at(-1)); else q.push(q[0]);
+    if (q.length < 2) continue;
+    // per punt een gemiddelde richting, zodat de rand vloeiend doorloopt (geen knikken in het licht)
+    const N = q.length, base = pos.length / 3;
+    let along = 0;
+    for (let i = 0; i < N; i++) {
+      const pa = q[Math.max(0, i - 1)], pb = q[Math.min(N - 1, i + 1)];
+      let tx = pb[0] - pa[0], tz = pb[1] - pa[1];
+      if (c.closed && (i === 0 || i === N - 1)) { tx = q[1][0] - q[N - 2][0]; tz = q[1][1] - q[N - 2][1]; }
+      const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+      // naar de stoep toe: de stoepkant van de oorspronkelijke ring
+      const ix = tz * c.s, iz = -tx * c.s;
+      if (i) along += Math.hypot(q[i][0] - q[i - 1][0], q[i][1] - q[i - 1][1]);
+      const g = world.heightAt(q[i][0], q[i][1]);
+      for (let k = 0; k < PROF.length; k++) {
+        const [o, h] = PROF[k];
+        pos.push(q[i][0] + ix * o, g + h, q[i][1] + iz * o);
+        // normaal: voorkant naar de weg, bovenvlak omhoog, de afronding ertussenin
+        const up = k <= 1 ? 0 : k === 2 ? 0.55 : k === 3 ? 0.9 : 1;
+        const out = Math.sqrt(1 - up * up);
+        nrm.push(-ix * out, up, -iz * out);
+        uv.push(along / 1.0, k / (PROF.length - 1));
+      }
+    }
+    for (let i = 0; i < N - 1; i++) for (let k = 0; k < PROF.length - 1; k++) {
+      const a = base + i * PROF.length + k, b = a + PROF.length;
+      if (c.s > 0) idx.push(a, a + 1, b, b, a + 1, b + 1); else idx.push(a, b, a + 1, b, b + 1, a + 1);
     }
   }
   if (!pos.length) return null;
@@ -223,6 +342,8 @@ function buildCurbs(world, polys) {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeBoundingSphere();
   return geo;
 }
 
@@ -258,7 +379,16 @@ function buildMarkings(world) {
 }
 
 function waterNormals() {
+  // naadloos herhalende rimpels: een som van golfjes in willekeurige richtingen (hele golfgetallen = naadloos)
   const size = 256;
+  const waves = [];
+  let sd = 4711;
+  const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  for (let i = 0; i < 18; i++) {
+    const kx = Math.round((rnd() - 0.5) * 14), ky = Math.round((rnd() - 0.5) * 14);
+    if (!kx && !ky) continue;
+    waves.push([kx, ky, rnd() * Math.PI * 2, 1 / Math.hypot(kx, ky)]);
+  }
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
@@ -266,11 +396,11 @@ function waterNormals() {
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const u = (x / size) * Math.PI * 2, v = (y / size) * Math.PI * 2;
-      const dx = Math.cos(u * 3 + Math.sin(v * 2)) * 0.5 + Math.cos(u * 7 + v * 3) * 0.25;
-      const dy = Math.sin(v * 4 + Math.cos(u * 2)) * 0.5 + Math.sin(v * 9 - u * 2) * 0.2;
+      let dx = 0, dy = 0;
+      for (const [kx, ky, ph, a] of waves) { const cs = Math.cos(kx * u + ky * v + ph) * a; dx += cs * kx; dy += cs * ky; }
       const i = (y * size + x) * 4;
-      img.data[i] = (dx * 0.5 + 0.5) * 255;
-      img.data[i + 1] = (dy * 0.5 + 0.5) * 255;
+      img.data[i] = Math.max(0, Math.min(255, (dx * 0.16 + 0.5) * 255));
+      img.data[i + 1] = Math.max(0, Math.min(255, (dy * 0.16 + 0.5) * 255));
       img.data[i + 2] = 255;
       img.data[i + 3] = 255;
     }
@@ -278,8 +408,65 @@ function waterNormals() {
   ctx.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(1, 1);
   return t;
+}
+
+// Natte straat ('s avonds, na een bui): het wegdek wordt donkerder en glanst, in de plassen spiegelt de lucht,
+// en elke lantaarn krijgt een lange lichtveeg op het natte wegdek. Die veeg is een echte spiegeling: voor elk
+// punt op de weg wordt uitgerekend welke lantaarn daar in de spiegel zou staan (via de lichtkaart uit lighting.js).
+function wetSurface(mat) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, r) => {
+    prev?.call(mat, shader, r);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        float wetH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float wetN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(wetH(i), wetH(i + vec2(1, 0)), f.x), mix(wetH(i + vec2(0, 1)), wetH(i + vec2(1, 1)), f.x), f.y); }
+        float wetPud = 0.0; float wetAmt = 0.0;`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        // grote vlekken in het wegdek (slijtage, oude reparaties), zodat een lange straat geen egaal vlak is
+        diffuseColor.rgb *= 0.9 + 0.14 * wetN(vAOxz * 0.085) + 0.08 * wetN(vAOxz * 0.6);
+        #ifdef LOCALS_LAMPS
+          wetAmt = texelFetch(uGlobals, ivec2(0, 0), 0).y;
+          if (wetAmt > 0.01) {
+            float pn = wetN(vAOxz * 0.21) * 0.6 + wetN(vAOxz * 0.83) * 0.4;
+            wetPud = smoothstep(0.57, 0.7, pn) * wetAmt;
+            roughnessFactor = mix(mix(roughnessFactor, 0.45, wetAmt * 0.6), 0.05, wetPud);
+            diffuseColor.rgb *= mix(1.0, 0.7, wetAmt) * mix(1.0, 0.72, wetPud);
+          }
+        #endif`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        normal = normalize(mix(normal, nonPerturbedNormal, wetPud * 0.92));`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        #ifdef LOCALS_LAMPS
+          if (wetAmt > 0.01) {
+            vec4 wetG = texelFetch(uGlobals, ivec2(0, 0), 0);
+            if (wetG.x > 0.01) {
+              mat3 wV2W = transpose(mat3(viewMatrix));
+              vec3 wP = cameraPosition + wV2W * (-vViewPosition);
+              float camH = max(0.3, cameraPosition.y - wP.y);
+              vec2 wQ = cameraPosition.xz + (wP.xz - cameraPosition.xz) * (camH + 5.85) / camH;
+              vec4 wBox = texelFetch(uGlobals, ivec2(1, 0), 0);
+              vec2 wUV = (wQ - wBox.xy) / wBox.zw;
+              if (wUV.x > 0.0 && wUV.x < 1.0 && wUV.y > 0.0 && wUV.y < 1.0) {
+                ivec2 wTS = textureSize(uLampMap, 0);
+                ivec2 wTC = ivec2(wUV * vec2(wTS));
+                vec4 wL = texelFetch(uLampMap, wTC, 0);
+                if (wL.a > 0.0) {
+                  vec2 wCen = wBox.xy + (vec2(wTC) + 0.5) / vec2(wTS) * wBox.zw;
+                  vec3 wDir = normalize(vec3(wCen.x + wL.x, wL.z, wCen.y + wL.y) - wP);
+                  vec3 wR = reflect(normalize(wP - cameraPosition), vec3(0.0, 1.0, 0.0));
+                  float wS = pow(max(dot(wR, wDir), 0.0), mix(260.0, 1600.0, wetPud));
+                  totalEmissiveRadiance += vec3(1.0, 0.74, 0.46) * (wS * wL.a * wetG.x * (0.5 * wetAmt + 3.0 * wetPud));
+                }
+              }
+            }
+          }
+        #endif`);
+  };
+  const key = mat.customProgramCacheKey?.bind(mat);
+  mat.customProgramCacheKey = () => 'wet' + (key ? key() : '');
 }
 
 // Hoogte van het loopoppervlak (stoepen liggen iets hoger dan de weg).

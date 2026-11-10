@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeInteriorWindow } from './interior-window.js';
+import { leafyMaterial } from './foliage.js';
+import { Q } from './quality.js';
 
 const A = [456.2, -304.88]; // westelijke hoek aan de straat (lokale x, z)
 const U = [0.93659, -0.35043]; // langs de straat, naar het oosten
@@ -130,7 +132,7 @@ export function buildTuin38(g) {
     dak: new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.8 }),
     deur: new THREE.MeshStandardMaterial({ color: 0x3f2e22, roughness: 0.7 }),
     water: new THREE.MeshStandardMaterial({ color: 0x1b3640, roughness: 0.08, metalness: 0.2 }),
-    blad: new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true, vertexColors: true }),
+    blad: Q.laag ? new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true, vertexColors: true }) : leafyMaterial({ vertexColors: true, scale: 2.2 }),
     stam: new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1 }),
     wilgstam: new THREE.MeshStandardMaterial({ color: 0x5e554a, roughness: 1, flatShading: true }),
     twijg: new THREE.MeshStandardMaterial({ color: 0x7b6a48, roughness: 0.9 }),

@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng } from './world.js';
 import { inTuin38 } from './tuin38.js';
+import { Q } from './quality.js';
+import { leafTexture, leafyMaterial } from './foliage.js';
 
 export function buildVegetation(w) {
   const rand = rng(777);
@@ -71,32 +73,69 @@ export function buildVegetation(w) {
       g.add(im);
     }
   };
+  // Blad: een kern met daaromheen een paar dunne schillen met losse blaadjes (uitgeknipt met een bladtextuur).
+  // Zo krijgen hagen en struiken een rafelige, bladerige rand in plaats van een strak blok. Op de telefoon alleen de kern.
+  const leafTex = Q.laag ? null : leafTexture();
+  const shellMat = (cut) => { const mt = new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: cut, roughness: 0.9, side: THREE.DoubleSide }); if (Q.msaa) mt.alphaToCoverage = true; return mt; };
+  const coreMat = Q.laag ? new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }) : leafyMaterial();
   // struiken: platgedrukte, ruwe bollen
-  const bushGeo = new THREE.IcosahedronGeometry(0.7, 1);
-  bushGeo.translate(0, 0.45, 0);
-  { const pos = bushGeo.attributes.position; for (let i = 0; i < pos.count; i++) { const k = 0.85 + Math.sin(i * 12.9898) * 0.15; pos.setXYZ(i, pos.getX(i) * k, pos.getY(i) * k * 0.85, pos.getZ(i) * k); } bushGeo.computeVertexNormals(); }
-  make(bushGeo, new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), bushes, (im, [x, z, sc], i) => {
-    p.set(x, w.groundAt(x, z) - 0.05, z); q.setFromAxisAngle(up, rand() * 6.28); s.set(sc * (0.9 + rand() * 0.3), sc * (0.8 + rand() * 0.5), sc * (0.9 + rand() * 0.3));
-    im.setMatrixAt(i, m.compose(p, q, s)); im.setColorAt(i, col.setHSL(0.24 + rand() * 0.07, 0.38 + rand() * 0.12, 0.09 + rand() * 0.05));
-  }, true);
-  // hagen: groene blokken langs de stoep (met een beetje variatie in hoogte)
-  const hedgeGeo = new THREE.BoxGeometry(1.75, 1, 0.6, 7, 4, 3);
-  {
-    // blad: elk hoekpunt een stukje naar binnen of buiten, bovenkant iets afgerond
-    const pos = hedgeGeo.attributes.position;
+  const bushShape = (r, detail, uvScale) => {
+    const g = new THREE.IcosahedronGeometry(r, detail);
+    g.translate(0, 0.45, 0);
+    const pos = g.attributes.position, uv = g.attributes.uv;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-      const n = Math.sin(x * 9.1 + y * 5.3) * Math.cos(z * 7.7 + x * 3.1) * 0.06 + Math.sin(i * 12.9898) * 0.03;
-      const round = y > 0.45 ? (Math.abs(z) / 0.3) * 0.08 : 0;
-      pos.setXYZ(i, x + n * 0.5, y + n - round, z * (1 + n * 1.5));
+      const k = 0.85 + Math.sin(x * 7.3 + z * 5.1) * Math.cos(y * 6.7) * 0.15;
+      pos.setXYZ(i, x * k, y * k * 0.85, z * k);
+      uv.setXY(i, uv.getX(i) * uvScale * 2, uv.getY(i) * uvScale);
     }
-    hedgeGeo.translate(0, 0.5, 0);
-    hedgeGeo.computeVertexNormals();
+    g.computeVertexNormals();
+    return g;
+  };
+  const bushRand = bushes.map(() => [rand() * 6.28, 0.9 + rand() * 0.3, 0.8 + rand() * 0.5, 0.9 + rand() * 0.3, 0.24 + rand() * 0.07, 0.38 + rand() * 0.12, 0.09 + rand() * 0.05]);
+  const bushIdx = new Map(bushes.map((b, i) => [b, i]));
+  const putBush = (light) => (im, it, i) => {
+    const [x, z, sc] = it, r = bushRand[bushIdx.get(it)];
+    p.set(x, w.groundAt(x, z) - 0.05, z); q.setFromAxisAngle(up, r[0]); s.set(sc * r[1], sc * r[2], sc * r[3]);
+    im.setMatrixAt(i, m.compose(p, q, s)); im.setColorAt(i, col.setHSL(r[4], r[5], (r[6] + (light ? 0.1 : 0)) * (light ? 2.2 : 1)));
+  };
+  make(bushShape(Q.laag ? 0.7 : 0.62, Q.laag ? 1 : 0, 1), coreMat, bushes, putBush(false), true);
+  if (!Q.laag) {
+    make(bushShape(0.7, 1, 3), shellMat(0.35), bushes, putBush(true), true);
+    make(bushShape(0.78, 1, 2.3), shellMat(0.6), bushes, putBush(true));
   }
-  make(hedgeGeo, new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), hedges, (im, [x, z, yaw], i) => {
-    p.set(x, w.groundAt(x, z) - 0.05, z); q.setFromAxisAngle(up, yaw); s.set(1, 0.8 + rand() * 0.5, 1);
-    im.setMatrixAt(i, m.compose(p, q, s)); im.setColorAt(i, col.setHSL(0.26 + rand() * 0.05, 0.4, 0.08 + rand() * 0.04));
-  }, true);
+  // hagen: groene blokken langs de stoep (met een beetje variatie in hoogte)
+  const hedgeShape = (e, uvScale, seg) => {
+    const g = new THREE.BoxGeometry(1.75 + e * 2, 1 + e, 0.6 + e * 2, seg ? 7 : 1, seg ? 4 : 1, seg ? 3 : 1);
+    const pos = g.attributes.position, nor = g.attributes.normal, uv = g.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      // bladtextuur in meters over elk vlak (niet uitgerekt over de lange zijde)
+      const nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i));
+      uv.setXY(i, (nx > 0.5 ? z : x) * uvScale + e * 3, (ny > 0.5 ? z : y) * uvScale + e * 5);
+      if (seg) {
+        const n = Math.sin(x * 9.1 + y * 5.3) * Math.cos(z * 7.7 + x * 3.1) * 0.06 + Math.sin(i * 12.9898) * 0.03;
+        const round = y > 0.45 ? (Math.abs(z) / 0.3) * 0.08 : 0;
+        pos.setXYZ(i, x + n * 0.5, y + n - round, z * (1 + n * 1.5));
+      }
+    }
+    g.translate(0, 0.5 + e / 2, 0);
+    if (seg) g.computeVertexNormals();
+    return g;
+  };
+  const hedgeRand = hedges.map(() => [0.8 + rand() * 0.5, 0.26 + rand() * 0.05, 0.08 + rand() * 0.04]);
+  const hedgeIdx = new Map(hedges.map((h, i) => [h, i]));
+  const putHedge = (light) => (im, it, i) => {
+    const [x, z, yaw] = it, r = hedgeRand[hedgeIdx.get(it)];
+    p.set(x, w.groundAt(x, z) - 0.05, z); q.setFromAxisAngle(up, yaw); s.set(1, r[0], 1);
+    im.setMatrixAt(i, m.compose(p, q, s)); im.setColorAt(i, col.setHSL(r[1], 0.4, light ? (r[2] + 0.1) * 2.2 : r[2]));
+  };
+  make(hedgeShape(Q.laag ? 0 : -0.04, 1, Q.laag), coreMat, hedges, putHedge(false), true);
+  if (!Q.laag) {
+    make(hedgeShape(0.0, 1.5, false), shellMat(0.3), hedges, putHedge(true), true);
+    make(hedgeShape(0.035, 1.9, false), shellMat(0.5), hedges, putHedge(true));
+    make(hedgeShape(0.07, 1.3, false), shellMat(0.68), hedges, putHedge(true));
+  }
   // graspollen: drie smalle sprieten
   const blade = (a, h, lean) => { const g = new THREE.ConeGeometry(0.018, h, 3, 1, true); g.translate(0, h / 2, 0); g.rotateZ(lean); g.rotateY(a); return g; };
   const tuftGeo = mergeGeometries([blade(0, 0.32, 0.2), blade(1.3, 0.26, 0.35), blade(2.5, 0.36, 0.15), blade(3.8, 0.28, 0.3), blade(5.0, 0.3, 0.25)]);

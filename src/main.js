@@ -1,12 +1,10 @@
 import { GAME_NAME, PLACE } from './config.js';
 import * as THREE from 'three';
-import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { installLighting } from './lighting.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { Q, isMobile, setQuality } from './quality.js';
+import { SkyDome } from './sky.js';
+import { Post } from './post.js';
+import { buildGrass } from './grass.js';
 import { World } from './world.js';
 import { Input } from './input.js';
 import { UI, Minimap, BigMap } from './ui.js';
@@ -30,9 +28,8 @@ import { Interiors } from './interiors.js';
 import { startUpdateCheck } from './update.js';
 import { setupSecret } from './secret.js';
 
-const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 800;
-const HIGH = !isMobile;
-installLighting(); // randlicht en mist met zon in alle materialen (lighting.js)
+const USE_POST = !Q.laag; // nabewerking in de standen 'hoog' en 'midden'
+installLighting({ lamps: !Q.laag }); // randlicht, mist met zon en lantaarnlicht in alle materialen (lighting.js)
 
 const SPEED = { walk: 4.0, run: 6.5, bike: 12.5, skate: 9.5, keg: 2.8 };
 
@@ -40,20 +37,24 @@ class Game {
   constructor() {
     this.updaters = new Set(); // losse onderdelen die elk beeld iets doen (flyers, bus)
     this.canvas = document.getElementById('scene');
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });
+    // met nabewerking wordt de wereld eerst in een eigen beeld getekend (met eigen kantverzachting): dan is die van het scherm zelf niet nodig
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: !USE_POST, powerPreference: 'high-performance' });
+    this.quality = Q;
     // resolutie: niet meer pixels dan nodig (een groot of scherp desktopscherm is anders miljoenen pixels per beeld)
-    this.maxRatio = () => Math.max(Math.min(1, devicePixelRatio), Math.min(devicePixelRatio, isMobile ? 1.5 : 2, Math.sqrt((isMobile ? 2.2e6 : 2.6e6) / (innerWidth * innerHeight))));
+    this.maxRatio = () => Math.max(Math.min(1, devicePixelRatio), Math.min(devicePixelRatio, Q.maxRatio, Math.sqrt(Q.maxPixels / (innerWidth * innerHeight))));
     this.resScale = 1; // zakt automatisch als het spel hapert
     this.renderer.setPixelRatio(this.maxRatio());
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // tone mapping: met nabewerking gebeurt dat in de laatste stap (post.js), anders door three.js zelf
+    this.renderer.toneMapping = USE_POST ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.55;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 9000);
+    if (!USE_POST) this.camera.layers.enable(1); // laag 1 = naambordjes (met nabewerking apart getekend, er bovenop)
     this.clock = new THREE.Clock();
 
     this.input = new Input(this.canvas);
@@ -91,10 +92,17 @@ class Game {
 
     txt.textContent = 'Auto\'s parkeren en gevels schilderen...';
     this.setupSky();
+    await this.skyDome.load(Q.texFijn, () => { if (this.sunDir) this.updateEnvironment(); });
     this.setupPlayer();
+    try { this.grass = buildGrass(this.world, this.scene, Q); } catch (e) { console.warn('gras', e); }
     this.facades = new Facades(this);
     this.facades.build();
     try { buildStatues(this.facades); } catch (e) { console.warn('beelden', e); }
+    // etalages geven 's avonds licht op de stoep; daarna de kaart met alle lichtbronnen maken
+    try {
+      for (const f of Object.values(this.facades.frames)) if (f && Number.isFinite(f.x)) this.world.addLightSource(f.x + f.nx * 1.6, f.z + f.nz * 1.6, 2.6, 0.6);
+      this.world.bakeLamps();
+    } catch (e) { console.warn('lantaarnlicht', e); }
     try { buildTuin38(this); } catch (e) { console.warn('tuin Ringweg 38', e); }
     this.cars = new Vehicles(this);
     this.spawnVolvo();
@@ -127,6 +135,15 @@ class Game {
 
     const btn = document.getElementById('start-btn');
     btn.hidden = false;
+    // beeldkwaliteit kiezen: herlaadt de game in de gekozen stand
+    const qb = document.getElementById('quality-pick');
+    if (qb) {
+      qb.hidden = false;
+      for (const b of qb.querySelectorAll('button')) {
+        b.classList.toggle('on', b.dataset.q === Q.name);
+        b.addEventListener('click', () => { if (b.dataset.q !== Q.name) setQuality(b.dataset.q); });
+      }
+    }
     await new Promise((r) => btn.addEventListener('click', r, { once: true }));
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
@@ -169,6 +186,17 @@ class Game {
       document.getElementById('home-yes').addEventListener('click', (e) => { e.stopPropagation(); hide(); this.goHome(); });
       document.getElementById('home-no').addEventListener('click', (e) => { e.stopPropagation(); hide(); });
     }
+    // instellingen: beeldkwaliteit kiezen tijdens het spelen (de game laadt dan opnieuw in de gekozen stand)
+    {
+      const gb = document.getElementById('btn-settings'), sp = document.getElementById('settings-panel');
+      for (const el of [gb, sp]) for (const ev of ['pointerdown', 'touchstart']) el.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
+      gb.addEventListener('click', (e) => { e.stopPropagation(); sp.hidden = !sp.hidden; });
+      document.getElementById('settings-close').addEventListener('click', (e) => { e.stopPropagation(); sp.hidden = true; });
+      for (const b of sp.querySelectorAll('.sp-row button')) {
+        b.classList.toggle('on', b.dataset.q === Q.name);
+        b.addEventListener('click', (e) => { e.stopPropagation(); if (b.dataset.q !== Q.name) setQuality(b.dataset.q); else sp.hidden = true; });
+      }
+    }
     const sb = document.getElementById('btn-sound');
     const syncSound = () => { sb.classList.toggle('off', this.sfx.muted); sb.setAttribute('aria-label', this.sfx.muted ? 'Geluid aanzetten' : 'Geluid uitzetten'); };
     sb.addEventListener('click', () => { this.sfx.setMuted(!this.sfx.muted); syncSound(); });
@@ -190,98 +218,28 @@ class Game {
   // ------------------------------------------------------------ lucht, licht en nabewerking
 
   setupSky() {
-    const makeSky = () => {
-      const sky = new Sky();
-      sky.scale.setScalar(20000);
-      const u = sky.material.uniforms;
-      u.turbidity.value = 4; u.rayleigh.value = 1.4; u.mieCoefficient.value = 0.004; u.mieDirectionalG.value = 0.8;
-      return sky;
-    };
-    this.sky = makeSky();
-    this.scene.add(this.sky);
-    // aparte lucht voor de omgevingsreflecties (auto's, ramen, water)
-    this.envSky = makeSky();
-    this.envScene = new THREE.Scene();
-    this.envScene.add(this.envSky);
+    // fotografische lucht (sky.js): koepel in beeld, en dezelfde koepel voor reflecties en hemellicht
+    this.skyDome = new SkyDome();
+    this.scene.add(this.skyDome.mesh);
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
 
     this.sun = new THREE.DirectionalLight(0xfff1dc, 3.2);
     this.sun.castShadow = true;
-    const s = isMobile ? 1024 : 2048;
-    this.sun.shadow.mapSize.set(s, s);
-    const c = this.sun.shadow.camera;
-    c.left = -60; c.right = 60; c.top = 60; c.bottom = -60; c.near = 1; c.far = 600;
-    this.sun.shadow.bias = -0.0012;
-    this.sun.shadow.normalBias = 0.5;
+    this.sun.shadow.mapSize.set(Q.schaduw, Q.schaduw);
+    const c = this.sun.shadow.camera, R = Q.schaduwBereik;
+    c.left = -R; c.right = R; c.top = R; c.bottom = -R; c.near = 1; c.far = 700;
+    this.sun.shadow.bias = -0.0008;
+    this.sun.shadow.normalBias = Q.schaduw >= 4096 ? 0.28 : 0.5;
     this.scene.add(this.sun, this.sun.target);
     this.hemi = new THREE.HemisphereLight(0xbfd8ff, 0x5c5a3a, 0.7);
     this.scene.add(this.hemi);
-    this.scene.fog = new THREE.Fog(0xc9d8e6, 140, 4200); // luchtperspectief: verderop zachter en lichter
-
-    // wolken: een koepel met langzaam drijvende stapelwolken
-    this.clouds = new THREE.Mesh(new THREE.SphereGeometry(8000, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uDay: { value: 1 }, uTint: { value: new THREE.Color(1, 1, 1) } },
-      vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `
-        uniform float uTime, uDay; uniform vec3 uSun, uTint; varying vec3 vDir;
-        float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-        float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
-          return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
-        float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * n(p); p = p * 2.03 + 17.1; a *= 0.5; } return v; }
-        void main(){
-          if (vDir.y < 0.015) discard;
-          vec2 p = vDir.xz / (vDir.y + 0.08) * 1.6 + vec2(uTime * 0.004, uTime * 0.0015);
-          float d = fbm(p);
-          float c = smoothstep(0.5, 0.78, d);
-          if (c < 0.01) discard;
-          // onderkant donkerder, zonkant lichter
-          float lit = 0.7 + 0.3 * smoothstep(0.45, 0.9, fbm(p + uSun.xz * 0.15));
-          vec3 col = mix(vec3(0.62, 0.66, 0.72), vec3(1.0), lit) * uTint;
-          col *= mix(0.12, 1.0, uDay);
-          float a = c * smoothstep(0.015, 0.2, vDir.y) * 0.92;
-          gl_FragColor = vec4(col, a);
-        }`,
-      transparent: true, depthWrite: false, side: THREE.BackSide, fog: false,
-    }));
-    this.clouds.renderOrder = -1;
-    this.scene.add(this.clouds);
-
-    const n = 1500, pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.95);
-      pos[i * 3] = Math.sin(ph) * Math.cos(th) * 7000;
-      pos[i * 3 + 1] = Math.cos(ph) * 7000;
-      pos[i * 3 + 2] = Math.sin(ph) * Math.sin(th) * 7000;
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.stars = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, opacity: 0, fog: false }));
-    this.scene.add(this.stars);
+    // mist: fogFar regelt het luchtperspectief, fogNear de hoogtemist in het dal (zie lighting.js)
+    this.scene.fog = new THREE.Fog(0xc9d8e6, 0.5, 7000);
   }
 
   setupPost() {
-    if (!HIGH) return;
-    const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 });
-    this.composer = new EffectComposer(this.renderer, rt);
-    this.composer.setPixelRatio(this.renderer.getPixelRatio());
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.25, 0.6, 0.92);
-    this.composer.addPass(this.bloom);
-    this.composer.addPass(new OutputPass());
-    // kleur: iets warmer, wat meer contrast en een zacht vignet
-    this.composer.addPass(new ShaderPass({
-      uniforms: { tDiffuse: { value: null } },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
-        void main(){
-          vec3 c = texture2D(tDiffuse, vUv).rgb;
-          c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, 1.08);
-          c = (c - 0.5) * 1.05 + 0.5;
-          c *= vec3(1.02, 1.0, 0.97);
-          float v = smoothstep(1.15, 0.35, length(vUv - 0.5) * 1.35);
-          gl_FragColor = vec4(c * mix(0.78, 1.0, v), 1.0);
-        }`,
-    }));
+    if (!USE_POST) return;
+    this.post = new Post(this.renderer, this.scene, this.camera, Q);
   }
 
   // pixelverhouding (en grootte) opnieuw instellen voor scherm en nabewerking
@@ -289,7 +247,7 @@ class Game {
     const r = Math.max(0.5, this.maxRatio() * this.resScale);
     this.renderer.setPixelRatio(r);
     this.renderer.setSize(innerWidth, innerHeight);
-    if (this.composer) { this.composer.setPixelRatio(r); this.composer.setSize(innerWidth, innerHeight); }
+    this.post?.setSize();
   }
 
   // Automatische beeldkwaliteit: hapert het (minder dan ~48 beelden per seconde), dan minder pixels;
@@ -310,76 +268,108 @@ class Game {
       if (q.low >= 10) statsPerf('haperend', device, fps);
       else if (q.play >= 120) statsPerf('soepel', device, fps);
     }
-    if (fps < 48) {
+    // In de hoogste stand is 30 beelden per seconde goed genoeg; pas daaronder wordt er afgeschaald.
+    const lowAt = Q.hoog ? 27 : Q.name === 'midden' ? 36 : 48, highAt = Q.hoog ? 45 : 57;
+    if (fps < lowAt) {
       q.good = 0;
-      if (this.resScale > 0.62) { this.resScale = Math.max(0.6, this.resScale - 0.12); this.applyResolution(); }
-      else if (this.composer && !this.postOff) { this.postOff = true; } // laatste stap: zonder nabewerking
-    } else if (fps > 57) {
+      // eerst de duurste effecten uit, dan minder pixels, en als laatste de hele nabewerking uit
+      const on = this.post?.on;
+      if (on?.dof || on?.rays) { on.dof = false; on.rays = false; }
+      else if (this.resScale > 0.8) { this.resScale = Math.max(0.78, this.resScale - 0.12); this.applyResolution(); }
+      else if (on?.ao) on.ao = false;
+      else if (!q.light && (this.grass || Q.schaduw > 2048)) {
+        // lichter: het verre gras weg en een kleinere schaduwkaart
+        q.light = true;
+        if (this.grass?.rings[1]) this.grass.rings[1].visible = false;
+        if (Q.schaduw > 2048) { this.sun.shadow.mapSize.set(2048, 2048); this.sun.shadow.map?.dispose(); this.sun.shadow.map = null; Q.schaduw = 2048; }
+      }
+      else if (this.resScale > 0.62) { this.resScale = Math.max(0.6, this.resScale - 0.12); this.applyResolution(); }
+      else if (this.post && !this.postOff) { this.postOff = true; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.camera.layers.enable(1); } // laatste stap: zonder nabewerking
+    } else if (fps > highAt) {
       q.good += 2;
       if (q.good >= 10 && this.resScale < 1) { q.good = 0; this.resScale = Math.min(1, this.resScale + 0.08); this.applyResolution(); }
     } else q.good = 0;
   }
 
-  render() {
-    if (this.composer && !this.postOff) this.composer.render();
-    else this.renderer.render(this.scene, this.camera);
+  render(dt) {
+    if (this.post && !this.postOff) {
+      this.post.render(dt);
+      // naambordjes (laag 1) er scherp bovenop, zonder nabewerking
+      const r = this.renderer, cam = this.camera, auto = r.autoClear, sh = r.shadowMap.autoUpdate;
+      r.autoClear = false; r.shadowMap.autoUpdate = false;
+      cam.layers.set(1);
+      r.render(this.scene, cam);
+      cam.layers.set(0);
+      r.autoClear = auto; r.shadowMap.autoUpdate = sh;
+    } else this.renderer.render(this.scene, this.camera);
   }
 
   applyTime() {
     const t = this.timeOfDay;
     const dayAngle = ((t - 6) / 12) * Math.PI;
-    const elev = Math.sin(dayAngle) * 52;
+    const elev = Math.sin(dayAngle) * 52; // om 9 en 15 uur staat de zon op 37 graden: laag en warm, met lange schaduwen
     const az = 100 + ((t - 6) / 12) * 160;
     const phi = THREE.MathUtils.degToRad(90 - Math.max(elev, -10));
     const theta = THREE.MathUtils.degToRad(az);
     const sunDir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
     this.sunDir = sunDir;
-    this.sky.material.uniforms.sunPosition.value.copy(sunDir);
-    this.envSky.material.uniforms.sunPosition.value.copy(sunDir);
 
     const day = THREE.MathUtils.smoothstep(elev, -6, 12);
     const night = 1 - day;
     this.night = night;
     const lightsOn = THREE.MathUtils.smoothstep(night, 0.4, 1);
+    this.world.wet = lightsOn * 0.85; // 's avonds is de straat nat (na een bui): glans, plassen en spiegelende lantaarns
     this.world.setNight(lightsOn);
     this.facades?.setNight(lightsOn);
     this.cars?.setNight(lightsOn);
-    this.stars.material.opacity = THREE.MathUtils.smoothstep(night, 0.6, 1);
-    if (this.clouds) {
-      const u = this.clouds.material.uniforms;
-      u.uSun.value.copy(sunDir); u.uDay.value = day;
-      const low = (1 - THREE.MathUtils.smoothstep(sunDir.y, 0.0, 0.3)) * day;
-      u.uTint.value.setRGB(1, 1 - 0.2 * low, 1 - 0.38 * low);
-    }
 
     const dusk = THREE.MathUtils.smoothstep(elev, -4, 6) * (1 - THREE.MathUtils.smoothstep(elev, 6, 22));
-    // key light: de zon, warmer naarmate hij lager staat
+    // hoofdlicht: de zon, warmer naarmate hij lager staat; 's nachts koel maanlicht uit dezelfde hoek
     const low = 1 - THREE.MathUtils.smoothstep(elev, 10, 50);
-    this.sun.intensity = 3.5 * day + 0.95 * night; // maanlicht: 's nachts net iets lichter
-    this.sun.color.setRGB(1, 0.93 - low * 0.08 - dusk * 0.3, 0.83 - low * 0.16 - dusk * 0.45);
-    if (night > 0.5) this.sun.color.setRGB(0.55, 0.65, 1);
-    // fill: koele, blauwe lucht in de schaduwen en weinig warm licht van de grond (warm-koudcontrast)
-    this.hemi.intensity = 0.95 * day + 0.68 * night;
-    this.hemi.color.setRGB(0.5 * day + 0.25 * night, 0.66 * day + 0.3 * night, 1 * day + 0.55 * night);
+    const nk = Q.laag ? 1.7 : 1; // op de telefoon geven de lantaarns geen licht: daar is het maanlicht sterker
+    this.sun.intensity = 4.4 * day + 0.8 * nk * night;
+    this.sun.color.setRGB(1, 0.94 - low * 0.07 - dusk * 0.3, 0.84 - low * 0.14 - dusk * 0.45);
+    if (night > 0.5) this.sun.color.setRGB(0.5, 0.63, 1);
+    // opvullicht: het meeste komt nu van de echte lucht (omgevingslicht); de hemisfeer vult alleen nog wat bij
+    this.hemi.intensity = 0.3 * day + 0.5 * nk * night;
+    this.hemi.color.setRGB(0.55 * day + 0.22 * night, 0.68 * day + 0.3 * night, 1 * day + 0.6 * night);
     this.hemi.groundColor.setRGB(0.3, 0.28, 0.22);
-    this.renderer.toneMappingExposure = 0.62 * day + 1.02 * night;
-    if (this.bloom) { this.bloom.strength = 0.24 + night * 0.5; this.bloom.threshold = 0.88 - night * 0.26; this.bloom.radius = 0.7; }
+    this.renderer.toneMappingExposure = 0.68 * day + 1.05 * night;
+    if (this.post) {
+      const bl = this.post.bloom;
+      bl.strength = 0.16 + night * 0.3; bl.threshold = 1.0 - night * 0.3; bl.radius = 0.75;
+      this.post.sunDir.copy(sunDir);
+      this.post.sunColor.copy(this.sun.color).multiplyScalar(1.4);
+      this.post.raysAmount = day;
+    }
 
-    const fogDay = new THREE.Color(0xbfd2e6).lerp(new THREE.Color(0xe8b98a), dusk * 0.6 + low * 0.12);
-    this.scene.fog.color.copy(fogDay.lerp(new THREE.Color(0x0b1424), night));
-    this.sky.visible = night < 0.97;
-    this.scene.background = night >= 0.97 ? new THREE.Color(0x060b16) : null;
-
-    // omgevingsreflecties bijwerken
-    // 's Nachts geen reflecties van de lucht: met de zon onder de horizon gaf dat op sommige telefoons
-    // (iPhone) gekleurde spikkels op de grond. Het maanlicht en het hemellicht doen het dan alleen.
-    if (this.envRT) { this.envRT.dispose(); this.envRT = null; }
-    if (night < 0.5) {
-      this.envRT = this.pmrem.fromScene(this.envScene, 0, 1, 20000);
-      this.scene.environment = this.envRT.texture;
-      this.scene.environmentIntensity = 0.38 * day + 0.08 * night; // minder grijze opvulling, de blauwe lucht doet het werk
-    } else this.scene.environment = null;
+    // lucht: koepel meedraaien met de zon, mistkleur = kleur van de horizon op de foto
+    const sm = this.skyDome.meta;
+    const hz = sm ? new THREE.Color(...sm.dag.horizon).multiplyScalar(0.78) : new THREE.Color(0x9fb4c8);
+    const fogDay = hz.lerp(new THREE.Color(0xe8b98a), dusk * 0.6);
+    const fogNight = new THREE.Color(0.012, 0.02, 0.04);
+    this.scene.fog.color.copy(fogDay.lerp(fogNight, night));
+    this.scene.fog.near = 0.5 + night * 0.4; // 's nachts wat meer mist in het dal
+    this.skyDome.uniforms.uGround.value.copy(this.scene.fog.color);
+    this.skyDome.uniforms.uGainDay.value = 0.78;
+    this.skyDome.uniforms.uGainNight.value = 0.02;
+    this.skyDome.setSun(sunDir, night);
+    this.scene.background = null;
+    this.updateEnvironment();
     this.missions?.refresh();
+  }
+
+  // Omgevingsreflecties en hemellicht uit de lucht zelf. Op telefoons 's nachts uit (dat gaf daar ooit
+  // gekleurde spikkels op de grond); het maanlicht en het hemellicht doen het dan alleen.
+  updateEnvironment() {
+    const night = this.night ?? 0;
+    if (this.envRT) { this.envRT.dispose(); this.envRT = null; }
+    if (!Q.laag || night < 0.5) {
+      this.envRT = this.pmrem.fromScene(this.skyDome.envScene, 0, 1, 1000);
+      this.scene.environment = this.envRT.texture;
+      this.envBase = 1.05 * (1 - night) + 0.9 * night;
+      this.scene.environmentIntensity = this.interior ? 0.15 : this.envBase;
+    } else this.scene.environment = null;
   }
 
   // Nacht duurt niet eindeloos: het wordt weer dag als je een andere missie begint, als je een nachtmissie
@@ -1478,8 +1468,18 @@ class Game {
     if (!this.interior) this.updateAmbience(dt); else if (this.amb) { this.amb.markt?.set(0); this.amb.water?.set(0); }
     this.updateCamera(dt);
     this.updateHud(dt);
-    if (this.clouds) { this.clouds.material.uniforms.uTime.value = this.time; this.clouds.position.copy(this.camera.position); }
-    this.render();
+    this.skyDome.update(this.camera, this.time);
+    this.grass?.update(this.camera, this.time);
+    this.updateDof();
+    this.render(dt);
+  }
+
+  // Scherptediepte tijdens gesprekken: de achtergrond wordt zacht, zoals in een film. Niet in minispellen.
+  updateDof() {
+    if (!this.post) return;
+    const talk = this.ui.dialogOpen && !this.minigame && !this.pov && !this.race && !this.penalty && this.started && !document.body.classList.contains('intro');
+    const p = this.player;
+    this.post.setDof(talk ? 1 : 0, talk ? Math.max(2.5, this.camera.position.distanceTo(this._dofV?.set(p.x, p.y + 1.5, p.z) || (this._dofV = new THREE.Vector3(p.x, p.y + 1.5, p.z)))) : 0);
   }
 
   // Omgevingsgeluid: geroezemoes op de Markt, kabbelend water bij de Gulp, meer vogels in het groen,
@@ -1856,12 +1856,24 @@ class Game {
       this.camera.position.x += (Math.random() - 0.5) * this.shake * 0.6;
       this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.6;
     }
-    if (this.sunDir) {
-      this.sun.position.set(p.x + this.sunDir.x * 250, p.y + Math.max(this.sunDir.y, 0.15) * 250, p.z + this.sunDir.z * 250);
-      this.sun.target.position.set(p.x, p.y, p.z);
-    }
-    this.sky.position.copy(this.camera.position);
-    this.stars.position.copy(this.camera.position);
+    this.aimSun(p.x - Math.sin(this.camYaw) * Q.schaduwBereik * 0.45, p.y, p.z - Math.cos(this.camYaw) * Q.schaduwBereik * 0.45);
+  }
+
+  // De schaduwkaart ligt rond een punt een eind vóór de speler (in de kijkrichting), zodat het zichtbare deel
+  // van de straat er helemaal in valt. Het middelpunt klikt vast op het raster van de schaduwkaart: dan
+  // trillen de schaduwranden niet als je beweegt.
+  aimSun(cx, cy, cz) {
+    if (!this.sunDir) return;
+    const d = this._sd || (this._sd = { z: new THREE.Vector3(), x: new THREE.Vector3(), y: new THREE.Vector3(), c: new THREE.Vector3() });
+    d.z.set(this.sunDir.x, Math.max(this.sunDir.y, 0.15), this.sunDir.z).normalize();
+    d.x.set(0, 1, 0).cross(d.z).normalize();
+    d.y.copy(d.z).cross(d.x);
+    const texel = (Q.schaduwBereik * 2) / Q.schaduw;
+    d.c.set(cx, cy, cz);
+    const sx = d.c.dot(d.x), sy = d.c.dot(d.y);
+    d.c.addScaledVector(d.x, Math.round(sx / texel) * texel - sx).addScaledVector(d.y, Math.round(sy / texel) * texel - sy);
+    this.sun.target.position.copy(d.c);
+    this.sun.position.copy(d.c).addScaledVector(d.z, 300);
   }
 
   // camera binnen: dichtbij en altijd binnen de muren
@@ -1943,6 +1955,7 @@ function makeLabel(text, { small = false } = {}) {
   const h = small ? 0.45 : 2.6;
   s.scale.set((h * w) / c.height, h, 1);
   s.renderOrder = 10;
+  s.layers.set(1); // naambordjes worden na de nabewerking getekend: altijd scherp en niet meegekleurd
   return s;
 }
 

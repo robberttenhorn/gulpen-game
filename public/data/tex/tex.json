@@ -70,10 +70,10 @@
   ]
  },
  "asfalt": {
-  "id": "asphalt_02",
-  "size": 3.0,
+  "id": "clean_asphalt",
+  "size": 2.1,
   "authors": [
-   "Rob Tuytel"
+   "Dimitrios Savva"
   ]
  },
  "klinkers": {
