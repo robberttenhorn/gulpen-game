@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 import { popText, flash, shake, bump, makeCombo, Particles, fitCanvas } from './minifx.js';
 import { makeFinishBanner } from './props.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
 const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; return m; };
@@ -30,19 +32,40 @@ function makeCone() {
 // ------------------------------------------------------------ slalom op de fiets
 
 // Een poortje: twee pionnen met elk een paaltje en een doek ertussen met het nummer.
+// Het doek hangt aan een dwarsbuis en bolt iets op (geen kaarsrecht vlak), met een zoom en zeilringen.
 function makeGate(num, half) {
   const g = new THREE.Group();
   const c = document.createElement('canvas');
-  c.width = 256; c.height = 64;
+  c.width = 512; c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#ff6d00'; ctx.fillRect(0, 0, 256, 64);
-  ctx.fillStyle = '#fff'; ctx.font = '800 44px "Baloo 2", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(`POORTJE ${num}`, 128, 34);
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  const banner = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, 0.5), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, emissive: 0x000000 }));
+  ctx.fillStyle = '#ff6d00'; ctx.fillRect(0, 0, 512, 128);
+  // zachte plooien in het doek en een lichtere bovenkant
+  for (let i = 0; i < 9; i++) { const x0 = 20 + i * 56 + (i % 3) * 9, gr = ctx.createLinearGradient(x0, 0, x0 + 44, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, i % 2 ? 'rgba(120,40,0,0.16)' : 'rgba(255,255,255,0.13)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(x0, 0, 44, 128); }
+  const top = ctx.createLinearGradient(0, 0, 0, 128); top.addColorStop(0, 'rgba(255,255,255,0.16)'); top.addColorStop(0.4, 'rgba(255,255,255,0)'); top.addColorStop(1, 'rgba(90,30,0,0.2)');
+  ctx.fillStyle = top; ctx.fillRect(0, 0, 512, 128);
+  // omgenaaide zoom met stiksel en zeilringen
+  ctx.strokeStyle = 'rgba(120,45,0,0.55)'; ctx.lineWidth = 2; ctx.setLineDash([9, 6]); ctx.strokeRect(7, 7, 498, 114); ctx.setLineDash([]);
+  for (const ex of [18, 494]) for (const ey of [18, 110]) { ctx.fillStyle = '#d9dde0'; ctx.beginPath(); ctx.arc(ex, ey, 7, 0, 7); ctx.fill(); ctx.fillStyle = '#5a3a20'; ctx.beginPath(); ctx.arc(ex, ey, 3, 0, 7); ctx.fill(); }
+  ctx.font = '800 88px "Baloo 2", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(110,40,0,0.45)'; ctx.fillText(`POORTJE ${num}`, 259, 71);
+  ctx.fillStyle = '#fff'; ctx.fillText(`POORTJE ${num}`, 256, 68);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const geo = new THREE.PlaneGeometry(half * 2, 0.5, 14, 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) { const u = pos.getX(i) / half, v = pos.getY(i) / 0.25; pos.setZ(i, (1 - u * u) * (0.05 + (1 - v) * 0.025) + Math.sin(u * 9) * 0.012); }
+  geo.computeVertexNormals();
+  const banner = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, emissive: 0x000000, roughness: 0.85 }));
   banner.position.y = 2.1;
+  banner.castShadow = true;
   g.add(banner);
-  for (const x of [-half, half]) g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.35, 6), std(0xffffff), x, 1.18, 0));
+  // paaltjes, dwarsbuis en doppen: één samengevoegd stuk aluminium
+  const bits = [];
+  for (const x of [-half, half]) {
+    bits.push(new THREE.CylinderGeometry(0.04, 0.04, 2.35, 10).translate(x, 1.18, 0));
+    bits.push(new THREE.SphereGeometry(0.055, 10, 8).translate(x, 2.37, 0));
+  }
+  bits.push(new THREE.CylinderGeometry(0.022, 0.022, half * 2, 8).rotateZ(Math.PI / 2).translate(0, 2.37, 0));
+  g.add(mesh(mergeGeometries(bits), std(0xf2f4f5, { roughness: 0.35, metalness: 0.35 })));
   g.userData.banner = banner;
   return g;
 }
@@ -168,6 +191,236 @@ export function startSlalom(g, f, { gates = 6, spacing = 7, limit = 30 } = {}) {
 
 // ------------------------------------------------------------ pils vangen
 
+// Tekenhulpjes voor het vangspel. Alles wat niet beweegt (het café, de toog) en alles wat vaak terugkomt
+// (glas, dienblad, arm) wordt één keer voorgetekend op een los canvas; per beeld is het dan alleen plakken.
+const offscreen = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
+const seeded = (seed) => { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
+const LAMPS = [0, 1, 2, 3, 4, 5].map((i) => 0.1 + i * 0.16); // plek van de hanglampen (deel van de breedte)
+
+// Het café achter de toog: onscherp (klein getekend en uitvergroot, zoals een camera met weinig scherptediepte),
+// warm verlicht door hanglampen, met de avond achter de ramen. Tekent in eenheden van u (1/100 van de hoogte).
+function paintCafeRoom(Wu, Hu, mu) {
+  const S = 2.5, rnd = seeded(23);
+  const c = offscreen((Wu + 2 * mu) * S, (Hu + mu) * S), x = c.getContext('2d');
+  x.scale(S, S); x.translate(mu, mu);
+  // muur: donker bovenin, warm waar het lamplicht valt
+  let g = x.createLinearGradient(0, 0, 0, Hu);
+  g.addColorStop(0, '#120a06'); g.addColorStop(0.3, '#3d2514'); g.addColorStop(0.62, '#5a381f'); g.addColorStop(1, '#3a2313');
+  x.fillStyle = g; x.fillRect(-mu, -mu, Wu + 2 * mu, Hu + mu);
+  // ramen links en rechts: koel avondlicht tegenover het warme café
+  for (const wx of [0.035, 0.845]) {
+    const x0 = Wu * wx, ww = Wu * 0.12, y0 = Hu * 0.2, wh = Hu * 0.42;
+    g = x.createLinearGradient(0, y0, 0, y0 + wh); g.addColorStop(0, '#20355c'); g.addColorStop(0.7, '#4a6a94'); g.addColorStop(1, '#8a7a78');
+    x.fillStyle = g; x.fillRect(x0, y0, ww, wh);
+    x.fillStyle = '#ffd9a0'; for (let i = 0; i < 4; i++) x.fillRect(x0 + ww * (0.15 + rnd() * 0.7), y0 + wh * (0.62 + rnd() * 0.25), 1.2, 1.6); // lichtjes aan de overkant
+    x.strokeStyle = '#24140a'; x.lineWidth = 1.6; x.strokeRect(x0, y0, ww, wh);
+    x.beginPath(); x.moveTo(x0 + ww / 2, y0); x.lineTo(x0 + ww / 2, y0 + wh); x.moveTo(x0, y0 + wh * 0.4); x.lineTo(x0 + ww, y0 + wh * 0.4); x.stroke();
+    x.fillStyle = 'rgba(120,40,30,0.75)'; x.fillRect(x0 - 2.5, y0 - 1.5, 5, wh + 3); x.fillRect(x0 + ww - 2.5, y0 - 1.5, 5, wh + 3); // gordijnen
+  }
+  // lijstjes aan de muur
+  for (const fx of [0.24, 0.335, 0.63, 0.74]) {
+    const fw = 8 + rnd() * 7, fh = 9 + rnd() * 6, x0 = Wu * fx, y0 = Hu * (0.24 + rnd() * 0.08);
+    x.fillStyle = '#1d1009'; x.fillRect(x0, y0, fw, fh);
+    x.fillStyle = ['#8a7a5c', '#6f7f6a', '#9a6a48', '#77706a'][Math.floor(rnd() * 4)]; x.fillRect(x0 + 1.2, y0 + 1.2, fw - 2.4, fh - 2.4);
+  }
+  // plank met flessen in het midden
+  const sx0 = Wu * 0.41, sw = Wu * 0.18, sy = Hu * 0.5;
+  x.fillStyle = 'rgba(20,10,5,0.55)'; x.fillRect(sx0 - 1, sy - 15, sw + 2, 15);
+  for (let bx = sx0 + 1; bx < sx0 + sw - 2; bx += 2.3 + rnd() * 1.1) {
+    const bh = 5 + rnd() * 4.5, bw = 1.4 + rnd() * 0.6;
+    x.fillStyle = ['#2a5a33', '#9a661c', '#b9b29f', '#4f2014', '#a8862f', '#33506b'][Math.floor(rnd() * 6)];
+    x.fillRect(bx, sy - bh, bw, bh); x.fillRect(bx + bw * 0.3, sy - bh - 2.6, bw * 0.4, 2.8);
+    x.fillStyle = 'rgba(255,240,200,0.5)'; x.fillRect(bx + bw * 0.15, sy - bh + 0.8, bw * 0.2, bh - 1.6);
+  }
+  x.fillStyle = '#7a4d26'; x.fillRect(sx0 - 2, sy, sw + 4, 1.6);
+  // lambrisering: staande planken met een lijst erboven
+  const ly = Hu * 0.66;
+  for (let px = -mu - 3; px < Wu + mu; px += 7) { const k = 0.75 + rnd() * 0.5; x.fillStyle = `rgba(${Math.round(52 * k)},${Math.round(29 * k)},${Math.round(14 * k)},0.92)`; x.fillRect(px, ly, 6.6, Hu - ly); }
+  x.fillStyle = '#6b4322'; x.fillRect(-mu, ly - 1.4, Wu + 2 * mu, 1.8);
+  // gasten aan tafeltjes: donkere gestalten met een kaarsje op tafel
+  for (const gx of [0.19, 0.29, 0.55, 0.68, 0.79]) {
+    const cx = Wu * (gx + (rnd() - 0.5) * 0.03), by = Hu * (0.93 + rnd() * 0.05), sc = 0.85 + rnd() * 0.3;
+    x.fillStyle = 'rgba(16,9,5,0.7)';
+    x.beginPath(); x.ellipse(cx, by - 15 * sc, 3.4 * sc, 4 * sc, 0, 0, 7); x.fill();
+    x.beginPath(); x.ellipse(cx, by, 8 * sc, 11 * sc, 0, Math.PI, 0); x.fill();
+    x.fillStyle = 'rgba(255,196,110,0.85)'; x.beginPath(); x.arc(cx + 11 * sc, by - 4, 0.9, 0, 7); x.fill();
+  }
+  // hanglampen: snoer, koperen kap en het gloeiende peertje eronder
+  for (const lf of LAMPS) {
+    const lx = Wu * lf, ly2 = 12;
+    g = x.createRadialGradient(lx, ly2 + 1, 0, lx, ly2 + 1, 20);
+    g.addColorStop(0, 'rgba(255,214,150,0.6)'); g.addColorStop(0.3, 'rgba(255,170,90,0.22)'); g.addColorStop(1, 'rgba(255,150,60,0)');
+    x.fillStyle = g; x.fillRect(lx - 20, ly2 - 19, 40, 40);
+    x.strokeStyle = '#0c0704'; x.lineWidth = 0.5; x.beginPath(); x.moveTo(lx, -mu); x.lineTo(lx, ly2 - 5); x.stroke();
+    x.fillStyle = '#7b4a22'; x.beginPath(); x.moveTo(lx - 1.6, ly2 - 5.5); x.lineTo(lx + 1.6, ly2 - 5.5); x.lineTo(lx + 5, ly2); x.lineTo(lx - 5, ly2); x.closePath(); x.fill();
+    x.fillStyle = '#fff0cf'; x.beginPath(); x.ellipse(lx, ly2 + 0.6, 3.4, 1.5, 0, 0, 7); x.fill();
+  }
+  // losse lichtvlekjes (glazen, kaarsjes): geeft de onscherpte diepte
+  for (let i = 0; i < 46; i++) {
+    const r = 0.5 + rnd() * 1.6;
+    x.fillStyle = `rgba(255,${170 + rnd() * 60},${90 + rnd() * 70},${0.06 + rnd() * 0.2})`;
+    x.beginPath(); x.arc(rnd() * Wu, Hu * (0.22 + rnd() * 0.7), r, 0, 7); x.fill();
+  }
+  return c;
+}
+
+// Het hele vaste beeld: het onscherpe café, de gelakte houten toog (vanaf 79% van de hoogte) en een vignet.
+// M is een rand rondom, zodat het trillen bij een gebroken glas geen kale strook laat zien.
+function paintBarScene(W, H, M) {
+  const u = H / 100, rnd = seeded(7), barY = H * 0.79;
+  const c = offscreen(W + 2 * M, H + 2 * M), x = c.getContext('2d');
+  x.translate(M, M);
+  // café: klein voortekenen, verzachten en dan uitvergroten = onscherpte zoals bij weinig scherptediepte
+  const room = paintCafeRoom(Math.min(W / u, 700), 80, Math.min(M / u, 12)); // begrensd, voor het geval het canvas (nog) bijna geen hoogte heeft
+  let soft = offscreen(room.width / 2, room.height / 2); soft.getContext('2d').drawImage(room, 0, 0, soft.width, soft.height);
+  for (const r of [0.9, 1.8]) { // twee keer een rondje verschoven kopieën middelen = egale onscherpte, ook op toestellen zonder canvasfilter
+    const d = offscreen(soft.width, soft.height), dx = d.getContext('2d');
+    [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r], [r * 0.7, r * 0.7], [-r * 0.7, r * 0.7], [r * 0.7, -r * 0.7], [-r * 0.7, -r * 0.7]].forEach(([ox, oy], i) => { dx.globalAlpha = 1 / (i + 1); dx.drawImage(soft, ox, oy); });
+    soft = d;
+  }
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  x.drawImage(soft, -M, -M, W + 2 * M, 80 * u + M);
+  // lichtkegels onder de lampen
+  x.globalCompositeOperation = 'lighter';
+  for (const lf of LAMPS) {
+    const lx = W * lf, g = x.createRadialGradient(lx, 14 * u, 0, lx, 30 * u, 44 * u);
+    g.addColorStop(0, 'rgba(255,190,110,0.16)'); g.addColorStop(1, 'rgba(255,160,70,0)');
+    x.fillStyle = g; x.fillRect(lx - 46 * u, 0, 92 * u, barY);
+  }
+  x.globalCompositeOperation = 'source-over';
+  // schaduw vlak achter de toog (de vloer zie je niet)
+  let g = x.createLinearGradient(0, barY - 9 * u, 0, barY); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(8,4,2,0.62)');
+  x.fillStyle = g; x.fillRect(-M, barY - 9 * u, W + 2 * M, 9 * u);
+  // de toog: donker gelakt hout
+  g = x.createLinearGradient(0, barY, 0, H + M);
+  g.addColorStop(0, '#5a3619'); g.addColorStop(0.18, '#43260f'); g.addColorStop(0.6, '#2c170a'); g.addColorStop(1, '#190d06');
+  x.fillStyle = g; x.fillRect(-M, barY, W + 2 * M, H - barY + M);
+  // nerf: lange, licht golvende strepen, dichter op elkaar naar achteren (perspectief)
+  const bh = H - barY + M;
+  x.lineCap = 'round';
+  for (let i = 0; i < 150; i++) {
+    const d = Math.pow(rnd(), 1.5), y = barY + 0.4 * u + d * bh, len = (18 + rnd() * 70) * u * (0.5 + d), x0 = -M + rnd() * (W + 2 * M) - len / 2;
+    x.strokeStyle = rnd() < 0.55 ? `rgba(196,128,62,${0.05 + rnd() * 0.13})` : `rgba(8,3,1,${0.08 + rnd() * 0.2})`;
+    x.lineWidth = Math.max(0.6, (0.1 + rnd() * 0.3) * u * (0.45 + d));
+    x.beginPath(); x.moveTo(x0, y); x.bezierCurveTo(x0 + len * 0.3, y + (rnd() - 0.5) * u * (0.3 + d), x0 + len * 0.7, y + (rnd() - 0.5) * u * (0.3 + d), x0 + len, y + (rnd() - 0.5) * 0.5 * u); x.stroke();
+  }
+  // naden tussen de planken
+  for (const f of [0.2, 0.52]) { x.fillStyle = 'rgba(6,2,1,0.5)'; x.fillRect(-M, barY + (H - barY) * f, W + 2 * M, Math.max(1, 0.22 * u)); x.fillStyle = 'rgba(255,200,140,0.1)'; x.fillRect(-M, barY + (H - barY) * f + Math.max(1, 0.22 * u), W + 2 * M, Math.max(1, 0.16 * u)); }
+  // de lampen spiegelen in de lak: langgerekte warme vegen
+  x.globalCompositeOperation = 'lighter';
+  for (const lf of LAMPS) {
+    x.save(); x.translate(W * lf, barY + 0.6 * u); x.scale(1, 3.4);
+    const rg = x.createRadialGradient(0, 0, 0, 0, 0, 5.5 * u); rg.addColorStop(0, 'rgba(255,196,120,0.34)'); rg.addColorStop(0.4, 'rgba(255,150,70,0.12)'); rg.addColorStop(1, 'rgba(255,140,60,0)');
+    x.fillStyle = rg; x.fillRect(-6 * u, 0, 12 * u, 6 * u); x.restore();
+  }
+  x.globalCompositeOperation = 'source-over';
+  // achterrand van de toog vangt licht
+  g = x.createLinearGradient(0, barY - 0.2 * u, 0, barY + 1.1 * u); g.addColorStop(0, 'rgba(255,214,160,0.75)'); g.addColorStop(0.35, 'rgba(255,190,120,0.3)'); g.addColorStop(1, 'rgba(255,190,120,0)');
+  x.fillStyle = g; x.fillRect(-M, barY - 0.2 * u, W + 2 * M, 1.3 * u);
+  // vignet: de hoeken donkerder, zoals door een lens
+  const R = Math.hypot(W, H) / 2;
+  g = x.createRadialGradient(W / 2, H * 0.5, R * 0.45, W / 2, H * 0.5, R * 1.05); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.62)');
+  x.fillStyle = g; x.fillRect(-M, -M, W + 2 * M, H + 2 * M);
+  return c;
+}
+
+// Een glas pils: licht van linksboven, een schuimkraag, belletjes en een dik glazen voetje.
+// Zelfde omtrek als altijd (boven 3,4u breed, onder 80% daarvan, 11u hoog); het ankerpunt is midden onder.
+// stand: het glas staat op het dienblad (met een schaduwtje eronder).
+function paintGlass(u, fill, stand = false) {
+  const gw = 3.4 * u, gh = 11 * u, pad = Math.ceil(1.4 * u), rnd = seeded(5);
+  const c = offscreen(gw + 2 * pad, gh + 2 * pad), x = c.getContext('2d');
+  x.translate(c.width / 2, pad + gh);
+  const body = () => { x.beginPath(); x.moveTo(-gw / 2, -gh); x.lineTo(gw / 2, -gh); x.lineTo(gw * 0.4, 0); x.lineTo(-gw * 0.4, 0); x.closePath(); };
+  const level = -gh * 0.78 * fill, foot = -0.75 * u;
+  if (stand) { const sg = x.createRadialGradient(0, 0, 0, 0, 0, gw * 0.75); sg.addColorStop(0, 'rgba(0,0,0,0.5)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); x.save(); x.scale(1, 0.28); x.fillStyle = sg; x.fillRect(-gw, -gw, gw * 2, gw * 2); x.restore(); }
+  x.save(); body(); x.clip();
+  // het glas zelf: bijna doorzichtig, lichter langs de wanden
+  let g = x.createLinearGradient(-gw / 2, 0, gw / 2, 0);
+  g.addColorStop(0, 'rgba(255,255,255,0.34)'); g.addColorStop(0.22, 'rgba(255,255,255,0.08)'); g.addColorStop(0.8, 'rgba(255,255,255,0.06)'); g.addColorStop(1, 'rgba(255,255,255,0.24)');
+  x.fillStyle = g; x.fillRect(-gw, -gh, gw * 2, gh);
+  // bier: goud in het midden, donkerder amber langs de randen en naar de bodem
+  g = x.createLinearGradient(-gw / 2, 0, gw / 2, 0);
+  g.addColorStop(0, '#a45a05'); g.addColorStop(0.2, '#f0a215'); g.addColorStop(0.42, '#ffd552'); g.addColorStop(0.68, '#f2a516'); g.addColorStop(1, '#8a4803');
+  x.fillStyle = g; x.fillRect(-gw, level, gw * 2, foot - level);
+  g = x.createLinearGradient(0, level, 0, foot); g.addColorStop(0, 'rgba(255,240,170,0.4)'); g.addColorStop(0.35, 'rgba(255,200,60,0)'); g.addColorStop(1, 'rgba(110,45,0,0.5)');
+  x.fillStyle = g; x.fillRect(-gw, level, gw * 2, foot - level);
+  x.fillStyle = 'rgba(255,248,210,0.75)';
+  for (let i = 0; i < 9; i++) { x.beginPath(); x.arc((rnd() - 0.5) * gw * 0.6, level + (foot - level) * (0.15 + rnd() * 0.8), Math.max(0.5, (0.1 + rnd() * 0.12) * u), 0, 7); x.fill(); }
+  // dik glazen voetje
+  g = x.createLinearGradient(0, foot, 0, 0); g.addColorStop(0, 'rgba(255,255,255,0.85)'); g.addColorStop(0.3, 'rgba(200,222,232,0.6)'); g.addColorStop(1, 'rgba(110,140,158,0.8)');
+  x.fillStyle = g; x.fillRect(-gw, foot, gw * 2, -foot);
+  // schuimkraag: bol, licht van linksboven
+  g = x.createRadialGradient(-gw * 0.2, level - 1.3 * u, 0, 0, level - 0.6 * u, gw * 0.75);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, '#fff4d8'); g.addColorStop(1, '#d9c08e');
+  x.fillStyle = g;
+  x.beginPath(); x.ellipse(0, level - 0.6 * u, gw * 0.56, 1.3 * u, 0, 0, 7); x.fill();
+  for (const [bx, br] of [[-0.3, 0.55], [0, 0.7], [0.28, 0.5]]) { x.beginPath(); x.arc(bx * gw, level - 1.35 * u, br * u, 0, 7); x.fill(); }
+  x.restore();
+  // lichtstrepen op het glas: een brede links, een dunne rechts
+  g = x.createLinearGradient(0, -gh, 0, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.12, 'rgba(255,255,255,0.7)'); g.addColorStop(0.8, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g;
+  x.beginPath(); x.moveTo(-gw * 0.36, -gh * 0.97); x.lineTo(-gw * 0.24, -gh * 0.97); x.lineTo(-gw * 0.2, -0.9 * u); x.lineTo(-gw * 0.29, -0.9 * u); x.closePath(); x.fill();
+  x.globalAlpha = 0.5; x.beginPath(); x.moveTo(gw * 0.33, -gh * 0.95); x.lineTo(gw * 0.38, -gh * 0.95); x.lineTo(gw * 0.31, -1 * u); x.lineTo(gw * 0.27, -1 * u); x.closePath(); x.fill(); x.globalAlpha = 1;
+  // omtrek van het glas en de rand bovenin
+  body(); x.strokeStyle = 'rgba(255,255,255,0.8)'; x.lineWidth = Math.max(1.2, u * 0.26); x.lineJoin = 'round'; x.stroke();
+  x.strokeStyle = 'rgba(255,255,255,0.95)'; x.lineWidth = Math.max(1, u * 0.2); x.beginPath(); x.ellipse(0, -gh, gw / 2, 0.3 * u, 0, 0, 7); x.stroke();
+  return { c, ax: c.width / 2, ay: pad + gh };
+}
+
+// Roestvrijstalen dienblad, schuin van boven gezien: 18u breed, met opstaande rand. Ankerpunt: midden van het blad.
+function paintTray(u) {
+  const tw = 18 * u, ry = 1.7 * u, th = 0.9 * u, pad = Math.ceil(0.8 * u);
+  const c = offscreen(tw + 2 * pad, 2 * ry + th + 2 * pad), x = c.getContext('2d');
+  x.translate(c.width / 2, pad + ry);
+  // zijkant (de dikte van het blad), donker met een paar lichtbanden
+  let g = x.createLinearGradient(-tw / 2, 0, tw / 2, 0);
+  g.addColorStop(0, '#3f464c'); g.addColorStop(0.18, '#9aa2a8'); g.addColorStop(0.36, '#555c62'); g.addColorStop(0.62, '#aab1b7'); g.addColorStop(0.85, '#5b6268'); g.addColorStop(1, '#353b40');
+  x.fillStyle = g;
+  x.beginPath(); x.ellipse(0, th, tw / 2, ry, 0, 0, Math.PI); x.lineTo(-tw / 2, 0); x.ellipse(0, 0, tw / 2, ry, 0, Math.PI, 0, true); x.closePath(); x.fill();
+  // bovenkant: geborsteld staal met banden van licht
+  g = x.createLinearGradient(-tw / 2, 0, tw / 2, 0);
+  g.addColorStop(0, '#8a9197'); g.addColorStop(0.14, '#dde1e4'); g.addColorStop(0.3, '#fbfcfc'); g.addColorStop(0.46, '#b4bbc1'); g.addColorStop(0.62, '#eceff1'); g.addColorStop(0.82, '#a3aab0'); g.addColorStop(1, '#787f85');
+  x.fillStyle = g; x.beginPath(); x.ellipse(0, 0, tw / 2, ry, 0, 0, 7); x.fill();
+  // verdiept binnenvlak: iets donkerder, met een warme weerschijn van de lampen
+  g = x.createLinearGradient(0, -ry, 0, ry); g.addColorStop(0, 'rgba(40,30,20,0.34)'); g.addColorStop(0.5, 'rgba(120,90,60,0.12)'); g.addColorStop(1, 'rgba(255,220,170,0.16)');
+  x.fillStyle = g; x.beginPath(); x.ellipse(0, 0.08 * u, tw * 0.47, ry * 0.8, 0, 0, 7); x.fill();
+  // opstaande rand: lichtlijn achter en voor
+  x.lineWidth = Math.max(1, 0.22 * u);
+  x.strokeStyle = 'rgba(255,255,255,0.95)'; x.beginPath(); x.ellipse(0, 0, tw / 2 - x.lineWidth / 2, ry - x.lineWidth / 2, 0, 0, 7); x.stroke();
+  x.strokeStyle = 'rgba(30,34,38,0.45)'; x.beginPath(); x.ellipse(0, 0.08 * u, tw * 0.47, ry * 0.8, 0, Math.PI, Math.PI * 2); x.stroke();
+  return { c, ax: c.width / 2, ay: pad + ry };
+}
+
+// De arm van de ober onder het blad: hand, pols en een witte mouw. Ankerpunt: midden boven (onderkant van het blad).
+function paintArm(u, h) {
+  const w = 13 * u, c = offscreen(w, h), x = c.getContext('2d');
+  x.translate(w / 2, 0);
+  // mouw
+  let g = x.createLinearGradient(-3.4 * u, 0, 3.4 * u, 0); g.addColorStop(0, '#fbf6ec'); g.addColorStop(0.45, '#e4dccd'); g.addColorStop(1, '#8f8676');
+  x.fillStyle = g; x.beginPath(); x.moveTo(-2.5 * u, 6.2 * u); x.lineTo(2.5 * u, 6.2 * u); x.lineTo(3.8 * u, h); x.lineTo(-3.8 * u, h); x.closePath(); x.fill();
+  x.fillStyle = 'rgba(60,50,40,0.35)'; x.fillRect(-2.7 * u, 7.5 * u, 5.4 * u, Math.max(1, 0.2 * u));
+  // hand: breed onder het blad, smaller naar de pols
+  g = x.createLinearGradient(-4 * u, 0, 4 * u, 0); g.addColorStop(0, '#f8d6b2'); g.addColorStop(0.4, '#ecbf96'); g.addColorStop(1, '#a8754f');
+  x.fillStyle = g;
+  x.beginPath(); x.moveTo(-3.6 * u, 1.2 * u); x.quadraticCurveTo(-4.4 * u, 0.3 * u, -3.2 * u, 0.2 * u); x.lineTo(3.4 * u, 0.2 * u); x.quadraticCurveTo(4.2 * u, 1.6 * u, 2.6 * u, 4 * u); x.lineTo(1.9 * u, 6.6 * u); x.lineTo(-1.9 * u, 6.6 * u); x.lineTo(-2.4 * u, 4 * u); x.closePath(); x.fill();
+  x.beginPath(); x.ellipse(-3.9 * u, 2 * u, 1 * u, 1.9 * u, 0.5, 0, 7); x.fill(); // duim
+  x.strokeStyle = 'rgba(120,70,40,0.4)'; x.lineWidth = Math.max(1, 0.18 * u);
+  for (const fx of [-1.5, 0.1, 1.7]) { x.beginPath(); x.moveTo(fx * u, 0.4 * u); x.lineTo(fx * u * 0.8, 2.6 * u); x.stroke(); } // vingers
+  // schaduw van het blad over de hand
+  g = x.createLinearGradient(0, 0, 0, 3.6 * u); g.addColorStop(0, 'rgba(40,18,6,0.7)'); g.addColorStop(1, 'rgba(40,18,6,0)');
+  x.fillStyle = g; x.fillRect(-5.5 * u, 0, 11 * u, 3.6 * u);
+  return { c, ax: w / 2, ay: 0 };
+}
+
+// Zachte ronde vlek (schaduw of lichtgloed), om uitgerekt te plakken.
+function paintBlob(size, rgb) {
+  const c = offscreen(size, size), x = c.getContext('2d'), r = size / 2;
+  const g = x.createRadialGradient(r, r, 0, r, r, r); g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(0.45, `rgba(${rgb},0.45)`); g.addColorStop(1, `rgba(${rgb},0)`);
+  x.fillStyle = g; x.fillRect(0, 0, size, size);
+  return c;
+}
+
 // Vallende glazen pils opvangen met een dienblad. Geeft { caught, total } terug.
 // Het blad kantelt mee, gevangen glazen blijven erop staan, gemiste spatten kapot met scherven en bier.
 export function startCatch(g, { total = 16, need = 11 } = {}) {
@@ -191,44 +444,46 @@ export function startCatch(g, { total = 16, need = 11 } = {}) {
   cv.addEventListener('pointermove', (e) => { if (dragging || e.pointerType === 'mouse') target = rel(e); });
   const glasses = [];
   let spawned = 0, caught = 0, missed = 0, next = 0.8, t = 0, stack = 0, wobble = 0, shakeT = 0, barFlash = 0;
-  const glassPath = (gw, gh) => { ctx.beginPath(); ctx.moveTo(-gw / 2, -gh); ctx.lineTo(gw / 2, -gh); ctx.lineTo(gw * 0.4, 0); ctx.lineTo(-gw * 0.4, 0); ctx.closePath(); };
-  const drawGlass = (x, y, r, u, fill = 1) => {
-    const gw = 3.4 * u, gh = 11 * u;
-    ctx.save(); ctx.translate(x, y); ctx.rotate(r);
-    ctx.save(); glassPath(gw, gh); ctx.clip();
-    ctx.fillStyle = '#f0a818'; ctx.fillRect(-gw, -gh * 0.78 * fill, gw * 2, gh);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-gw * 0.3, -gh, gw * 0.15, gh); // glans
-    ctx.restore();
-    ctx.fillStyle = '#fffbef'; ctx.beginPath(); ctx.ellipse(0, -gh * 0.78 * fill - 0.6 * u, gw * 0.55, 1.3 * u, 0, 0, 7); ctx.fill(); // schuim
-    glassPath(gw, gh); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = Math.max(1.5, u * 0.35); ctx.stroke();
-    ctx.restore();
+  // voorgetekende plaatjes (achtergrond, glas, dienblad, arm); opnieuw bij een andere canvasmaat
+  const MARGIN = 20;
+  let art = null;
+  const artFor = (W, H) => {
+    if (art && art.W === W && art.H === H) return art;
+    const u = H / 100;
+    art = { W, H, bg: paintBarScene(W, H, MARGIN), glass: paintGlass(u, 1), small: paintGlass(u * 0.75, 0.6, true), tray: paintTray(u), arm: paintArm(u, Math.ceil(H * 0.1 + MARGIN)), shadow: paintBlob(64, '0,0,0'), glow: paintBlob(96, '255,196,120') };
+    return art;
+  };
+  const stamp = (s, x, y, r = 0) => {
+    if (!r) { ctx.drawImage(s.c, x - s.ax, y - s.ay); return; }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(r); ctx.drawImage(s.c, -s.ax, -s.ay); ctx.restore();
   };
   const draw = () => {
     fitCanvas(cv);
-    const W = cv.width, H = cv.height, u = H / 100;
+    const W = cv.width, H = cv.height, u = H / 100, A = artFor(W, H);
     ctx.save();
     if (shakeT > 0) ctx.translate((Math.random() - 0.5) * 12 * shakeT, (Math.random() - 0.5) * 12 * shakeT);
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, '#3a2516'); grad.addColorStop(0.78, '#5a3a22'); grad.addColorStop(0.79, '#2a1a10'); grad.addColorStop(1, '#1b110a');
-    ctx.fillStyle = grad; ctx.fillRect(-20, -20, W + 40, H + 40);
+    ctx.drawImage(A.bg, -MARGIN, -MARGIN);
     // lampjes die zacht flikkeren
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = `rgba(255,200,120,${0.07 + Math.sin(t * 2 + i) * 0.03})`; ctx.beginPath(); ctx.arc(W * (0.1 + i * 0.16), H * 0.12, 6 * u, 0, 7); ctx.fill(); }
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 6; i++) { ctx.globalAlpha = 0.2 + Math.sin(t * 2 + i) * 0.1; ctx.drawImage(A.glow, W * LAMPS[i] - 10 * u, H * 0.12 - 9 * u, 20 * u, 20 * u); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     if (barFlash > 0) { ctx.fillStyle = `rgba(255,80,60,${barFlash * 0.35})`; ctx.fillRect(0, H * 0.79, W, H); }
-    // vallende glazen pils met schaduw op de toonbank
+    // zachte schaduwen op de toog: onder elk vallend glas (groter en donkerder naarmate het lager komt) en onder het blad
     for (const gl of glasses) {
-      const sx = gl.x * W, sy = H * 0.95, k = Math.min(1, gl.y);
-      ctx.fillStyle = `rgba(0,0,0,${0.15 + k * 0.25})`; ctx.beginPath(); ctx.ellipse(sx, sy, (1.5 + k * 2.5) * u, 0.8 * u, 0, 0, 7); ctx.fill();
-      drawGlass(gl.x * W, gl.y * H, gl.r, u);
+      const k = Math.min(1, Math.max(0, gl.y)), rx = (2.4 + k * 3.8) * u, ry = 1.3 * u;
+      ctx.globalAlpha = 0.3 + k * 0.5; ctx.drawImage(A.shadow, gl.x * W - rx, H * 0.95 - ry, rx * 2, ry * 2);
     }
-    // dienblad met kanteling en de gevangen glazen erop
     const tw = 18 * u, ty = H * 0.9, tilt = Math.max(-0.25, Math.min(0.25, trayV * 0.12)) + Math.sin(wobble * 30) * wobble * 0.08;
+    ctx.globalAlpha = 0.6; ctx.drawImage(A.shadow, trayX * W - tw * 0.62, H * 0.968 - 2 * u, tw * 1.24, 4 * u);
+    ctx.globalAlpha = 1;
+    // vallende glazen pils
+    for (const gl of glasses) stamp(A.glass, gl.x * W, gl.y * H, gl.r);
+    // arm van de ober, dan het dienblad met kanteling en de gevangen glazen erop
+    stamp(A.arm, trayX * W, ty + 0.7 * u);
     ctx.save(); ctx.translate(trayX * W, ty); ctx.rotate(tilt);
-    for (let i = 0; i < Math.min(stack, 6); i++) drawGlass((i - Math.min(stack, 6) / 2 + 0.5) * 2.6 * u, -1.2 * u, 0, u * 0.75, 0.6);
-    ctx.fillStyle = '#d6dadd'; ctx.beginPath(); ctx.ellipse(0, 0, tw / 2, 1.7 * u, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#8a8f94'; ctx.fillRect(-tw / 2, 0, tw, 1.2 * u);
+    stamp(A.tray, 0, 0);
+    for (let i = 0; i < Math.min(stack, 6); i++) stamp(A.small, (i - Math.min(stack, 6) / 2 + 0.5) * 2.6 * u, -0.2 * u);
     ctx.restore();
-    // hand onder het blad
-    ctx.fillStyle = '#f0c8a0'; ctx.beginPath(); ctx.ellipse(trayX * W, ty + 4 * u, 3 * u, 2.2 * u, 0, 0, 7); ctx.fill();
     parts.draw(ctx);
     ctx.restore();
   };
@@ -488,18 +743,70 @@ function removeCar(g, c) {
 
 // ------------------------------------------------------------ vogelschieten
 
+// Geverfd hout: bijna wit met donkere nerven en sleetse plekjes, zodat de verfkleur van het materiaal erdoorheen komt.
+let woodTex = null;
+function paintedWood() {
+  if (woodTex) return woodTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d'), rnd = seeded(3);
+  x.fillStyle = '#f6f2ec'; x.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 70; i++) { x.strokeStyle = `rgba(60,40,20,${0.05 + rnd() * 0.17})`; x.lineWidth = 0.5 + rnd() * 1.5; const y = rnd() * 128; x.beginPath(); x.moveTo(0, y); x.bezierCurveTo(40, y + (rnd() - 0.5) * 8, 90, y + (rnd() - 0.5) * 8, 128, y); x.stroke(); }
+  for (let i = 0; i < 14; i++) { x.fillStyle = `rgba(120,90,60,${0.1 + rnd() * 0.15})`; x.beginPath(); x.ellipse(rnd() * 128, rnd() * 128, 2 + rnd() * 6, 1 + rnd() * 2, 0, 0, 7); x.fill(); }
+  woodTex = new THREE.CanvasTexture(c); woodTex.colorSpace = THREE.SRGBColorSpace; woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
+  return woodTex;
+}
+// geometrie een egale kleur geven (per hoekpunt), zodat stukken met verschillende kleuren samen één mesh kunnen zijn
+function tinted(geo, hex) {
+  const g = geo.index ? geo.toNonIndexed() : geo, col = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { a[i * 3] = col.r; a[i * 3 + 1] = col.g; a[i * 3 + 2] = col.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  return g;
+}
+// vleugel van bovenaf gezien: rechte voorrand, ronde punt en drie veerpunten aan de achterrand; blijft binnen het
+// blok van 0,75 bij 0,45 dat als raakvlak dient. s = 1 (punt naar rechts) of -1 (naar links).
+function wingGeometry(s) {
+  const e = 0.012, a = 0.375 - e, b = 0.225 - e, sh = new THREE.Shape();
+  sh.moveTo(-a * s, -b); sh.lineTo(-a * s, b); sh.lineTo((a - 0.13) * s, b);
+  sh.quadraticCurveTo(a * s, b, a * s, b - 0.15);
+  sh.quadraticCurveTo(a * s, -b, (a - 0.14) * s, -b);
+  sh.lineTo((a - 0.25) * s, -b + 0.07); sh.quadraticCurveTo((a - 0.26) * s, -b, (a - 0.36) * s, -b);
+  sh.lineTo((a - 0.5) * s, -b + 0.07); sh.quadraticCurveTo((a - 0.51) * s, -b, (a - 0.61) * s, -b);
+  sh.closePath();
+  return new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.015, bevelSize: e, bevelSegments: 2, curveSegments: 6 }).rotateX(Math.PI / 2).center();
+}
+
+// De houten vogel. Elk stuk (romp, kop, staart, twee vleugels) is een onzichtbaar raakvlak met precies de oude vorm
+// en plek (daar rekent het schieten mee), met daaraan vast wat je ziet: afgerond, gesneden en geverfd hout.
+// Wat je ziet doet niet mee bij het schieten (raycast uit) en blijft binnen het raakvlak.
 function makeBird() {
   const g = new THREE.Group();
-  const wood = (c) => std(c, { roughness: 0.6 });
+  const hit = new THREE.MeshBasicMaterial({ visible: false });
+  const wood = new THREE.MeshStandardMaterial({ map: paintedWood(), vertexColors: true, roughness: 0.48 });
+  const look = (geos) => { const m = new THREE.Mesh(mergeGeometries(geos), wood); m.castShadow = true; m.raycast = () => {}; return m; };
+  const part = (geo, x, y, z, geos) => { const m = mesh(geo, hit, x, y, z); m.castShadow = false; m.add(look(geos)); return m; };
+  const RED = 0xc62828, YEL = 0xfdd835, BLUE = 0x1565c0, GREEN = 0x2e7d32;
+  const wing = (s) => [tinted(wingGeometry(s), GREEN), tinted(new RoundedBoxGeometry(0.46, 0.082, 0.1, 2, 0.03).translate(-0.1 * s, 0, 0.115), 0x7cb342)];
   const parts = {
-    romp: mesh(new THREE.BoxGeometry(0.5, 0.5, 0.9), wood(0xc62828)),
-    kop: mesh(new THREE.SphereGeometry(0.22, 12, 10), wood(0xfdd835), 0, 0.35, 0.55),
-    staart: mesh(new THREE.BoxGeometry(0.4, 0.08, 0.55), wood(0x1565c0), 0, 0.1, -0.7),
-    vleugelL: mesh(new THREE.BoxGeometry(0.75, 0.08, 0.45), wood(0x2e7d32), -0.6, 0.1, 0),
-    vleugelR: mesh(new THREE.BoxGeometry(0.75, 0.08, 0.45), wood(0x2e7d32), 0.6, 0.1, 0),
+    romp: part(new THREE.BoxGeometry(0.5, 0.5, 0.9), 0, 0, 0, [
+      tinted(new RoundedBoxGeometry(0.5, 0.5, 0.9, 3, 0.1), RED),
+      tinted(new RoundedBoxGeometry(0.504, 0.504, 0.07, 2, 0.1).translate(0, 0, 0.3), 0xf2b632), // gouden halsband
+      tinted(new RoundedBoxGeometry(0.504, 0.504, 0.05, 2, 0.1).translate(0, 0, -0.34), 0xf5f1e6),
+    ]),
+    kop: part(new THREE.SphereGeometry(0.22, 12, 10), 0, 0.35, 0.55, [
+      tinted(new THREE.SphereGeometry(0.22, 22, 16), YEL),
+      tinted(new THREE.SphereGeometry(0.042, 10, 8).translate(0.14, 0.07, 0.15), 0x151515), // ogen
+      tinted(new THREE.SphereGeometry(0.042, 10, 8).translate(-0.14, 0.07, 0.15), 0x151515),
+    ]),
+    staart: part(new THREE.BoxGeometry(0.4, 0.08, 0.55), 0, 0.1, -0.7, [
+      tinted(new RoundedBoxGeometry(0.126, 0.08, 0.55, 2, 0.036), BLUE), // drie staartveren naast elkaar
+      tinted(new RoundedBoxGeometry(0.126, 0.08, 0.5, 2, 0.036).translate(-0.137, 0, 0.025), 0x1e78d6),
+      tinted(new RoundedBoxGeometry(0.126, 0.08, 0.5, 2, 0.036).translate(0.137, 0, 0.025), 0x1e78d6),
+    ]),
+    vleugelL: part(new THREE.BoxGeometry(0.75, 0.08, 0.45), -0.6, 0.1, 0, wing(-1)),
+    vleugelR: part(new THREE.BoxGeometry(0.75, 0.08, 0.45), 0.6, 0.1, 0, wing(1)),
   };
   parts.vleugelL.rotation.z = 0.3; parts.vleugelR.rotation.z = -0.3;
-  const beak = mesh(new THREE.ConeGeometry(0.07, 0.2, 8), wood(0xff8f00), 0, 0.35, 0.82);
+  const beak = mesh(new THREE.ConeGeometry(0.07, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0xff8f00, map: paintedWood(), roughness: 0.48 }), 0, 0.35, 0.82);
   beak.rotation.x = Math.PI / 2;
   parts.kop.add(beak); beak.position.set(0, 0, 0.27);
   for (const [k, m] of Object.entries(parts)) { m.userData.part = k; g.add(m); }
@@ -507,13 +814,27 @@ function makeBird() {
   return g;
 }
 
+// De schutsboom: een verweerde houten paal met ijzeren banden, bovenop een ijzeren kom waar de vogel op staat.
+function makePole() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256;
+  const x = c.getContext('2d'), rnd = seeded(41);
+  x.fillStyle = '#b3978a'; x.fillRect(0, 0, 64, 256);
+  for (let i = 0; i < 60; i++) { x.strokeStyle = rnd() < 0.6 ? `rgba(50,30,20,${0.08 + rnd() * 0.25})` : `rgba(255,235,210,${0.06 + rnd() * 0.14})`; x.lineWidth = 0.6 + rnd() * 1.6; const x0 = rnd() * 64; x.beginPath(); x.moveTo(x0, 0); x.bezierCurveTo(x0 + (rnd() - 0.5) * 6, 80, x0 + (rnd() - 0.5) * 6, 170, x0, 256); x.stroke(); }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 5);
+  const pole = new THREE.Group();
+  pole.add(mesh(new THREE.CylinderGeometry(0.12, 0.18, 14, 14), std(0xa58474, { map: tex, roughness: 0.85 }), 0, 7, 0));
+  const iron = [new THREE.CylinderGeometry(0.21, 0.14, 0.16, 14).translate(0, 13.93, 0), new THREE.CylinderGeometry(0.26, 0.3, 0.24, 14).translate(0, 0.12, 0)];
+  for (const y of [1.3, 7, 12.6]) { const r = 0.18 - 0.06 * (y / 14) + 0.012; iron.push(new THREE.CylinderGeometry(r, r, 0.14, 14).translate(0, y, 0)); }
+  pole.add(mesh(mergeGeometries(iron), std(0x2e3033, { roughness: 0.5, metalness: 0.6 })));
+  return pole;
+}
+
 // Met de buks op de houten vogel op de paal mikken. Geeft { hits, shots, king } terug.
 export function startVogelschieten(g, pos, { shots = 14 } = {}) {
   const w = g.world;
   const [px, pz] = pos;
   const y0 = w.groundAt(px, pz);
-  const pole = new THREE.Group();
-  pole.add(mesh(new THREE.CylinderGeometry(0.12, 0.18, 14, 10), std(0x8d6e63), 0, 7, 0));
+  const pole = makePole();
   const bird = makeBird();
   bird.scale.setScalar(1.6);
   bird.position.y = 14.4;
@@ -529,7 +850,7 @@ export function startVogelschieten(g, pos, { shots = 14 } = {}) {
   const aim = new THREE.Vector3();
   g.player.group.visible = false;
   const ov = document.createElement('div');
-  ov.className = 'mini-overlay aim';
+  ov.className = 'mini-overlay aim vogel-ov';
   ov.innerHTML = `<div class="mini-head"><b>Vogelschieten</b><span class="mini-score">Schoten: ${shots}</span><button class="mini-stop" type="button">Stoppen</button></div>
     <div class="crosshair"></div>
     <div class="mini-hint">${g.input.isTouch ? 'Sleep om te richten, tik op Schiet' : 'Muis slepen of pijltjes om te richten, spatie of E om te schieten'} · schiet alle vijf stukken van de vogel eraf, de romp als laatste</div>`;

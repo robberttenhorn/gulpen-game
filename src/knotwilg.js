@@ -7,13 +7,25 @@ import { popText, flash, shake } from './minifx.js';
 
 const G = (text, nl) => ({ text, nl });
 
-// handzaag: blad met tandjes en een oranje greep
+// handzaag: een taps blad met echte tandjes en een oranje greep met een handgat (zelfde maat en plek als voorheen)
 export function makeSaw() {
   const g = new THREE.Group();
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.09, 0.42), new THREE.MeshStandardMaterial({ color: 0xdfe3e7, metalness: 0.5, roughness: 0.35, emissive: 0x222222 }));
-  blade.position.set(0, -0.02, 0.26);
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.11, 0.1), new THREE.MeshStandardMaterial({ color: 0xe8701e, roughness: 0.6 }));
-  grip.position.set(0, -0.01, 0.02);
+  // blad in het vlak van lengte (z) en hoogte (y): rug bovenaan, tanden onderaan, naar de punt toe smaller
+  const bs = new THREE.Shape();
+  bs.moveTo(0.05, 0.025); bs.lineTo(0.47, -0.012); bs.lineTo(0.47, -0.035);
+  for (let z = 0.46; z > 0.06; z -= 0.02) { const y = -0.035 - 0.03 * ((0.47 - z) / 0.42); bs.lineTo(z, y - 0.009); bs.lineTo(z - 0.01, y); }
+  bs.lineTo(0.05, -0.065);
+  bs.closePath();
+  const toSide = (geo, t) => geo.rotateY(-Math.PI / 2).translate(t / 2, 0, 0); // plat vlak (x, y) wordt (z, y), de dikte komt langs x
+  const blade = new THREE.Mesh(toSide(new THREE.ExtrudeGeometry(bs, { depth: 0.006, bevelEnabled: false }), 0.006), new THREE.MeshStandardMaterial({ color: 0xdfe3e7, metalness: 0.55, roughness: 0.32, emissive: 0x222222 }));
+  // greep met handgat
+  const hs = new THREE.Shape();
+  hs.moveTo(-0.03, -0.045); hs.quadraticCurveTo(-0.042, 0.01, -0.02, 0.05); hs.lineTo(0.05, 0.05); hs.quadraticCurveTo(0.08, 0.04, 0.078, 0.01); hs.lineTo(0.07, -0.06); hs.quadraticCurveTo(0.03, -0.085, -0.03, -0.045);
+  const hole = new THREE.Path();
+  hole.moveTo(-0.008, -0.04); hole.quadraticCurveTo(-0.016, -0.005, -0.002, 0.024); hole.lineTo(0.03, 0.024); hole.quadraticCurveTo(0.042, 0.02, 0.04, 0); hole.lineTo(0.036, -0.045); hole.quadraticCurveTo(0.014, -0.056, -0.008, -0.04);
+  hs.holes.push(hole);
+  const grip = new THREE.Mesh(toSide(new THREE.ExtrudeGeometry(hs, { depth: 0.02, bevelEnabled: true, bevelThickness: 0.005, bevelSize: 0.004, bevelSegments: 2, curveSegments: 6 }), 0.02), new THREE.MeshStandardMaterial({ color: 0xe8701e, roughness: 0.55 }));
+  blade.castShadow = grip.castShadow = true;
   g.add(blade, grip);
   return g;
 }

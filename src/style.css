@@ -365,10 +365,13 @@ body.touch #update-bar { bottom: auto; top: max(12px, env(safe-area-inset-top));
 .mini-hint { text-align: center; font-size: 13px; padding: 8px 14px max(14px, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.55)); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .mini-overlay.aim .mini-hint { margin-top: auto; }
 body.touch .mini-overlay.aim .mini-hint { padding-bottom: 140px; }
-.crosshair { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border: 2px solid rgba(255,255,255,.9); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.4); pointer-events: none; }
-.crosshair::before, .crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
-.crosshair::before { left: 50%; top: -10px; bottom: -10px; width: 2px; margin-left: -1px; }
-.crosshair::after { top: 50%; left: -10px; right: -10px; height: 2px; margin-top: -1px; }
+/* vizier van het vogelschieten: ring met donkere rand, kruisdraden met een opening en een rood richtpunt in het midden (zelfde maat en plek) */
+.crosshair { --c: rgba(255,255,255,.95); position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border: 2px solid var(--c); border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.45), 0 0 10px rgba(0,0,0,.35), inset 0 0 12px rgba(0,0,0,.2); background: radial-gradient(circle, #ff5a4a 0 1.6px, rgba(0,0,0,.55) 1.7px 2.6px, transparent 2.7px); pointer-events: none; }
+.crosshair::before, .crosshair::after { content: ''; position: absolute; filter: drop-shadow(0 0 1px rgba(0,0,0,.85)); }
+.crosshair::before { left: 50%; top: -10px; bottom: -10px; width: 2px; margin-left: -1px; background: linear-gradient(var(--c) 0 34%, transparent 34% 66%, var(--c) 66%); }
+.crosshair::after { top: 50%; left: -10px; right: -10px; height: 2px; margin-top: -1px; background: linear-gradient(90deg, var(--c) 0 34%, transparent 34% 66%, var(--c) 66%); }
+/* vogelschieten: je kijkt door het vizier, de randen van het beeld vallen donker weg */
+.mini-overlay.aim.vogel-ov { background: radial-gradient(ellipse at 50% 50%, transparent 0 40%, rgba(0,0,0,.14) 64%, rgba(0,0,0,.42) 100%); }
 
 /* grote kaart: gekozen missie in de lijst even laten oplichten */
 .bm-item.flash { animation: bm-flash 1.2s ease-out; }
@@ -432,8 +435,7 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
   animation: fx-drip 2s ease-in forwards; }
 @keyframes fx-drip { 0% { transform: scale(.3); opacity: 0; } 10% { transform: scale(1); opacity: 1; } 100% { transform: translateY(60px) scale(1, 1.2); opacity: 0; } }
 .tt-bar.hot { box-shadow: 0 0 14px 3px rgba(255, 213, 79, .8); }
-.crosshair.hit::before, .crosshair.hit::after { background: #ff5252; }
-.crosshair.hit { border-color: #ff5252; animation: fx-bump .3s ease-out; }
+.crosshair.hit { --c: #ff5252; animation: fx-bump .3s ease-out; }
 
 
 /* stempelen: eiken bureau onder een bureaulamp (licht van linksboven), stapeltje formulieren, houten stempel met slagschaduw */
@@ -692,15 +694,16 @@ body.pov #home-confirm { top: auto; right: auto; left: 12px; bottom: calc(112px 
 body.map-open #btn-home, body.map-open #home-confirm { display: none !important; }
 /* knotwilgen knotten (3D): opdracht bovenin, ritmebalk en de snoeier die commentaar geeft */
 .kn-overlay { background: none; }
-.kn-cue { position: absolute; left: 50%; top: 108px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 6px 14px; border-radius: 999px; background: rgba(27, 36, 48, .72); color: #fff; font-weight: 800; font-size: 14px; text-align: center; pointer-events: none; }
+.kn-cue { position: absolute; left: 50%; top: 108px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 6px 14px; border-radius: 999px; background: linear-gradient(rgba(44, 58, 76, .88), rgba(18, 25, 35, .88)); box-shadow: 0 6px 16px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 0 0 1px rgba(255, 255, 255, .1); color: #fff; font-weight: 800; font-size: 14px; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); pointer-events: none; }
 .kn-cue:empty { display: none; }
 .kn-meter { position: absolute; left: 50%; top: 108px; width: min(320px, 80%); transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
 .kn-meter.on { display: flex; }
-.kn-meter::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 14px; border-radius: 7px; background: rgba(0, 0, 0, .4); }
-.kn-meter i { position: relative; align-self: flex-start; height: 14px; width: 0; border-radius: 7px; background: linear-gradient(90deg, #ffd54f, #7cb342); transition: width .12s; }
-.kn-meter.jam i { background: #e53935; }
+/* zaagmeter: een verzonken goot met een glanzende vulling (zelfde maat) */
+.kn-meter::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 14px; border-radius: 7px; background: linear-gradient(rgba(0, 0, 0, .68), rgba(34, 30, 24, .5)); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .65), 0 0 0 1px rgba(255, 255, 255, .22), 0 5px 14px rgba(0, 0, 0, .35); }
+.kn-meter i { position: relative; align-self: flex-start; height: 14px; width: 0; border-radius: 7px; background: linear-gradient(rgba(255, 255, 255, .6), rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, .2)), linear-gradient(90deg, #ffd54f, #7cb342); box-shadow: 0 0 9px rgba(190, 230, 90, .5), inset 0 -1px 2px rgba(0, 0, 0, .3); transition: width .12s; }
+.kn-meter.jam i { background: linear-gradient(rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, .22)), #e53935; box-shadow: 0 0 9px rgba(229, 57, 53, .6), inset 0 -1px 2px rgba(0, 0, 0, .3); }
 .kn-meter span { font-weight: 800; font-size: 14px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
-.kn-say { position: absolute; left: 12px; top: 156px; max-width: min(300px, 70%); padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: rgba(255, 255, 255, .96); color: #1b2430; text-shadow: none; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; pointer-events: none; }
+.kn-say { position: absolute; left: 12px; top: 156px; max-width: min(300px, 70%); padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: linear-gradient(#ffffff, #efe9dd); color: #1b2430; text-shadow: none; box-shadow: 0 8px 22px rgba(0, 0, 0, .34), 0 1px 2px rgba(0, 0, 0, .25), inset 0 1px 0 #fff; opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; pointer-events: none; }
 .kn-say.on { opacity: 1; transform: none; }
 .kn-say b { display: block; font: 800 12px Inter, sans-serif; color: #1f4e9a; }
 .kn-say span { font-weight: 700; font-size: 15px; }

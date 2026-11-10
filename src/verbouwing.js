@@ -119,6 +119,147 @@ const PATTERN = [
 const COLORS = { w: ['#f7f7f2', '#dcdcd4'], b: ['#2f8fd8', '#1d6aa8'], g: ['#e9b949', '#b98a22'] };
 const NAMES = { w: 'wit', b: 'blauw', g: 'goud' };
 
+// Tekenhulpjes voor het tegelspel. De muur, de lijmlaag, het briefje en de plank bewegen niet en worden
+// één keer voorgetekend (opnieuw bij een andere canvasmaat); ook elke soort tegel is een voorgetekend plaatje.
+const offscreen = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
+const seeded = (seed) => { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
+
+// Zachte ronde vlek, om uitgerekt te plakken (vlekken in het stucwerk).
+function softBlob(rgb) {
+  const c = offscreen(64, 64), x = c.getContext('2d');
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, `rgba(${rgb},1)`); g.addColorStop(1, `rgba(${rgb},0)`);
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return c;
+}
+
+// De badkamermuur: kaal stucwerk in het strijklicht van een bouwlamp linksboven, met in het midden de laag
+// tegellijm waar de tegels in komen (ribbels van de lijmkam, per vak iets anders van toon zodat je de vakken ziet).
+// M is een rand rondom, zodat het trillen bij een gebroken tegel geen kale strook laat zien.
+function paintTileWall(W, H, L, rows, cols, M) {
+  const { u, cell, gx, gy } = L, rnd = seeded(31);
+  const c = offscreen(W + 2 * M, H + 2 * M), x = c.getContext('2d');
+  x.translate(M, M);
+  let g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#ddd5c7'); g.addColorStop(0.55, '#c6bdae'); g.addColorStop(1, '#a2998a');
+  x.fillStyle = g; x.fillRect(-M, -M, W + 2 * M, H + 2 * M);
+  // vlekken en banen van de plakspaan
+  const light = softBlob('255,250,238'), dark = softBlob('86,72,56');
+  for (let i = 0; i < 130; i++) {
+    const r = (4 + rnd() * 16) * u, bx = rnd() * (W + 2 * M) - M, by = rnd() * (H + 2 * M) - M;
+    x.globalAlpha = 0.05 + rnd() * 0.1; x.drawImage(rnd() < 0.5 ? light : dark, bx - r, by - r * 0.6, r * 2, r * 1.2);
+  }
+  x.globalAlpha = 1;
+  x.lineCap = 'round';
+  for (let i = 0; i < 26; i++) {
+    const ax = rnd() * W, ay = rnd() * H, r = (14 + rnd() * 30) * u, a0 = rnd() * 6.28;
+    x.strokeStyle = rnd() < 0.5 ? 'rgba(255,252,244,0.1)' : 'rgba(70,58,44,0.08)'; x.lineWidth = (0.3 + rnd() * 0.9) * u;
+    x.beginPath(); x.arc(ax, ay, r, a0, a0 + 0.5 + rnd() * 0.9); x.stroke();
+  }
+  // fijne korrel
+  const n = offscreen(96, 96), nx = n.getContext('2d'), id = nx.createImageData(96, 96);
+  for (let i = 0; i < id.data.length; i += 4) { const v = rnd() < 0.5 ? 255 : 30; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = rnd() * 22; }
+  nx.putImageData(id, 0, 0);
+  x.fillStyle = x.createPattern(n, 'repeat'); x.fillRect(-M, -M, W + 2 * M, H + 2 * M);
+  // de lijmlaag: iets buiten de vakken uitgesmeerd, met een rafelige rand en een schaduwrandje (de laag heeft dikte)
+  const e = 1.2 * u, bx = gx - e, by = gy - e, bw = cell * cols + 2 * e, bh = cell * rows + 2 * e;
+  const bed = (dx, dy, col) => {
+    x.fillStyle = col; x.beginPath(); x.roundRect(bx + dx, by + dy, bw, bh, 0.9 * u); x.fill();
+    const r2 = seeded(5);
+    for (let k = 0, per = 2 * (bw + bh); k < per; k += 1.3 * u) {
+      const px = k < bw ? bx + k : k < bw + bh ? bx + bw : k < 2 * bw + bh ? bx + bw - (k - bw - bh) : bx;
+      const py = k < bw ? by : k < bw + bh ? by + (k - bw) : k < 2 * bw + bh ? by + bh : by + bh - (k - 2 * bw - bh);
+      x.beginPath(); x.arc(px + dx, py + dy, (0.5 + r2() * 0.8) * u, 0, 7); x.fill();
+    }
+  };
+  bed(0.5 * u, 0.7 * u, 'rgba(52,42,30,0.38)');
+  bed(-0.12 * u, -0.16 * u, '#b9b2a4');
+  bed(0, 0, '#8f887b');
+  for (let r = 0; r < rows; r++) for (let cc = 0; cc < cols; cc++) {
+    const cx = gx + cc * cell, cy = gy + r * cell;
+    x.fillStyle = (r + cc) % 2 ? '#978f80' : '#a49c8d';
+    x.fillRect(cx + 1, cy + 1, cell - 2, cell - 2);
+    // ribbels van de lijmkam: een donkere groef met een lichte rug erboven
+    const ribs = 9, lw = Math.max(1, cell * 0.02);
+    for (let k = 1; k <= ribs; k++) {
+      const y0 = cy + (k * cell) / (ribs + 1) + (rnd() - 0.5) * cell * 0.02, y1 = y0 + cell * 0.02 + (rnd() - 0.5) * cell * 0.03;
+      x.lineWidth = lw;
+      x.strokeStyle = 'rgba(58,48,36,0.42)'; x.beginPath(); x.moveTo(cx + cell * 0.04, y0); x.lineTo(cx + cell * 0.96, y1); x.stroke();
+      x.strokeStyle = 'rgba(255,250,236,0.34)'; x.beginPath(); x.moveTo(cx + cell * 0.04, y0 - lw); x.lineTo(cx + cell * 0.96, y1 - lw); x.stroke();
+    }
+  }
+  // licht van linksboven over de lijm
+  g = x.createLinearGradient(bx, by, bx + bw, by + bh); g.addColorStop(0, 'rgba(255,246,226,0.16)'); g.addColorStop(1, 'rgba(30,22,12,0.16)');
+  x.fillStyle = g; x.fillRect(bx, by, bw, bh);
+  // strijklicht van de bouwlamp en donkere hoeken
+  g = x.createRadialGradient(W * 0.2, -H * 0.15, 0, W * 0.2, -H * 0.15, W * 0.95); g.addColorStop(0, 'rgba(255,238,205,0.34)'); g.addColorStop(1, 'rgba(255,238,205,0)');
+  x.fillStyle = g; x.fillRect(-M, -M, W + 2 * M, H + 2 * M);
+  const R = Math.hypot(W, H) / 2;
+  g = x.createRadialGradient(W * 0.45, H * 0.45, R * 0.5, W * 0.45, H * 0.45, R * 1.15); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(24,16,8,0.5)');
+  x.fillStyle = g; x.fillRect(-M, -M, W + 2 * M, H + 2 * M);
+  return c;
+}
+
+// Een geglazuurde keramische tegel van s bij s: iets bolle randen (licht linksboven, schaduw rechtsonder),
+// een glans over het glazuur en een slagschaduw. De gouden tegel houdt zijn vierkantje (nu in reliëf).
+const TILE_GLAZE = { w: ['#fdfdf9', '#f1f1ea', '#d6d7cd'], b: ['#56b0f2', '#2a86d2', '#17599a'], g: ['#f9d877', '#e2ae3c', '#a8781a'] };
+function paintTile(s, type) {
+  const pad = Math.ceil(s * 0.14), c = offscreen(s + 2 * pad, s + 2 * pad), x = c.getContext('2d');
+  const [hi, mid, lo] = TILE_GLAZE[type], r = s * 0.06, bev = s * 0.055;
+  x.translate(pad, pad);
+  // slagschaduw (rechtsonder)
+  x.save(); x.shadowColor = 'rgba(30,20,10,0.5)'; x.shadowBlur = s * 0.09; x.shadowOffsetX = s * 0.025; x.shadowOffsetY = s * 0.045;
+  x.fillStyle = lo; x.beginPath(); x.roundRect(0, 0, s, s, r); x.fill(); x.restore();
+  x.save(); x.beginPath(); x.roundRect(0, 0, s, s, r); x.clip();
+  let g = x.createLinearGradient(0, 0, s, s); g.addColorStop(0, hi); g.addColorStop(0.5, mid); g.addColorStop(1, lo);
+  x.fillStyle = g; x.fillRect(0, 0, s, s);
+  // schuine randen
+  const edge = (pts, col) => { x.fillStyle = col; x.beginPath(); pts.forEach(([px, py], i) => (i ? x.lineTo(px, py) : x.moveTo(px, py))); x.closePath(); x.fill(); };
+  edge([[0, 0], [s, 0], [s - bev, bev], [bev, bev]], 'rgba(255,255,255,0.6)');
+  edge([[0, 0], [bev, bev], [bev, s - bev], [0, s]], 'rgba(255,255,255,0.32)');
+  edge([[s, 0], [s, s], [s - bev, s - bev], [s - bev, bev]], 'rgba(0,0,0,0.16)');
+  edge([[0, s], [bev, s - bev], [s - bev, s - bev], [s, s]], 'rgba(0,0,0,0.3)');
+  if (type === 'g') {
+    // vierkantje in reliëf
+    const q = s * 0.25, lw = s * 0.05;
+    x.lineWidth = lw; x.strokeStyle = 'rgba(110,70,0,0.45)'; x.strokeRect(q + lw * 0.35, q + lw * 0.35, s * 0.5, s * 0.5);
+    x.strokeStyle = 'rgba(255,248,214,0.85)'; x.strokeRect(q, q, s * 0.5, s * 0.5);
+  }
+  // glans over het glazuur: een brede zachte baan en een lichtvlek linksboven
+  g = x.createLinearGradient(0, 0, s * 0.8, s * 0.8);
+  g.addColorStop(0.1, 'rgba(255,255,255,0)'); g.addColorStop(0.28, 'rgba(255,255,255,0.42)'); g.addColorStop(0.4, 'rgba(255,255,255,0.1)'); g.addColorStop(0.55, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(bev, bev, s - 2 * bev, s - 2 * bev);
+  g = x.createRadialGradient(s * 0.24, s * 0.2, 0, s * 0.24, s * 0.2, s * 0.2); g.addColorStop(0, 'rgba(255,255,255,0.75)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, s * 0.5, s * 0.5);
+  x.restore();
+  x.strokeStyle = 'rgba(40,30,20,0.3)'; x.lineWidth = Math.max(1, s * 0.012); x.beginPath(); x.roundRect(0, 0, s, s, r); x.stroke();
+  return { c, s, pad };
+}
+
+// Het voorbeeld: een vel papier dat met twee stukjes tape op de muur zit.
+function paintNote(w, h, u) {
+  const pad = Math.ceil(2.2 * u), c = offscreen(w + 2 * pad, h + 2 * pad), x = c.getContext('2d');
+  x.translate(pad, pad);
+  x.save(); x.shadowColor = 'rgba(30,20,10,0.45)'; x.shadowBlur = 1.6 * u; x.shadowOffsetX = 0.4 * u; x.shadowOffsetY = 0.8 * u;
+  x.fillStyle = '#f6f2e8'; x.beginPath(); x.roundRect(0, 0, w, h, 0.5 * u); x.fill(); x.restore();
+  const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#fffdf7'); g.addColorStop(1, '#e9e3d5');
+  x.fillStyle = g; x.beginPath(); x.roundRect(0, 0, w, h, 0.5 * u); x.fill();
+  for (const [tx, rot] of [[w * 0.14, -0.5], [w * 0.86, 0.45]]) { x.save(); x.translate(tx, 0.1 * u); x.rotate(rot); x.fillStyle = 'rgba(214,190,120,0.78)'; x.fillRect(-2.2 * u, -0.9 * u, 4.4 * u, 1.8 * u); x.fillStyle = 'rgba(255,255,255,0.25)'; x.fillRect(-2.2 * u, -0.9 * u, 4.4 * u, 0.5 * u); x.restore(); }
+  return { c, pad };
+}
+
+// De plank waar de stapel tegels op staat: steigerhout met nerf, een lichte bovenrand en een schaduw op de muur.
+function paintPlank(w, h, u) {
+  const pad = Math.ceil(2 * u), c = offscreen(w + 2 * pad, h + 2 * pad), x = c.getContext('2d'), rnd = seeded(9);
+  x.translate(pad, pad);
+  x.save(); x.shadowColor = 'rgba(30,20,10,0.55)'; x.shadowBlur = 1.4 * u; x.shadowOffsetX = 0.3 * u; x.shadowOffsetY = 0.9 * u;
+  x.fillStyle = '#6d4c33'; x.fillRect(0, 0, w, h); x.restore();
+  const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#c79c62'); g.addColorStop(0.18, '#a97c48'); g.addColorStop(1, '#6a4526');
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 16; i++) { x.strokeStyle = rnd() < 0.5 ? 'rgba(60,34,14,0.35)' : 'rgba(240,205,150,0.25)'; x.lineWidth = Math.max(1, 0.12 * u); const y = rnd() * h, x0 = rnd() * w; x.beginPath(); x.moveTo(x0, y); x.lineTo(Math.min(w, x0 + (3 + rnd() * 9) * u), y + (rnd() - 0.5) * 0.2 * u); x.stroke(); }
+  x.fillStyle = 'rgba(255,236,196,0.5)'; x.fillRect(0, 0, w, Math.max(1, 0.2 * u));
+  x.fillStyle = 'rgba(40,22,8,0.35)'; x.fillRect(w - 0.5 * u, 0, 0.5 * u, h); // kopse kant
+  return { c, pad };
+}
+
 export function startTiles(g, { limit = 75 } = {}) {
   const ov = document.createElement('div');
   ov.className = 'mini-overlay';
@@ -185,16 +326,20 @@ export function startTiles(g, { limit = 75 } = {}) {
     hover = cellAt((e.clientX - r.left) * devicePixelRatio, (e.clientY - r.top) * devicePixelRatio);
   });
 
+  // voorgetekende plaatjes; opnieuw bij een andere canvasmaat
+  const MARGIN = 20;
+  let art = null;
+  const artFor = (L) => {
+    if (art && art.W === L.W && art.H === L.H) return art;
+    const { W, H, u, cell } = L, ts = cell - Math.max(2, cell * 0.05);
+    const pc = Math.min(W * 0.03, 5 * u);
+    art = { W, H, wall: paintTileWall(W, H, L, rows, cols, MARGIN), tile: { w: paintTile(ts, 'w'), b: paintTile(ts, 'b'), g: paintTile(ts, 'g') }, note: paintNote(pc * cols + 3 * u, pc * rows + 6.5 * u, u), plank: paintPlank(14 * u + cell * 0.2, 1.6 * u, u) };
+    return art;
+  };
   const drawTile = (x, y, s, type, alpha = 1) => {
-    const [c1, c2] = COLORS[type];
+    const sp = art.tile[type], k = s / sp.s;
     ctx.globalAlpha = alpha;
-    const gr = ctx.createLinearGradient(x, y, x + s, y + s);
-    gr.addColorStop(0, c1); gr.addColorStop(1, c2);
-    ctx.fillStyle = gr;
-    ctx.beginPath(); ctx.roundRect(x, y, s, s, s * 0.06); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.beginPath(); ctx.moveTo(x + s * 0.08, y + s * 0.08); ctx.lineTo(x + s * 0.5, y + s * 0.08); ctx.lineTo(x + s * 0.08, y + s * 0.5); ctx.closePath(); ctx.fill(); // glans
-    if (type === 'g') { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = s * 0.05; ctx.strokeRect(x + s * 0.25, y + s * 0.25, s * 0.5, s * 0.5); }
+    ctx.drawImage(sp.c, x - sp.pad * k, y - sp.pad * k, sp.c.width * k, sp.c.height * k);
     ctx.globalAlpha = 1;
   };
 
@@ -233,19 +378,10 @@ export function startTiles(g, { limit = 75 } = {}) {
         // ---- tekenen: badkamermuur
         ctx.save();
         if (shakeT > 0) ctx.translate((Math.random() - 0.5) * 10 * shakeT, (Math.random() - 0.5) * 6 * shakeT);
-        const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#d7d0c4'); bg.addColorStop(1, '#bfb6a7');
-        ctx.fillStyle = bg; ctx.fillRect(-20, -20, W + 40, H + 40);
-        // kale muur met specie waar nog geen tegel ligt
-        ctx.fillStyle = '#a69d8e'; ctx.fillRect(gx - 1.2 * u, gy - 1.2 * u, cell * cols + 2.4 * u, cell * rows + 2.4 * u);
-        for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-          const x = gx + c * cell, y = gy + r * cell;
-          ctx.fillStyle = (r + c) % 2 ? '#9b927f' : '#a2998a';
-          ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
-          // kamstreepjes in de lijm
-          ctx.strokeStyle = 'rgba(80,70,60,0.25)'; ctx.lineWidth = 1;
-          for (let k = 1; k < 5; k++) { ctx.beginPath(); ctx.moveTo(x + 4, y + (k * cell) / 5); ctx.lineTo(x + cell - 4, y + (k * cell) / 5 + 2); ctx.stroke(); }
-          if (hover && hover[0] === r && hover[1] === c && !placed[r][c]) { ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, cell, cell); }
-        }
+        const A = artFor(L);
+        ctx.drawImage(A.wall, -MARGIN, -MARGIN);
+        // het vak onder de muis licht op
+        if (hover && !placed[hover[0]][hover[1]]) { ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(gx + hover[1] * cell, gy + hover[0] * cell, cell, cell); }
         // gelegde tegels (met een klein 'plop'-effect)
         const gap = Math.max(2, cell * 0.05) * (1 - grout * 0.6);
         for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
@@ -277,15 +413,17 @@ export function startTiles(g, { limit = 75 } = {}) {
         ctx.restore();
         // ---- voorbeeld (rechtsboven)
         const pc = Math.min(W * 0.03, 5 * u), px = W * 0.72, py = H * 0.12;
-        ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.beginPath(); ctx.roundRect(px - 1.5 * u, py - 5 * u, pc * cols + 3 * u, pc * rows + 6.5 * u, 1.5 * u); ctx.fill();
+        ctx.drawImage(A.note.c, px - 1.5 * u - A.note.pad, py - 5 * u - A.note.pad);
         ctx.fillStyle = '#5d4037'; ctx.font = `800 ${2.6 * u}px "Baloo 2", sans-serif`; ctx.textAlign = 'left'; ctx.fillText('Voorbeeld', px, py - 1.4 * u);
         for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { ctx.fillStyle = COLORS[PATTERN[r][c]][0]; ctx.fillRect(px + c * pc, py + r * pc, pc - 1, pc - 1); if (placed[r][c]) { ctx.fillStyle = 'rgba(30,30,30,0.45)'; ctx.fillRect(px + c * pc, py + r * pc, pc - 1, pc - 1); } } // gelegd: donkerder
         // ---- stapel tegels op de kar (rechtsonder): de bovenste is aan de beurt
-        ctx.fillStyle = '#6d4c41'; ctx.fillRect(sx - 7 * u, sy + cell * 0.55, 14 * u + cell * 0.2, 1.6 * u);
+        ctx.drawImage(A.plank.c, sx - 7 * u - A.plank.pad, sy + cell * 0.55 - A.plank.pad);
         const show = stack.slice(-6);
         show.forEach((type, i) => { const top = i === show.length - 1; const yy = sy - i * 1.4 * u; drawTile(sx - cell * 0.1 + (top ? 0 : 0.6 * u), yy, cell * 0.85, type, top ? 1 : 0.85); });
         if (stack.length) {
           const top = stack[stack.length - 1];
+          // donker plaatje achter de tekst, anders valt wit weg tegen de lichte muur
+          ctx.fillStyle = 'rgba(38,30,22,0.62)'; ctx.beginPath(); ctx.roundRect(sx + cell * 0.32 - 10.5 * u, sy + cell * 0.55 + 2.7 * u, 21 * u, 8 * u, 1.6 * u); ctx.fill();
           ctx.fillStyle = '#fff'; ctx.font = `800 ${3.2 * u}px "Baloo 2", sans-serif`; ctx.textAlign = 'center';
           ctx.fillText(`Nu: ${NAMES[top]}`, sx + cell * 0.32, sy + cell * 0.55 + 6 * u);
           ctx.font = `600 ${2.3 * u}px Inter, sans-serif`; ctx.fillText(`nog ${stack.length} tegels`, sx + cell * 0.32, sy + cell * 0.55 + 9.5 * u);
