@@ -1,5 +1,6 @@
 // Maakt contactvellen van de poppetjes via de losse testpagina (tools/poppetje-test.html).
 // Gebruik: npx vite --port 4182 --strictPort &   en dan   node tools/poppetje-shots.cjs <uitvoermap> <voorvoegsel> [filter]
+// LAAG=1 ervoor: het eenvoudige model voor telefoons.
 // Draait in Chromium zonder videokaart (SwiftShader); de testpagina is klein, dus dat gaat snel genoeg.
 const fs = require('fs');
 const path = require('path');
@@ -30,7 +31,7 @@ const SHEETS = {
   'lopen-langzaam': ['sheet', { mode: 'walk', speed: 0.9, dtPhase: 0.18 }],
   speler: ['sheet', { mode: 'walk', speed: 4.0, dtPhase: 0.085 }],
   rennen: ['sheet', { mode: 'walk', speed: 6.5, dtPhase: 0.065 }],
-  stilstaan: ['sheet', { mode: 'idle', speed: 0, dtPhase: 0.6 }],
+  stilstaan: ['sheet', { mode: 'idle', speed: 0, dtPhase: 4.1, warm: 3 }],
   zitten: ['sheet', { mode: 'sit', speed: 0, dtPhase: 0.6 }],
   fietsen: ['sheet', { mode: 'bike', speed: 5, dtPhase: 0.18, bike: true, cell: 1.9, ppm: 110 }],
   skaten: ['sheet', { mode: 'skate', speed: 6, dtPhase: 0.4 }],
@@ -47,6 +48,8 @@ const SHEETS = {
   'rij-zij': ['lineup', { list: LOOKS, yaw: Math.PI / 2 }],
   hoofden: ['lineup', { list: LOOKS.slice(0, 8), yaw: 0.45, ppm: 620, cell: 0.5, zoom: { y: 1.66, h: 0.62 } }],
   handen: ['lineup', { list: [{}, { female: true }, { coat: 0x3e4a57 }], yaw: 0.5, ppm: 1000, cell: 0.75, zoom: { y: 0.9, h: 0.45 } }],
+  heupen: ['lineup', { list: [{}, { female: true }, { jacket: 0x5d4037 }, { build: 1 }], yaw: 0.6, ppm: 800, cell: 0.7, zoom: { y: 0.92, h: 0.5 }, mode: 'walk', speed: 1.3, warm: 2.2 }],
+  bouw: ['lineup', { list: [{ build: -1 }, { build: -0.5 }, { build: 0 }, { build: 0.5 }, { build: 1 }, { build: -1, female: true }, { build: 0, female: true }, { build: 1, female: true }], yaw: 0.5 }],
 };
 
 (async () => {
@@ -56,7 +59,7 @@ const SHEETS = {
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  await page.goto(URL);
+  await page.goto(URL + (process.env.LAAG ? '?laag=1' : ''));
   await page.waitForFunction(() => window.__klaar);
   for (const [name, [fn, cfg]] of Object.entries(SHEETS)) {
     if (filter && !filter.split(',').some((f) => name.includes(f))) continue;
@@ -64,6 +67,11 @@ const SHEETS = {
     const url = await page.evaluate(([fn, cfg]) => window[fn](cfg), [fn, cfg]);
     fs.writeFileSync(path.join(out, `${prefix}-${name}.jpg`), Buffer.from(url.split(',')[1], 'base64'));
     console.log('gemaakt', `${prefix}-${name}.jpg`, Date.now() - t0, 'ms');
+  }
+  if (!filter || filter.includes('meet')) {
+    console.log('gewicht', JSON.stringify(await page.evaluate(() => window.stats({}))));
+    console.log('gewicht (vrouw, lang haar, jas)', JSON.stringify(await page.evaluate(() => window.stats({ opts: { female: true, coat: 0x334455, glasses: true } }))));
+    console.log('wissels', JSON.stringify(await page.evaluate(() => window.jump({}))));
   }
   if (!filter || filter.includes('schuif')) {
     for (const [mode, speed] of [['walk', 0.9], ['walk', 1.3], ['walk', 1.6], ['walk', 2.5], ['walk', 4.0], ['walk', 6.5]]) {

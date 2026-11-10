@@ -4,7 +4,9 @@
 // - window.slip(cfg): meet hoeveel de standvoet over de grond schuift (in meters per cyclus)
 // - zonder aanroep: één poppetje dat live beweegt (?mode=walk&speed=1.3)
 import * as THREE from 'three';
-import { makeCharacter, makeBike } from '../src/character.js';
+// ?laag=1: het eenvoudige model voor telefoons
+if (new URLSearchParams(location.search).has('laag')) globalThis.__POPPETJES_LAAG = true;
+const { makeCharacter, makeBike } = await import('../src/character.js');
 
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
@@ -33,10 +35,9 @@ function slab(x0, x1, y, z = 0, depth = 3) {
 function clearStage() {
   for (const c of [...stage.children]) {
     stage.remove(c);
-    c.traverse?.((o) => { if (o.geometry && o.geometry !== slabGeoKeep) o.geometry.dispose?.(); });
+    c.traverse?.((o) => { o.geometry?.dispose?.(); });
   }
 }
-const slabGeoKeep = null;
 
 function ortho(w, h, ppm, cx, cy, dir = [0, 0, 1]) {
   renderer.setSize(w, h, false);
@@ -67,7 +68,7 @@ window.sheet = (cfg = {}) => {
   const w = Math.round(n * cell * ppm), h = Math.round(rowH * 2 * ppm);
   for (let row = 0; row < 2; row++) {
     const y0 = row === 0 ? rowH : 0; // boven: van opzij; onder: van voren
-    slab(-n * cell / 2, n * cell / 2, y0 - (bike ? 0 : 0), -0.5, 2.5);
+    slab(-n * cell / 2, n * cell / 2, y0, -0.5, 2.5);
     for (let i = 0; i < n; i++) {
       const m = fixedRandom(() => makeCharacter(opts));
       const g = new THREE.Group();
@@ -125,17 +126,53 @@ window.slip = (cfg = {}) => {
     m.position.z += speed * dt;
     m.userData.animate(dt, speed, mode);
     m.updateMatrixWorld(true);
-    for (const f of feet) { f.b.getWorldPosition(v); f.y.push(v.y); f.z.push(v.z); }
+    for (const f of feet) { f.b.localToWorld(v.set(0, -0.081, 0.1)); f.y.push(v.y); f.z.push(v.z); } // bal van de voet
   }
-  // stand = enkel binnen 8 mm van zijn laagste punt (ruimer telt ook het lage eind van de zwaai mee)
+  // stand = bal van de voet binnen 8 mm van zijn laagste punt
   return {
     speed, mode, voeten: feet.map((f) => {
       const minY = Math.min(...f.y), maxY = Math.max(...f.y);
       let slip = 0, t = 0;
       for (let i = 1; i < steps; i++) if (f.y[i] < minY + 0.008 && f.y[i - 1] < minY + 0.008) { slip += Math.abs(f.z[i] - f.z[i - 1]); t += dt; }
-      return { standDeel: +(t / seconds).toFixed(2), schuifSnelheid: +(slip / Math.max(t, 1e-6)).toFixed(3), minEnkelY: +minY.toFixed(3), maxEnkelY: +maxY.toFixed(3) };
+      return { standDeel: +(t / seconds).toFixed(2), schuifSnelheid: +(slip / Math.max(t, 1e-6)).toFixed(3), minBalY: +minY.toFixed(3), maxBalY: +maxY.toFixed(3) };
     }),
   };
+};
+
+// Hoe zwaar is een poppetje? Aantal driehoeken, bouwtijd en tijd per animatiestap.
+window.stats = (cfg = {}) => {
+  const { opts = {}, n = 40 } = cfg;
+  const t0 = performance.now();
+  const list = [];
+  for (let i = 0; i < n; i++) list.push(makeCharacter(opts));
+  const build = (performance.now() - t0) / n;
+  const geo = list[0].userData.parts.mesh.geometry;
+  const t1 = performance.now();
+  for (let k = 0; k < 100; k++) for (const m of list) m.userData.animate(1 / 60, 1.3, 'walk');
+  const anim = (performance.now() - t1) / (100 * n);
+  list.forEach((m) => m.userData.parts.mesh.geometry.dispose());
+  return { driehoeken: geo.index.count / 3, hoekpunten: geo.attributes.position.count, bouwMs: +build.toFixed(2), animatieMsPerStap: +anim.toFixed(4) };
+};
+
+// Springt het poppetje bij een wissel van houding? Grootste draaiing van een bot in één beeld (graden).
+window.jump = (cfg = {}) => {
+  const { seq = [['walk', 1.3], ['wave', 0], ['sit', 0], ['walk', 4], ['bike', 5], ['idle', 0], ['eat', 0], ['walk', 6.5]] } = cfg;
+  const m = fixedRandom(() => makeCharacter({}));
+  const bones = Object.values(m.userData.parts).filter((b) => b.isBone);
+  const prev = bones.map((b) => b.quaternion.clone());
+  const out = [];
+  for (const [mode, speed] of seq) {
+    let worst = 0, first = 0;
+    for (let i = 0; i < 60; i++) {
+      m.userData.animate(1 / 60, speed, mode);
+      let d = 0;
+      bones.forEach((b, k) => { d = Math.max(d, prev[k].angleTo(b.quaternion) * 180 / Math.PI); prev[k].copy(b.quaternion); });
+      if (i === 0) first = d;
+      worst = Math.max(worst, d);
+    }
+    out.push({ mode, speed, eersteBeeld: +first.toFixed(1), grootste: +worst.toFixed(1) });
+  }
+  return out;
 };
 
 // live meekijken

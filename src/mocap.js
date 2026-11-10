@@ -57,6 +57,6 @@ export function gait(v) {
   const amp = Math.min(1, Math.pow(Math.max(0, v) / 0.75, 0.7));
   G.amp = amp;
   const vw = Math.max(v, 0.75);
-  G.stride = amp * (G.walk * W.stride * Math.pow(vw / W.speed, 0.35) + G.jog * J.stride * Math.pow(vw / J.speed, 0.35) + G.run * R.stride * Math.pow(vw / R.speed, 0.5));
+  G.stride = amp * (G.walk * W.stride * Math.pow(vw / W.speed, 0.35) + G.jog * J.stride * Math.pow(vw / J.speed, 0.25) + G.run * R.stride * Math.pow(vw / R.speed, 0.3));
   return G;
 }
