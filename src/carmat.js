@@ -4,7 +4,7 @@ import * as THREE from 'three';
 
 // De lucht spiegelt in de game maar zwak (scene.environmentIntensity is laag gehouden voor de rest van het dorp).
 // Lak en glas leven juist van die spiegeling, dus die krijgen hier een eigen versterking.
-const SPIEGEL_LAK = 1.9, SPIEGEL_GLAS = 2.4;
+const SPIEGEL_LAK = 1.9, SPIEGEL_GLAS = 1.8;
 
 // De omgevingskaart bevat alleen lucht. In het echt spiegelt een auto opzij en omlaag de straat, gevels en groen,
 // en die zijn donkerder: daarom wordt de spiegeling zwakker naarmate de gespiegelde richting lager ligt.
@@ -123,7 +123,7 @@ function patchDetail(shader) {
 function patchGlass(shader) {
   shader.fragmentShader = shader.fragmentShader
     .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-  reflectedLight.indirectSpecular *= ${SPIEGEL_GLAS.toFixed(2)} * ${HORIZON};`)
+  reflectedLight.indirectSpecular *= ${SPIEGEL_GLAS.toFixed(2)} * ${HORIZON.replace('0.3,', '0.16,')};`)
     .replace('#include <opaque_fragment>', `
   {
     float glasFres = pow( 1.0 - saturate( dot( normalize( normal ), normalize( vViewPosition ) ) ), 4.0 );
@@ -146,7 +146,8 @@ uniform float uPlaat;
 #ifdef USE_INSTANCING
 attribute float aPlaat;
 #endif
-varying float vGloed;`)
+varying float vGloed;
+varying float vDof;`)
     .replace('#include <uv_vertex>', `#include <uv_vertex>
   {
     float aan = uLamp.x, k = aKind;
@@ -159,6 +160,7 @@ varying float vGloed;`)
     else if ( k < 5.5 ) g = 0.08 + max( 0.0, uLamp.w * sign( position.x ) ) * 6.0; // knipperlicht (w > 0: links)
     else if ( k < 6.5 ) g = aan * uNacht * 0.4;                        // verlichte kentekenplaat
     vGloed = g;
+    vDof = k < 0.5 ? 0.22 : 1.0; // de lens van het dimlicht is overdag donker glas
     #ifdef USE_MAP
     if ( k > 5.5 && k < 6.5 ) {
       #ifdef USE_INSTANCING
@@ -172,8 +174,8 @@ varying float vGloed;`)
     #endif
   }`);
   shader.fragmentShader = shader.fragmentShader
-    .replace('#include <common>', '#include <common>\nvarying float vGloed;')
-    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance = diffuseColor.rgb * vGloed;');
+    .replace('#include <common>', '#include <common>\nvarying float vGloed;\nvarying float vDof;')
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance = diffuseColor.rgb * vGloed;\ndiffuseColor.rgb *= vDof;');
 }
 
 export class CarMaterials {

@@ -34,7 +34,7 @@ fs.mkdirSync(out, { recursive: true });
   if (process.env.RIJ) {
     for (const [tname, night] of [['dag', 0], ['nacht', 1]]) {
       if (when !== 'beide' && when !== tname) continue;
-      for (const v of ['rij', 'rijachter', 'rijver']) {
+      for (const v of ['rij', 'rijachter', 'rijmidden', 'rijver']) {
         const res = await page.evaluate(({ types, paints, night, v }) => {
           const T = window.T;
           T.setNight(night);
@@ -42,7 +42,7 @@ fs.mkdirSync(out, { recursive: true });
           T.setRow(types, paints);
           T.cars.updateTraffic(0.016, { x: 999, z: 999 });
           const tris = {};
-          for (const [k, b] of Object.entries(T.cars.batches)) tris[k] = { dichtbij: b.near ? b.near.meshes.reduce((n, m) => n + (m.count ? m.geometry.index.count / 3 : 0), 0) : 0, ver: b.far.meshes.reduce((n, m) => n + (m.count ? m.geometry.index.count / 3 : 0), 0) };
+          for (const [k, b] of Object.entries(T.cars.batches)) tris[k] = Object.fromEntries(b.sets.filter((q) => q.n).map((q) => ['niveau' + q.lod, q.meshes.reduce((n, m) => n + m.geometry.index.count / 3, 0)]));
           return { url: T.shot(), tris, calls: T.renderer.info.render.calls };
         }, { types, paints: types.map((t) => PAINT[t]), night, v });
         fs.writeFileSync(path.join(out, `rij-${tname}-${v}-${quality}.jpg`), Buffer.from(res.url.split(',')[1], 'base64'));

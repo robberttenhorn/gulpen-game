@@ -101,7 +101,7 @@ fs.mkdirSync(out, { recursive: true });
     }
     res.bouwtijdMs = Math.round(res.bouwtijdMs);
     res.autos = c.cars.length; res.verkeer = c.traffic.length;
-    res.bundels = Object.fromEntries(Object.entries(c.batches).map(([k, b]) => [k, { autos: b.cars.length, dichtbij: b.near ? b.near.meshes[0].count : 0, ver: b.far.meshes[0].count }]));
+    res.bundels = Object.fromEntries(Object.entries(c.batches).map(([k, b]) => [k, { autos: b.cars.length, perTrap: b.sets.map((q) => `niveau ${q.lod}: ${q.n}`) }]));
     return res;
   });
   console.log(JSON.stringify(report.modellen));
@@ -190,11 +190,11 @@ fs.mkdirSync(out, { recursive: true });
   // 7. een geparkeerde auto activeren (uit de bundel) en weer uitstappen
   report.activeren = await page.evaluate(() => {
     const g = window.game, c = A.spot, b = g.cars.batches[c.type];
-    const before = b.far.meshes[0].count + (b.near ? b.near.meshes[0].count : 0);
+    const before = b.sets.reduce((n, q) => n + q.n, 0);
     A.look(c.x + 2.5, c.z, 0, 0.2);
     g.enterCar(c);
     A.steps(5);
-    const after = b.far.meshes[0].count + (b.near ? b.near.meshes[0].count : 0);
+    const after = b.sets.reduce((n, q) => n + q.n, 0);
     const ok = g.mode === 'car' && !!c.mesh;
     g.exitCar();
     return { ingestapt: ok, bundelVoor: before, bundelNa: after };

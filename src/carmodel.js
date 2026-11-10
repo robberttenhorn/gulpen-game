@@ -360,7 +360,9 @@ export class Shell {
 // ---------------------------------------------------------------- lapjes over een schil
 // fn(u, v) geeft een punt op het oppervlak; het lapje ligt 'off' meter naar buiten.
 // o.inner: stijl voor een binnenkant (omgekeerd vlak, net binnen het oppervlak), o.innerBuf: waar die heen gaat.
+export const cfg = { off: 1 }; // schaal voor de afstand van lapjes tot het oppervlak (groter bij grovere modellen)
 export function patch(buf, fn, nu, nv, style, off = 0.005, o = {}) {
+  off *= cfg.off;
   nu = Math.max(1, Math.round(nu)); nv = Math.max(1, Math.round(nv));
   const W = nu + 1, H = nv + 1, pts = new Array(W * H), nor = new Float64Array(W * H * 3);
   let cx = 0, cy = 0, cz = 0;
@@ -496,7 +498,9 @@ export function buildWheel(w, lod) {
   const rim = w.rim, LIP = rim.lip || st(0xc9ccd0, 0.22, 1), BARREL = rim.barrel || st(0x6f7276, 0.4, 1);
   if (lod === 2) {
     // ver weg: band als ring met een schijf als velg
-    lathe(b, [[xi, rimR * 0.9, WALL], [xi, R, WALL], [xi, R, TREAD], [xo, R, TREAD], [xo, R, WALL], [xo - 0.01, rimR, WALL], [xo - 0.01, rimR, rim.far || LIP], [xo - 0.035, 0.001, rim.far || LIP]], seg);
+    // velg: lichte rand, donkerder schotel en een dop in het midden
+    const FACE = rim.face || LIP, MID = rim.side || BARREL;
+    lathe(b, [[xi, rimR * 0.9, WALL], [xi, R, WALL], [xi, R, TREAD], [xo, R, TREAD], [xo, R, WALL], [xo - 0.01, rimR, WALL], [xo - 0.01, rimR, FACE], [xo - 0.02, rimR * 0.8, FACE], [xo - 0.02, rimR * 0.8, MID], [xo - 0.05, rimR * 0.32, MID], [xo - 0.05, rimR * 0.32, FACE], [xo - 0.035, 0.001, FACE]], seg);
     return b;
   }
   // band: wang, schouder en loopvlak (met groeven op de hoogste stand)
@@ -587,7 +591,7 @@ export function driver(buf, x, y, z, o = {}) {
   cyl(buf, 0.05, 0.055, 0.08, 6, x, y + 0.6 * k, z - 0.06 + zb, SK);
   ball(buf, 0.105, x, y + 0.6 * k + 0.13, z - 0.05 + zb, SK, 0.92, 1.08, 1, lod === 0 ? 10 : 7, lod === 0 ? 8 : 5);
   // haar: een kap over de bovenkant en achterkant van het hoofd
-  buf.geo(new THREE.SphereGeometry(0.112, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.5), HA, mat4(x, y + 0.6 * k + 0.145, z - 0.062 + zb, -0.35, 0, 0, 0.95, 1.05, 1.05));
+  buf.geo(new THREE.SphereGeometry(0.112, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.62), HA, mat4(x, y + 0.6 * k + 0.145, z - 0.062 + zb, -0.35, 0, 0, 0.95, 1.05, 1.05));
   for (const sx of [-1, 1]) {
     // bovenarm en onderarm naar het stuur
     softBox(buf, 0.09, 0.09, 0.3, x + sx * 0.22, y + 0.4 * k, z + 0.08 + zb * 0.6, SH, 0.035, 0.55, sx * -0.1);

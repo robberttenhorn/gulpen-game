@@ -20,8 +20,10 @@ const TYPES = {
 
 const PAINTS = [0x2b2d30, 0xd8d9db, 0x8d9196, 0x1e2a44, 0x7a1e1e, 0xeeeeee, 0x3b4a3a, 0x6b6e72, 0x101012, 0x9c9fa3, 0x2f4f7a];
 
-// Gebundelde auto's binnen deze afstand van de camera krijgen het fijnere model (met glas en interieur).
-const NEAR_IN = 50, NEAR_OUT = 58;
+// Gebundelde (geparkeerde) auto's krijgen een model naar afstand tot de camera: vlakbij het volledige model,
+// daarna een lichter model (nog met glas en interieur) en ver weg het eenvoudige. Op de telefoon alleen het eenvoudige.
+// [detailniveau, afstand in meters]; de laatste trap geldt voor alles daarbuiten.
+const TIERS = Q.laag ? [[2, Infinity]] : Q.name === 'midden' ? [[1, 32], [2, Infinity]] : [[0, 13], [1, 50], [2, Infinity]];
 const _e = new THREE.Euler(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _col = new THREE.Color();
 
 // lichtvlek op de weg voor de auto: plat vlak dat bij het beeld wordt opgeteld
@@ -78,7 +80,6 @@ export class Vehicles {
     const rig = { lamp: lm.userData.u.uLamp.value, wheels: [], dist: 0, steer: 0, on: 0, px: null, pz: null, ph: 0, pv: 0, done: null };
     if (m.glass) {
       const gl = new THREE.Mesh(m.glass, this.mats.glass);
-      gl.renderOrder = 2;
       g.add(gl);
     }
     if (!baked) {
@@ -98,12 +99,12 @@ export class Vehicles {
         rig.driver.visible = false;
         g.add(rig.driver);
       }
-      rig.beam = new THREE.Mesh(getBeamGeo(), this.mats.beam);
-      rig.beam.position.z = m.beam.z - 0.4;
-      rig.beam.visible = false;
-      rig.beam.renderOrder = 3;
-      g.add(rig.beam);
     }
+    // lichtvlek van de koplampen op de weg (alleen zichtbaar als de lampen aan zijn en het donker is)
+    rig.beam = new THREE.Mesh(getBeamGeo(), this.mats.beam);
+    rig.beam.position.z = m.beam.z - 0.4;
+    rig.beam.visible = false;
+    g.add(rig.beam);
     g.userData.rig = rig;
     return g;
   }
@@ -157,8 +158,8 @@ export class Vehicles {
     // auto's op opritten en erven door het hele dorp
     for (const d of this.drivewaySpots(mobile ? 40 : 90)) list.push(this.addCar(pick(), d.x, d.z, d.heading, paint(), { parked: true }));
     for (const e of extra) list.push(this.addCar(e.type, e.x, e.z, e.heading, e.paint, { parked: true, ...e.opts }));
-    // Per type twee bundels: een fijn model voor auto's dicht bij de camera en een eenvoudig model voor de rest.
-    // Elke bundel is per materiaal één tekenopdracht (lak, details, lampen en eventueel glas).
+    // Per type een bundel per afstandstrap. Elke bundel is per materiaal één tekenopdracht
+    // (lak, details met de wielen, lampen en eventueel glas); lege bundels worden niet getekend.
     this.batches = {};
     const tmp = new THREE.Object3D();
     for (const type of Object.keys(TYPES)) {
@@ -166,7 +167,7 @@ export class Vehicles {
       if (!cars.length) continue;
       const sphere = new THREE.Box3().setFromPoints(cars.map((c) => new THREE.Vector3(c.x, this.world.groundAt(c.x, c.z), c.z))).getBoundingSphere(new THREE.Sphere());
       sphere.radius += 6;
-      const mk = (lod) => {
+      const mk = ([lod, range]) => {
         const m = this.model(type, lod), n = cars.length;
         // eigen geometrie voor de lampen (zelfde gegevens), met per auto een kenteken
         const lg = new THREE.BufferGeometry();
@@ -181,56 +182,58 @@ export class Vehicles {
         ];
         meshes[0].castShadow = meshes[1].castShadow = true;
         meshes[0].receiveShadow = meshes[1].receiveShadow = true;
-        if (m.glass) { const gl = new THREE.InstancedMesh(m.glass, this.mats.glass, n); gl.renderOrder = 2; meshes.push(gl); }
+        if (m.glass) meshes.push(new THREE.InstancedMesh(m.glass, this.mats.glass, n));
         meshes[0].setColorAt(0, _col.set(0xffffff));
-        for (const im of meshes) { im.boundingSphere = sphere.clone(); im.count = 0; this.scene.add(im); }
-        return { meshes, plate };
+        for (const im of meshes) { im.boundingSphere = sphere.clone(); im.count = 0; im.visible = false; this.scene.add(im); }
+        return { lod, range, meshes, plate, n: 0 };
       };
       cars.forEach((c, i) => {
         c.slot = i;
         c.plate = c.isVolvo ? 0 : 1 + Math.floor(rand() * (PLATE_COUNT - 1));
+        c.tier = TIERS.length - 1;
         this.pose(c, tmp);
         c.matrix = tmp.matrix.clone();
       });
-      const b = { cars, near: Q.laag ? null : mk(1), far: mk(2) };
-      b.meshes = [...(b.near ? b.near.meshes : []), ...b.far.meshes];
-      this.batches[type] = b;
+      const sets = TIERS.map(mk);
+      this.batches[type] = { cars, sets, meshes: sets.flatMap((q) => q.meshes) };
     }
     this.refreshBatches(true);
   }
 
-  // Auto's over de fijne en de eenvoudige bundel verdelen, naar afstand tot de camera.
+  // Geparkeerde auto's over de bundels verdelen, naar afstand tot de camera.
   refreshBatches(force = false) {
     if (!this.batches) return;
     const cam = this.g.camera?.position;
-    if (!force && cam && this.lodAt && cam.distanceToSquared(this.lodAt) < 9) return;
+    if (!force && cam && this.lodAt && cam.distanceToSquared(this.lodAt) < 4) return;
     if (cam) (this.lodAt ??= new THREE.Vector3()).copy(cam);
     this.batchDirty = false;
     for (const b of Object.values(this.batches)) {
-      let nN = 0, nF = 0;
+      for (const set of b.sets) set.n = 0;
       for (const c of b.cars) {
         if (c.mesh) continue; // rijdt los rond
-        let near = false;
-        if (b.near && cam) {
-          const d = (c.x - cam.x) ** 2 + (c.z - cam.z) ** 2, lim = c.near ? NEAR_OUT : NEAR_IN;
-          near = d < lim * lim;
+        let tier = b.sets.length - 1;
+        if (cam && b.sets.length > 1) {
+          const d = Math.hypot(c.x - cam.x, c.z - cam.z);
+          for (let k = 0; k < b.sets.length; k++) {
+            // een auto die al in een fijnere trap zit, blijft daar tot hij ruim buiten de grens is (geen geflikker op de rand)
+            if (d < b.sets[k].range * (c.tier <= k ? 1.15 : 1)) { tier = k; break; }
+          }
         }
-        c.near = near;
-        const set = near ? b.near : b.far, i = near ? nN++ : nF++;
+        c.tier = tier;
+        const set = b.sets[tier], i = set.n++;
         for (const im of set.meshes) im.setMatrixAt(i, c.matrix);
         set.meshes[0].setColorAt(i, _col.set(c.paint));
         set.plate.array[i] = c.plate;
       }
-      for (const [set, n] of [[b.near, nN], [b.far, nF]]) {
-        if (!set) continue;
-        for (const im of set.meshes) { im.count = n; im.instanceMatrix.needsUpdate = true; }
-        set.meshes[0].instanceColor.needsUpdate = true;
+      for (const set of b.sets) {
+        for (const im of set.meshes) { im.count = set.n; im.visible = set.n > 0; im.instanceMatrix.needsUpdate = true; }
+        if (set.meshes[0].instanceColor) set.meshes[0].instanceColor.needsUpdate = true;
         set.plate.needsUpdate = true;
       }
     }
   }
 
-  // Willekeurige opritten: tussen een huis en de straat, op verharding.
+    // Willekeurige opritten: tussen een huis en de straat, op verharding.
   drivewaySpots(n) {
     const w = this.world;
     const out = [];

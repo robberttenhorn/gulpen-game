@@ -2,7 +2,7 @@
 // (ruiten, stijlen, lampen, grille, naden, spiegels, interieur, wielen). Zie carmodel.js voor de bouwstenen.
 // Maten in 'u' zijn gemeten vanaf de achterkant van de auto (0 = achterbumper, L = neus), hoogtes vanaf de grond.
 import * as THREE from 'three';
-import { Buf, Shell, patch, linePatch, st, lamp, paintSt, fnOf, clamp, lerp, sstep, HALF_PI, box, softBox, cyl, ball, lathe, buildWheel, seat, steeringWheel, driver, mat4 } from './carmodel.js';
+import { cfg, Buf, Shell, patch, linePatch, st, lamp, paintSt, fnOf, clamp, lerp, sstep, HALF_PI, box, softBox, cyl, ball, lathe, buildWheel, seat, steeringWheel, driver, mat4 } from './carmodel.js';
 
 // Detailniveaus: 0 = losse auto van dichtbij, 1 = gebundelde auto dichtbij, 2 = ver weg en telefoon.
 export const LODS = [
@@ -14,7 +14,7 @@ export const LODS = [
 const SILVER = st(0xc9ccd0, 0.22, 1), CHROME = st(0xe2e5e8, 0.07, 1), BLACK = st(0x0b0c0d, 0.22, 0.3), PLASTIC = st(0x17181a, 0.78, 0);
 const SEAM = st(0x050505, 0.9), DARK = st(0x0a0a0b, 1), INNER = st(0x2c2d30, 0.92), RUBBER = st(0x0d0d0e, 0.9);
 const GLASS_FAR = st(0x0c1014, 0.08, 0.55); // ondoorzichtig glas voor de eenvoudige modellen
-const WHITE = 0xf3f7ff, WARM = 0xc9c3b6, RED = 0xd01212, BRAKE = 0xff2a14, AMBER = 0xff9a14;
+const WHITE = 0xf3f7ff, WARM = 0xfff1dc, RED = 0xd01212, BRAKE = 0xff2a14, AMBER = 0xff9a14;
 
 const RIMS = {
   // vijf brede spaken, zilver
@@ -69,7 +69,7 @@ const SPECS = {
     },
     gh: {
       top: [[0.72, 0.92], [1.05, 1.18], [1.5, 1.39], [2.2, 1.445], [2.75, 1.425], [3.08, 1.22], [3.44, 0.93]],
-      tipF: 3.44, tipR: 0.72, bf: 0.32, nf: 4, br: 0.4, nr: 3, tumble: 0.33, rt: 0.085, pt: 2.7,
+      tipF: 3.44, tipR: 0.72, bf: 0.32, nf: 4, br: 0.3, nr: 3.6, tumble: 0.33, rt: 0.085, pt: 2.7,
       roof: [1.5, 2.72], band: 0.06, aW: 0.085, b: [2.18], bw: 0.085, c: [1.14, 1.5], cW: 0.09, chrome: true,
     },
     doors: { f: 3.16, r: 1.36, handles: [2.32, 1.42] },
@@ -187,11 +187,16 @@ function plateQuad(lights, detail, yc, z, front) {
 function disc(buf, R, uc, vc, ru, rv, style, off, n = 10) {
   patch(buf, (u, v) => { const a = u * Math.PI * 2; return R(uc + Math.cos(a) * ru * v, vc + Math.sin(a) * rv * v); }, n, 1, style, off);
 }
-const sub = (R, u0, u1, v0, v1) => (u, v) => R(lerp(u0, u1, u), lerp(v0, v1, v));
+const sub = (R, u0, u1, v0, v1) => {
+  const f = (u, v) => R(lerp(u0, u1, u), lerp(v0, v1, v));
+  if (R.wr) f.wr = { end: R.wr.end, w0: lerp(R.wr.w0, R.wr.w1, u0), w1: lerp(R.wr.w0, R.wr.w1, u1) };
+  return f;
+};
 
 export function buildCar(key, t, lod) {
   if (key === 'tractor') return buildTractor(t, lod);
   const sp = SPECS[key], Lq = LODS[lod], { L, W, wheelR: R, wheelbase: wb } = t;
+  cfg.off = [1, 1.4, 2.2][lod];
   const h = L / 2, B = sp.body, Gs = sp.gh;
   const U = (v) => fnOf(v, h);
   const N = (n) => Math.max(1, Math.round(n * Lq.patch));
@@ -403,7 +408,7 @@ export function buildCar(key, t, lod) {
       }
     });
     // zwarte strook onder de voorruit (ruitenwisserbak) en de hoedenplank achter
-    const zEdgeF = (xf) => zgf0 + Gs.bf * sup(xf / 0.955, Gs.nf) + 0.02;
+    const zEdgeF = (xf) => zgf0 + Gs.bf * sup(xf / 0.955, Gs.nf) + 0.005;
     const zEdgeR = (xf) => zgr0 - Gs.br * sup(xf / 0.955, Gs.nr) - 0.03;
     sym(() => {
       patch(detail, (u, v) => { const xf = u * 0.94; const z = lerp(zO1 - 0.01, zEdgeF(xf), v); return S.P(z, 0, S.sOfX(z, xf)); }, N(8), N(3), st(0x0c0d0e, 0.85), 0.004);
@@ -490,19 +495,57 @@ export function buildCar(key, t, lod) {
   });
 
   // ================================================================ onderkant in zwart kunststof (SUV), bumpers, lampen
-  const wf = (w0, w1, ya0, ya1, yb0 = ya0, yb1 = ya1) => (u, v) => S.wrap('f', lerp(w0, w1, u), lerp(lerp(ya0, yb0, u), lerp(ya1, yb1, u), v));
-  const wr = (w0, w1, ya0, ya1, yb0 = ya0, yb1 = ya1) => (u, v) => S.wrap('r', lerp(w0, w1, u), lerp(lerp(ya0, yb0, u), lerp(ya1, yb1, u), v));
+  // Vlakken rond de neus (wf) en de kont (wr): w is de afstand langs de omtrek vanaf het midden, y de hoogte
+  // (ya aan de binnenkant, yb aan de buitenkant). Zo'n vlak loopt vanzelf mee om de hoek.
+  const wrapFn = (end) => (w0, w1, ya0, ya1, yb0 = ya0, yb1 = ya1) => {
+    const f = (u, v) => S.wrap(end, lerp(w0, w1, u), lerp(lerp(ya0, yb0, u), lerp(ya1, yb1, u), v));
+    f.wr = { end, w0, w1 };
+    return f;
+  };
+  const wf = wrapFn('f'), wr = wrapFn('r');
+  // plekken langs de omtrek waar de carrosserie zelf een station heeft
+  const wCols = {};
+  for (const end of ['f', 'r']) {
+    const tab = S.outline(end), ws = [];
+    for (const stn of stations) {
+      const z = stn.z;
+      if (end === 'f' ? z < tab[tab.length - 1][1] : z > tab[tab.length - 1][1]) continue;
+      let k = 0;
+      while (k < tab.length - 2 && (end === 'f' ? tab[k + 1][1] > z : tab[k + 1][1] < z)) k++;
+      const t = clamp((z - tab[k][1]) / (tab[k + 1][1] - tab[k][1] || 1), 0, 1), w = lerp(tab[k][0], tab[k + 1][0], t);
+      if (!ws.length || Math.abs(ws[ws.length - 1] - w) > 1e-4) ws.push(w);
+    }
+    ws.sort((x, y) => x - y);
+    wCols[end] = ws;
+  }
+  // Lapje op de neus of kont met zijn hoekpunten op dezelfde plekken als de carrosserie eronder.
+  // Zo snijdt een lapje nooit door de ronding van de hoek, ook niet bij het eenvoudige model.
+  const P = (buf, fn, nu, nv, style, off, o) => {
+    if (!fn.wr) return patch(buf, fn, nu, nv, style, off, o);
+    const { end, w0, w1 } = fn.wr, lo = Math.min(w0, w1), hi = Math.max(w0, w1);
+    const cand = [...wCols[end].map((w) => -w).reverse(), ...wCols[end]].filter((w) => w > lo + 0.012 && w < hi - 0.012);
+    if (w0 > w1) cand.reverse();
+    const us = [0, ...cand.map((w) => (w - w0) / (w1 - w0)), 1];
+    return patch(buf, (u, v) => fn(us[Math.round(u * (us.length - 1))], v), us.length - 1, nv, style, off, o);
+  };
+  const part = (buf, R, n, u0, u1, v0, v1, style, off) => P(buf, sub(R, u0, u1, v0, v1), 1, 1, style, off);
   const yLow = (z) => fBot(z) + 0.035;
   const cladSide = (yTop) => {
     // dorpels en wielkastranden in zwart kunststof
     const aF = arches[0], aR = arches[1];
     sym(() => {
-      patch(detail, (u, v) => { const z = lerp(aR.z + aR.dzF - 0.02, aF.z - aF.dzR + 0.02, u); return side(z, lerp(yLow(z), yTop, v)); }, N(10), N(2), PLASTIC, 0.005);
+      P(detail, (u, v) => { const z = lerp(aR.z + aR.dzF - 0.02, aF.z - aF.dzR + 0.02, u); return side(z, lerp(yLow(z), yTop, v)); }, N(10), N(2), PLASTIC, 0.005);
       for (const ar of arches) {
-        patch(detail, (u, v) => {
-          const ps = lerp(ar.p1 + 0.02, ar.p0 - 0.02, u), r = ar.r + v * 0.085, z = ar.z + r * Math.cos(ps);
+        P(detail, (u, v) => {
+          const ps = lerp(ar.p1, ar.p0, u), r = ar.r + v * 0.085, z = ar.z + r * Math.cos(ps);
           return side(z, Math.max(yLow(z), ar.y + r * Math.sin(ps)));
-        }, N(16), N(2), PLASTIC, 0.006);
+        }, Lq.nArch, lod === 0 ? 3 : 2, PLASTIC, lod === 0 ? 0.009 : 0.014);
+        // de omgezette rand van de wielkast
+        for (let k = 0; k < Lq.nArch; k++) {
+          const q = (kk) => { const ps = lerp(ar.p1, ar.p0, kk / Lq.nArch), z = ar.z + ar.r * Math.cos(ps), y = Math.max(S.sec(z).yR, ar.y + ar.r * Math.sin(ps)), x = S.sideX(z, y), c = Math.cos(ps), sn = Math.sin(ps); return [S.w3(x + 0.012, y - sn * 0.006, z - c * 0.006), S.w3(x - 0.034, y - sn * 0.006, z - c * 0.006), [0, -sn, -c]]; };
+          const A = q(k), B = q(k + 1);
+          detail.flat(A[0], B[0], B[1], A[1], PLASTIC, A[2]);
+        }
       }
     });
   };
@@ -512,76 +555,79 @@ export function buildCar(key, t, lod) {
   if (sp.cladding) {
     cladSide(sp.cladding);
     // onderrand van de bumpers
-    patch(detail, wf(-wArchF, wArchF, yLow(zEndF) + 0.02, F.black ?? sp.cladding + 0.06), N(26), N(2), PLASTIC, 0.005);
-    patch(detail, wr(-wArchR, wArchR, yLow(zEndR) + 0.03, Rs.bumper), N(22), N(2), PLASTIC, 0.005);
+    P(detail, wf(-wArchF, wArchF, yLow(zEndF) + 0.02, F.black ?? sp.cladding + 0.06), N(26), N(2), PLASTIC, 0.005);
+    P(detail, wr(-wArchR, wArchR, yLow(zEndR) + 0.03, Rs.bumper), N(22), N(2), PLASTIC, 0.005);
   } else {
-    if (F.black) patch(detail, wf(-wArchF, wArchF, yLow(zEndF) + 0.02, F.black), N(26), N(2), PLASTIC, 0.005);
-    if (Rs.black) patch(detail, wr(-wArchR, wArchR, yLow(zEndR) + 0.03, Rs.black), N(22), N(2), PLASTIC, 0.005);
+    if (F.black) P(detail, wf(-wArchF, wArchF, yLow(zEndF) + 0.02, F.black), N(26), N(2), PLASTIC, 0.005);
+    if (Rs.black) P(detail, wr(-wArchR, wArchR, yLow(zEndR) + 0.03, Rs.black), N(22), N(2), PLASTIC, 0.005);
   }
 
-  const lensOn = Lq.glass, LENS = st(0xe8f0f6, 0.03, 0, 0.1);
+  const lensOn = Lq.glass, LENS = st(0xe8f0f6, 0.03, 0, 0.14);
   if (key === 'xc40') xc40Extras();
   else {
     // ---- voorkant
     const [hw0, hw1, ha0, ha1, hb0, hb1] = F.head;
     const HR = wf(hw0, hw1, ha0, ha1, hb0, hb1);
     sym(() => {
-      patch(detail, HR, N(7), N(3), st(0x101214, 0.18, 0.75), 0.004);
+      const hn = N(8);
+      P(detail, HR, hn, N(3), st(0x101214, 0.18, 0.75), 0.004);
       if (lod < 2) {
-        // lens met chromen ring, dagrijlicht en knipperlicht
-        disc(detail, HR, 0.3, 0.52, 0.2, 0.42, CHROME, 0.006, N(12));
-        disc(lights, HR, 0.3, 0.52, 0.15, 0.32, lamp(WARM, 0), 0.008, N(12));
-        if (lod === 0) { disc(detail, HR, 0.68, 0.52, 0.13, 0.3, CHROME, 0.006, 10); disc(lights, HR, 0.68, 0.52, 0.09, 0.2, lamp(WARM, 0), 0.008, 10); }
-        if (F.drl === 'bottom') patch(lights, sub(HR, 0.04, 0.96, 0.04, 0.16), N(6), 1, lamp(WHITE, 1), 0.008);
-        else if (F.drl === 'top') patch(lights, sub(HR, 0.04, 0.96, 0.84, 0.96), N(6), 1, lamp(WHITE, 1), 0.008);
-        else { patch(lights, sub(HR, 0.03, 0.97, 0.86, 0.97), N(6), 1, lamp(WHITE, 1), 0.008); patch(lights, sub(HR, 0.03, 0.97, 0.03, 0.14), N(6), 1, lamp(WHITE, 1), 0.008); }
-        patch(lights, sub(HR, 0.86, 0.98, 0.25, 0.75), 1, 1, lamp(AMBER, 5), 0.008);
-        if (lensOn) patch(glass, HR, N(7), N(3), LENS, 0.013);
-      } else patch(lights, sub(HR, 0.1, 0.9, 0.2, 0.8), 2, 1, lamp(WARM, 0), 0.007);
+        // chromen rand, lenzen met ring, dagrijlicht en knipperlicht
+        part(detail, HR, hn, 0, 1, 0.93, 1.0, CHROME, 0.007);
+        disc(detail, HR, 0.3, 0.52, 0.2, 0.4, CHROME, 0.007, N(12));
+        disc(lights, HR, 0.3, 0.52, 0.15, 0.3, lamp(WARM, 0), 0.009, N(12));
+        if (lod === 0) { disc(detail, HR, 0.66, 0.52, 0.13, 0.28, CHROME, 0.007, 10); disc(lights, HR, 0.66, 0.52, 0.09, 0.19, lamp(WARM, 0), 0.009, 10); }
+        if (F.drl === 'bottom') part(lights, HR, hn, 0.04, 0.96, 0.04, 0.16, lamp(WHITE, 1), 0.009);
+        else if (F.drl === 'top') part(lights, HR, hn, 0.04, 0.84, 0.8, 0.92, lamp(WHITE, 1), 0.009);
+        else { part(lights, HR, hn, 0.03, 0.84, 0.8, 0.91, lamp(WHITE, 1), 0.009); part(lights, HR, hn, 0.03, 0.97, 0.05, 0.16, lamp(WHITE, 1), 0.009); }
+        part(lights, HR, hn, 0.86, 0.98, 0.25, 0.75, lamp(AMBER, 5), 0.009);
+        if (lensOn) P(glass, HR, hn, N(3), LENS, 0.015);
+      } else P(lights, sub(HR, 0.1, 0.9, 0.2, 0.8), 2, 1, lamp(WARM, 0), 0.007);
       // mistlamp of luchthapper in de hoek van de bumper
       if (F.fog) {
         const FR = wf(F.fog[0], F.fog[1], F.fog[2], F.fog[3]);
-        patch(detail, FR, N(4), N(2), st(0x0b0c0d, 0.6, 0.1), 0.004);
+        P(detail, FR, N(4), N(2), st(0x0b0c0d, 0.6, 0.1), 0.004);
         if (lod < 2) { const ar = (F.fog[1] - F.fog[0]) / (F.fog[3] - F.fog[2]); disc(detail, FR, 0.5, 0.5, 0.36 / ar, 0.36, CHROME, 0.006, 12); disc(lights, FR, 0.5, 0.5, 0.27 / ar, 0.27, lamp(WHITE, 1), 0.008, 12); }
       }
     });
     if (F.grille) {
       const [gw, gy0, gy1] = F.grille, GR = wf(-gw, gw, gy0, gy1);
-      patch(detail, GR, N(10), N(3), st(0x08090a, 0.5, 0.3), 0.004);
+      P(detail, GR, N(10), N(3), st(0x08090a, 0.5, 0.3), 0.004);
       if (lod < 2) {
         const nb = lod === 0 ? 4 : 2;
-        for (let k = 1; k <= nb; k++) { const v = k / (nb + 1); patch(detail, sub(GR, 0.02, 0.98, v - 0.05, v + 0.05), N(10), 1, F.chrome ? CHROME : st(0x2a2c2f, 0.35, 0.6), 0.007); }
-        if (F.chrome) { patch(detail, sub(GR, 0, 1, 0.93, 1.02), N(10), 1, CHROME, 0.008); patch(detail, sub(GR, 0, 1, -0.02, 0.07), N(10), 1, CHROME, 0.008); }
+        for (let k = 1; k <= nb; k++) { const v = k / (nb + 1); P(detail, sub(GR, 0.02, 0.98, v - 0.05, v + 0.05), N(10), 1, F.chrome ? CHROME : st(0x2a2c2f, 0.35, 0.6), 0.007); }
+        if (F.chrome) { P(detail, sub(GR, 0, 1, 0.93, 1.02), N(10), 1, CHROME, 0.008); P(detail, sub(GR, 0, 1, -0.02, 0.07), N(10), 1, CHROME, 0.008); }
         disc(detail, GR, 0.5, 0.5, 0.05, 0.05 * (2 * gw) / (gy1 - gy0), CHROME, 0.011, 12); // embleem
       }
     }
     if (F.lower) {
       const [lw, ly0, ly1] = F.lower, LR = wf(-lw, lw, ly0, ly1);
-      patch(detail, LR, N(10), N(2), st(0x070808, 0.7, 0.1), 0.004);
-      if (lod === 0) for (const v of [0.3, 0.62]) patch(detail, sub(LR, 0.03, 0.97, v - 0.06, v + 0.06), N(10), 1, st(0x1c1d1f, 0.6, 0.2), 0.007);
+      P(detail, LR, N(10), N(2), st(0x070808, 0.7, 0.1), 0.004);
+      if (lod === 0) for (const v of [0.3, 0.62]) P(detail, sub(LR, 0.03, 0.97, v - 0.06, v + 0.06), N(10), 1, st(0x1c1d1f, 0.6, 0.2), 0.007);
     }
     // ---- achterkant
     const [tw0, tw1, ta0, ta1, tb0, tb1] = Rs.tail;
     const TR = wr(tw0, tw1, ta0, ta1, tb0, tb1);
     sym(() => {
-      patch(detail, TR, N(8), N(3), st(0x3a0707, 0.12, 0.3), 0.004); // donkerrode lens
+      const tn = N(10);
+      P(detail, TR, tn, N(3), st(0x3a0707, 0.12, 0.3), 0.004); // donkerrode lens
       if (lod < 2) {
-        patch(lights, sub(TR, 0.04, 0.96, 0.72, 0.9), N(6), 1, lamp(RED, 2), 0.007);
-        patch(lights, sub(TR, 0.04, 0.96, 0.1, 0.28), N(6), 1, lamp(RED, 2), 0.007);
-        patch(lights, sub(TR, 0.44, 0.96, 0.37, 0.63), N(4), 1, lamp(BRAKE, 3), 0.007);
-        patch(lights, sub(TR, 0.23, 0.41, 0.37, 0.63), 1, 1, lamp(AMBER, 5), 0.007);
-        patch(lights, sub(TR, 0.04, 0.2, 0.37, 0.63), 1, 1, lamp(0xe8e8e8, 4), 0.007);
-        if (lensOn) patch(glass, TR, N(8), N(3), st(0xff2a2a, 0.03, 0, 0.14), 0.012);
-      } else patch(lights, sub(TR, 0.05, 0.95, 0.15, 0.85), 2, 1, lamp(RED, 3), 0.006);
+        part(lights, TR, tn, 0.04, 0.96, 0.72, 0.9, lamp(RED, 2), 0.009);
+        part(lights, TR, tn, 0.04, 0.96, 0.1, 0.28, lamp(RED, 2), 0.009);
+        part(lights, TR, tn, 0.44, 0.96, 0.37, 0.63, lamp(BRAKE, 3), 0.009);
+        part(lights, TR, tn, 0.23, 0.41, 0.37, 0.63, lamp(AMBER, 5), 0.009);
+        part(lights, TR, tn, 0.04, 0.2, 0.37, 0.63, lamp(0xe8e8e8, 4), 0.009);
+        if (lensOn) P(glass, TR, tn, N(3), st(0xff2a2a, 0.03, 0, 0.14), 0.015);
+      } else P(lights, sub(TR, 0.05, 0.95, 0.15, 0.85), 2, 1, lamp(RED, 3), 0.006);
       // reflector laag in de bumper
-      if (lod === 0) patch(lights, wr(0.5, 0.74, Rs.bumper - 0.07, Rs.bumper - 0.035), 2, 1, lamp(0x8a0a0a, 7), 0.006);
+      if (lod === 0) P(lights, wr(0.5, 0.74, Rs.bumper - 0.07, Rs.bumper - 0.035), 3, 1, lamp(0x8a0a0a, 7), 0.013);
     });
-    if (Rs.bar && lod < 2) patch(lights, wr(-tw0, tw0, lerp(ta0, ta1, 0.42), lerp(ta0, ta1, 0.62)), N(8), 1, lamp(RED, 2), 0.006);
+    if (Rs.bar && lod < 2) P(lights, wr(-tw0, tw0, lerp(ta0, ta1, 0.42), lerp(ta0, ta1, 0.62)), N(8), 1, lamp(RED, 2), 0.006);
     // derde remlicht boven in de achterruit
-    if (lod < 2) patch(lights, (u, v) => G.deck(zRr - 0.006 - v * 0.028, (u - 0.5) * 0.36), 4, 1, lamp(BRAKE, 3), OFF + 0.004);
+    if (lod < 2) P(lights, (u, v) => G.deck(zRr - 0.006 - v * 0.028, (u - 0.5) * 0.36), 4, 1, lamp(BRAKE, 3), OFF + 0.004);
     if (Rs.spoiler) {
       // spoilerrand op de achterklep
-      sym(() => patch(paint, (u, v) => { const x = u * S.sec(zEndR + 0.18).aT * 0.9; const p = S.deck(zEndR + 0.2 - v * 0.16 - 0.1 * u * u, x); return [p[0], p[1] + 0.035 * Math.sin(v * Math.PI * 0.75), p[2]]; }, N(8), N(3), paintSt(), 0.004));
+      sym(() => P(paint, (u, v) => { const x = u * S.sec(zEndR + 0.18).aT * 0.9; const p = S.deck(zEndR + 0.2 - v * 0.16 - 0.1 * u * u, x); return [p[0], p[1] + 0.035 * Math.sin(v * Math.PI * 0.75), p[2]]; }, N(8), N(3), paintSt(), 0.004));
     }
   }
   // kentekens
@@ -597,7 +643,7 @@ export function buildCar(key, t, lod) {
   if (lod === 0) {
     for (const [x0, x1] of [[0.62, 0.04], [-0.1, -0.68]]) {
       const pts = [];
-      for (let k = 0; k <= 6; k++) { const xf = lerp(x0, x1, k / 6); const zb = zgf0 + Gs.bf * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(xf), Gs.nf)), 1 / Gs.nf); pts.push([zb - 0.1 - 0.03 * (k / 6), xf * G.sec(zb - 0.1).aT]); }
+      for (let k = 0; k <= 6; k++) { const xf = lerp(x0, x1, k / 6); const zb = zgf0 + Gs.bf * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(xf), Gs.nf)), 1 / Gs.nf); pts.push([zb - 0.17 - 0.03 * (k / 6), xf * G.sec(zb - 0.17).aT]); }
       linePatch(detail, (z, x) => G.deck(z, x), pts, 0.022, RUBBER, 0.014);
     }
   }
@@ -630,60 +676,67 @@ export function buildCar(key, t, lod) {
     const GLOSS = st(0x0a0b0c, 0.14, 0.4);
     // grille: zwart vlak met chromen lijst, fijne staafjes, de schuine streep en het ronde embleem
     const gw = 0.43, gy0 = 0.6, gy1 = 0.835, GR = wf(-gw, gw, gy0, gy1);
-    patch(detail, GR, N(12), N(4), st(0x060707, 0.45, 0.4), 0.004);
+    P(detail, GR, N(12), N(4), st(0x060707, 0.45, 0.4), 0.004);
+    if (lod === 2) P(detail, (u, v) => GR(lerp(0.06, 0.94, u), lerp(0.14, 0.86, u) + (v - 0.5) * 0.13), 2, 1, CHROME, 0.008);
     if (lod < 2) {
-      for (const [v0, v1] of [[-0.03, 0.05], [0.95, 1.03]]) patch(detail, sub(GR, -0.01, 1.01, v0, v1), N(12), 1, CHROME, 0.008);
-      for (const [u0, u1] of [[-0.012, 0.012], [0.988, 1.012]]) patch(detail, sub(GR, u0, u1, 0, 1), 1, N(3), CHROME, 0.008);
+      for (const [v0, v1] of [[-0.03, 0.05], [0.95, 1.03]]) P(detail, sub(GR, -0.01, 1.01, v0, v1), N(12), 1, CHROME, 0.008);
+      for (const [u0, u1] of [[-0.012, 0.012], [0.988, 1.012]]) P(detail, sub(GR, u0, u1, 0, 1), 1, N(3), CHROME, 0.008);
       const nb = lod === 0 ? 15 : 7;
-      for (let k = 1; k <= nb; k++) { const u = k / (nb + 1); patch(detail, sub(GR, u - 0.008, u + 0.008, 0.08, 0.92), 1, 2, st(0x3a3d41, 0.3, 0.9), 0.006); }
+      for (let k = 1; k <= nb; k++) { const u = k / (nb + 1); P(detail, sub(GR, u - 0.008, u + 0.008, 0.08, 0.92), 1, 2, st(0x3a3d41, 0.3, 0.9), 0.006); }
       // schuine streep van linksonder naar rechtsboven (gezien vanaf de voorkant)
-      patch(detail, (u, v) => GR(lerp(0.06, 0.94, u), lerp(0.14, 0.86, u) + (v - 0.5) * 0.11), N(10), 1, CHROME, 0.011);
+      P(detail, (u, v) => GR(lerp(0.06, 0.94, u), lerp(0.14, 0.86, u) + (v - 0.5) * 0.11), N(10), 1, CHROME, 0.011);
       const asp = (2 * gw) / (gy1 - gy0);
-      patch(detail, (u, v) => { const a = u * Math.PI * 2, r = lerp(0.062, 0.085, v); return GR(0.5 + Math.cos(a) * r, 0.5 + Math.sin(a) * r * asp); }, 16, 1, CHROME, 0.014);
+      P(detail, (u, v) => { const a = u * Math.PI * 2, r = lerp(0.062, 0.085, v); return GR(0.5 + Math.cos(a) * r, 0.5 + Math.sin(a) * r * asp); }, 16, 1, CHROME, 0.014);
       disc(detail, GR, 0.5, 0.5, 0.062, 0.062 * asp, st(0x101214, 0.3, 0.5), 0.013, 12);
-      patch(detail, (u, v) => GR(lerp(0.44, 0.56, u), 0.5 + (v - 0.5) * 0.16), 1, 1, CHROME, 0.0145); // naam op het embleem
-      patch(detail, (u, v) => GR(lerp(0.565, 0.61, u), lerp(0.62, 0.78, u) + (v - 0.5) * 0.09), 1, 1, CHROME, 0.014); // pijl
+      P(detail, (u, v) => GR(lerp(0.44, 0.56, u), 0.5 + (v - 0.5) * 0.16), 1, 1, CHROME, 0.0145); // naam op het embleem
+      P(detail, (u, v) => GR(lerp(0.565, 0.61, u), lerp(0.62, 0.78, u) + (v - 0.5) * 0.09), 1, 1, CHROME, 0.014); // pijl
     }
     sym(() => {
       // koplamp met 'Thor's hammer': liggende T als dagrijlicht
-      const HR = wf(0.47, 0.93, 0.755, 0.86, 0.79, 0.885);
-      patch(detail, HR, N(8), N(3), st(0x0d0f11, 0.16, 0.8), 0.004);
+      const HR = wf(0.47, 0.93, 0.755, 0.86, 0.79, 0.885), hn = N(10);
+      P(detail, HR, hn, N(3), st(0x0d0f11, 0.16, 0.8), 0.004);
       if (lod < 2) {
+        // chromen randje boven en onder
+        part(detail, HR, hn, 0, 1, 0.94, 1.0, CHROME, 0.007);
+        part(detail, HR, hn, 0, 1, 0, 0.06, st(0x3a3d41, 0.3, 0.9), 0.007);
         // de hamer: liggende steel met een staande kop
-        patch(lights, sub(HR, 0.04, 0.66, 0.42, 0.6), N(6), 1, lamp(WHITE, 1), 0.008);
-        patch(lights, sub(HR, 0.6, 0.69, 0.07, 0.95), 1, 2, lamp(WHITE, 1), 0.008);
-        // lenzen boven en onder de steel en één aan de buitenkant
-        for (const vc of [0.2, 0.82]) disc(lights, HR, 0.3, vc, 0.09, 0.13, lamp(WARM, 0), 0.007, 8);
-        disc(lights, HR, 0.82, 0.5, 0.075, 0.26, lamp(WARM, 0), 0.007, 10);
-        patch(lights, sub(HR, 0.92, 0.99, 0.2, 0.8), 1, 1, lamp(AMBER, 5), 0.008);
-        if (lensOn) patch(glass, HR, N(8), N(3), LENS, 0.013);
-      } else patch(lights, sub(HR, 0.1, 0.9, 0.3, 0.7), 2, 1, lamp(WHITE, 1), 0.007);
-      // luchtinlaat met mistlamp in de hoek van de bumper
+        part(lights, HR, hn, 0.04, 0.66, 0.43, 0.59, lamp(WHITE, 1), 0.009);
+        P(lights, sub(HR, 0.6, 0.68, 0.1, 0.9), 1, 2, lamp(WHITE, 1), 0.009);
+        // lenzen boven en onder de steel en één aan de buitenkant, elk met een ring
+        for (const [uc, vc, ru, rv] of [[0.3, 0.24, 0.07, 0.11], [0.3, 0.78, 0.07, 0.11], [0.82, 0.5, 0.075, 0.26]]) {
+          disc(detail, HR, uc, vc, ru * 1.3, rv * 1.3, st(0x9ea3a8, 0.15, 1), 0.007, 10);
+          disc(lights, HR, uc, vc, ru, rv, lamp(WARM, 0), 0.009, 10);
+        }
+        part(lights, HR, hn, 0.92, 0.99, 0.2, 0.8, lamp(AMBER, 5), 0.009);
+        if (lensOn) P(glass, HR, hn, N(3), LENS, 0.015);
+      } else P(lights, sub(HR, 0.1, 0.9, 0.3, 0.7), 2, 1, lamp(WHITE, 1), 0.007);
+      // luchtinlaat met ronde mistlamp in de hoek van de bumper
       const FR = wf(0.56, 0.88, 0.47, 0.57);
-      patch(detail, FR, N(4), N(2), st(0x080909, 0.6, 0.2), 0.008);
-      if (lod < 2) patch(lights, sub(FR, 0.25, 0.75, 0.3, 0.7), 2, 1, lamp(WHITE, 1), 0.011);
+      P(detail, FR, N(5), N(2), st(0x080909, 0.6, 0.2), 0.012);
+      if (lod < 2) { disc(detail, FR, 0.5, 0.5, 0.13, 0.42, st(0x9ea3a8, 0.15, 1), 0.014, 10); disc(lights, FR, 0.5, 0.5, 0.095, 0.3, lamp(WHITE, 1), 0.016, 10); }
       // achterlicht: hoog en verticaal langs de achterste stijl, met een voet naar binnen op de klep
       const zT0 = G.z0 + 0.012, zT1 = zRr + bowR - 0.04;
-      patch(lights, (u, v) => { const z = lerp(zT0, zT1, u); return G.P(z, 0, lerp(sBand(z, 0.1), 0.985, v)); }, N(8), N(2), lamp(0xb40e0e, 2), OFF + 0.004);
-      if (lod < 2) patch(lights, (u, v) => { const z = lerp(zT0 + 0.02, zT1 - 0.02, u); return G.P(z, 0, lerp(sBand(z, 0.07), sBand(z, 0.035), v)); }, N(8), 1, lamp(BRAKE, 3), OFF + 0.006);
-      const TR = wr(0.36, 0.9, 0.86, 0.985);
-      patch(lights, TR, N(6), N(2), lamp(0xb40e0e, 2), 0.006);
+      P(lights, (u, v) => { const z = lerp(zT0, zT1, u); return G.P(z, 0, lerp(sBand(z, 0.1), 0.985, v)); }, N(8), N(2), lamp(0xb40e0e, 2), OFF + 0.004);
+      if (lod < 2) P(lights, (u, v) => { const z = lerp(zT0 + 0.02, zT1 - 0.02, u); return G.P(z, 0, lerp(sBand(z, 0.07), sBand(z, 0.035), v)); }, N(8), 1, lamp(BRAKE, 3), OFF + 0.006);
+      const TR = wr(0.36, 0.9, 0.86, 0.985), tn = N(10);
+      P(lights, TR, tn, N(2), lamp(0xb40e0e, 2), 0.006);
       if (lod < 2) {
-        patch(lights, sub(TR, 0.06, 0.94, 0.34, 0.68), N(4), 1, lamp(BRAKE, 3), 0.008);
-        patch(lights, sub(TR, 0.78, 0.96, 0.06, 0.26), 1, 1, lamp(AMBER, 5), 0.008);
-        patch(lights, wr(0.3, 0.46, 0.5, 0.535), 2, 1, lamp(0xe8e8e8, 4), 0.008);
-        patch(lights, wr(0.5, 0.74, 0.5, 0.535), 2, 1, lamp(0x8a0a0a, 7), 0.008);
+        part(lights, TR, tn, 0.06, 0.94, 0.34, 0.68, lamp(BRAKE, 3), 0.01);
+        part(lights, TR, tn, 0.78, 0.96, 0.06, 0.26, lamp(AMBER, 5), 0.01);
+        if (lensOn) P(glass, TR, tn, N(2), st(0xff2a2a, 0.03, 0, 0.14), 0.016);
+        P(lights, wr(0.3, 0.46, 0.5, 0.535), 2, 1, lamp(0xe8e8e8, 4), 0.013);
+        P(lights, wr(0.5, 0.74, 0.5, 0.535), 3, 1, lamp(0x8a0a0a, 7), 0.013);
       }
     });
     // zilveren beschermplaat onder in de bumpers, chromen strip en de naam op de klep
     if (lod < 2) {
-      patch(detail, wf(-0.5, 0.5, yLow(zEndF) + 0.025, 0.42), N(8), 1, st(0xaeb2b6, 0.4, 0.9), 0.008);
-      patch(detail, wr(-0.5, 0.5, yLow(zEndR) + 0.035, 0.52), N(8), 1, st(0xaeb2b6, 0.4, 0.9), 0.008);
-      patch(detail, wr(-0.34, 0.34, 0.835, 0.85), N(6), 1, CHROME, 0.008);
+      P(detail, wf(-0.5, 0.5, yLow(zEndF) + 0.025, 0.42), N(8), 1, st(0xaeb2b6, 0.4, 0.9), 0.008);
+      P(detail, wr(-0.5, 0.5, yLow(zEndR) + 0.035, 0.52), N(8), 1, st(0xaeb2b6, 0.4, 0.9), 0.008);
+      P(detail, wr(-0.34, 0.34, 0.835, 0.85), N(6), 1, CHROME, 0.008);
     }
     // dakspoiler boven de achterruit
-    sym(() => patch(detail, (u, v) => { const p = G.P(zRr + bowR + 0.02 - v * 0.2, 0, u * 0.93); return [p[0], p[1] + 0.012 + 0.05 * v, p[2] - 0.02 * v]; }, N(8), N(2), GLOSS, OFF, { inner: GLOSS }));
-    if (lod < 2) patch(lights, (u, v) => { const p = G.P(zRr + bowR - 0.185, 0, Math.abs(u - 0.5) * 0.5); return [(u < 0.5 ? -1 : 1) * p[0], p[1] + 0.045 + v * 0.016, p[2] - 0.035]; }, 4, 1, lamp(BRAKE, 3), 0, { flip: false });
+    sym(() => P(detail, (u, v) => { const p = G.P(zRr + bowR + 0.02 - v * 0.2, 0, u * 0.93); return [p[0], p[1] + 0.012 + 0.05 * v, p[2] - 0.02 * v]; }, N(8), N(2), GLOSS, OFF, { inner: GLOSS }));
+    if (lod < 2) P(lights, (u, v) => { const p = G.P(zRr + bowR - 0.185, 0, Math.abs(u - 0.5) * 0.5); return [(u < 0.5 ? -1 : 1) * p[0], p[1] + 0.045 + v * 0.016, p[2] - 0.035]; }, 4, 1, lamp(BRAKE, 3), 0, { flip: false });
   }
 
   // ================================================================ wielen

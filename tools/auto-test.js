@@ -134,6 +134,7 @@ const VIEWS = {
   ver: [[9, 3.2, 13], [0, 0.6, 0], 35],
   rij: [[5, 3.2, 12], [0, 0.6, 0], 50],
   rijachter: [[-5, 3.4, -12], [0, 0.6, 0], 50],
+  rijmidden: [[12, 6, 26], [0, 0.6, 0], 22],
   rijver: [[34, 15, 75], [0, 0.6, 0], 9],
   nachtweg: [[2.2, 2.3, -7.5], [0, 0.6, 4], 50],
 };
@@ -148,7 +149,7 @@ function setView(name, scale = 1) {
 let current = [];
 function clearCars() {
   for (const c of cars.cars.concat(cars.traffic, current)) if (c.mesh) scene.remove(c.mesh);
-  if (cars.batches) for (const b of Object.values(cars.batches)) for (const m of [].concat(b.meshes || [], b.far || [])) scene.remove(m);
+  if (cars.batches) for (const b of Object.values(cars.batches)) for (const m of b.meshes) scene.remove(m);
   cars.batches = null;
   cars.cars = []; cars.traffic = [];
   current = [];
