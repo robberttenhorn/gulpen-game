@@ -28,7 +28,7 @@ import { startUpdateCheck } from './update.js';
 import { setupSecret } from './secret.js';
 
 const USE_POST = !Q.laag; // nabewerking in de standen 'hoog' en 'midden'
-installLighting(); // randlicht en mist met zon in alle materialen (lighting.js)
+installLighting({ lamps: !Q.laag }); // randlicht, mist met zon en lantaarnlicht in alle materialen (lighting.js)
 
 const SPEED = { walk: 4.0, run: 6.5, bike: 12.5, skate: 9.5, keg: 2.8 };
 
@@ -96,6 +96,11 @@ class Game {
     this.facades = new Facades(this);
     this.facades.build();
     try { buildStatues(this.facades); } catch (e) { console.warn('beelden', e); }
+    // etalages geven 's avonds licht op de stoep; daarna de kaart met alle lichtbronnen maken
+    try {
+      for (const f of Object.values(this.facades.frames)) if (f && Number.isFinite(f.x)) this.world.addLightSource(f.x + f.nx * 1.6, f.z + f.nz * 1.6, 2.6, 0.6);
+      this.world.bakeLamps();
+    } catch (e) { console.warn('lantaarnlicht', e); }
     try { buildTuin38(this); } catch (e) { console.warn('tuin Ringweg 38', e); }
     this.cars = new Vehicles(this);
     this.spawnVolvo();
@@ -290,14 +295,14 @@ class Game {
     const dusk = THREE.MathUtils.smoothstep(elev, -4, 6) * (1 - THREE.MathUtils.smoothstep(elev, 6, 22));
     // hoofdlicht: de zon, warmer naarmate hij lager staat; 's nachts koel maanlicht uit dezelfde hoek
     const low = 1 - THREE.MathUtils.smoothstep(elev, 10, 50);
-    this.sun.intensity = 4.4 * day + 0.5 * night;
+    this.sun.intensity = 4.4 * day + 0.8 * night;
     this.sun.color.setRGB(1, 0.94 - low * 0.07 - dusk * 0.3, 0.84 - low * 0.14 - dusk * 0.45);
     if (night > 0.5) this.sun.color.setRGB(0.5, 0.63, 1);
     // opvullicht: het meeste komt nu van de echte lucht (omgevingslicht); de hemisfeer vult alleen nog wat bij
-    this.hemi.intensity = 0.3 * day + 0.42 * night;
+    this.hemi.intensity = 0.3 * day + 0.5 * night;
     this.hemi.color.setRGB(0.55 * day + 0.22 * night, 0.68 * day + 0.3 * night, 1 * day + 0.6 * night);
     this.hemi.groundColor.setRGB(0.3, 0.28, 0.22);
-    this.renderer.toneMappingExposure = 0.68 * day + 1.0 * night;
+    this.renderer.toneMappingExposure = 0.68 * day + 1.05 * night;
     if (this.post) {
       const bl = this.post.bloom;
       bl.strength = 0.16 + night * 0.3; bl.threshold = 1.0 - night * 0.3; bl.radius = 0.75;

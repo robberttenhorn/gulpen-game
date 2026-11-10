@@ -5,13 +5,41 @@
 // Dit wordt één keer bij het laden in de shaders van three.js gezet, vóór er iets getekend is.
 import * as THREE from 'three';
 
+// Lantaarnlicht voor de hele wereld, zonder honderden echte lampen:
+// - uLampMap: kaart van het dorp (2 m per vakje) met per vakje de dichtstbijzijnde lichtbron
+//   (plek ten opzichte van het midden van het vakje, hoogte en sterkte). Elk verlicht materiaal leest
+//   daar één vakje uit en rekent het licht van die ene lamp precies uit: afstand, richting, kegel naar beneden.
+// - uGlobals: twee getallenvakjes voor de hele game: [lampen aan, natheid, tijd, -] en de omtrek van de kaart.
+// Beide zitten als texture in de standaardmaterialen van three.js, zodat elk materiaal ze vanzelf krijgt.
+const lampTex = new THREE.DataTexture(new Uint16Array(4), 1, 1, THREE.RGBAFormat, THREE.HalfFloatType);
+lampTex.magFilter = lampTex.minFilter = THREE.NearestFilter; lampTex.needsUpdate = true;
+const globals = new Float32Array(8);
+const globalTex = new THREE.DataTexture(globals, 2, 1, THREE.RGBAFormat, THREE.FloatType);
+globalTex.magFilter = globalTex.minFilter = THREE.NearestFilter; globalTex.needsUpdate = true;
+
+// kaart met lichtbronnen zetten: data = Uint16Array (halve floats, 4 per vakje), box = [x0, z0, breedte, diepte]
+export function setLampMap(data, w, h, box) {
+  lampTex.image = { data, width: w, height: h };
+  lampTex.needsUpdate = true;
+  globals.set(box, 4);
+  globalTex.needsUpdate = true;
+}
+// lampen aan (0..1) en natheid van de straat (0..1)
+export function setLampGlobals(on, wet = 0) {
+  if (globals[0] === on && globals[1] === wet) return;
+  globals[0] = on; globals[1] = wet;
+  globalTex.needsUpdate = true;
+}
+export const lampUniforms = { uLampMap: { value: lampTex }, uGlobals: { value: globalTex } };
+
 let done = false;
-export function installLighting() {
+export function installLighting({ lamps = true } = {}) {
   if (done) return;
   done = true;
   const C = THREE.ShaderChunk;
   // in verlichte materialen bestaan de lampen; zo weet de mist straks dat hij de zonrichting kan gebruiken
-  C.lights_pars_begin = C.lights_pars_begin + '\n#define LOCALS_HAS_LIGHTS 1\n';
+  C.lights_pars_begin = C.lights_pars_begin + '\n#define LOCALS_HAS_LIGHTS 1\n' + (lamps ? '#define LOCALS_LAMPS 1\nuniform highp sampler2D uLampMap;\nuniform highp sampler2D uGlobals;\n' : '');
+  if (lamps) for (const k of ['standard', 'physical', 'phong', 'lambert', 'toon']) Object.assign(THREE.ShaderLib[k].uniforms, { uLampMap: { value: lampTex }, uGlobals: { value: globalTex } });
   C.lights_fragment_end = C.lights_fragment_end + `
 #if NUM_DIR_LIGHTS > 0
   {
@@ -30,6 +58,33 @@ export function installLighting() {
       rimAmt *= 0.7;
     #endif
     reflectedLight.directDiffuse += rimCol * rimAmt;
+  }
+#endif
+#ifdef LOCALS_LAMPS
+  {
+    vec4 lampG = texelFetch( uGlobals, ivec2( 0, 0 ), 0 );
+    if ( lampG.x > 0.01 ) {
+      vec4 lampBox = texelFetch( uGlobals, ivec2( 1, 0 ), 0 );
+      mat3 lampV2W = transpose( mat3( viewMatrix ) );
+      vec3 lampWP = cameraPosition + lampV2W * ( - vViewPosition );
+      vec2 lampUV = ( lampWP.xz - lampBox.xy ) / lampBox.zw;
+      if ( lampUV.x > 0.0 && lampUV.x < 1.0 && lampUV.y > 0.0 && lampUV.y < 1.0 ) {
+        ivec2 lampTS = textureSize( uLampMap, 0 );
+        ivec2 lampTC = ivec2( lampUV * vec2( lampTS ) );
+        vec4 lampD = texelFetch( uLampMap, lampTC, 0 );
+        if ( lampD.a > 0.0 ) {
+          vec2 lampCen = lampBox.xy + ( vec2( lampTC ) + 0.5 ) / vec2( lampTS ) * lampBox.zw;
+          vec3 lampL = vec3( lampCen.x + lampD.x - lampWP.x, lampD.z - lampWP.y, lampCen.y + lampD.y - lampWP.z );
+          float lampD2 = dot( lampL, lampL );
+          vec3 lampDir = lampL * inversesqrt( lampD2 + 1e-4 );
+          float lampNL = saturate( dot( lampV2W * normal, lampDir ) );
+          float lampCone = smoothstep( 0.2, 0.85, lampDir.y ); // de lamp schijnt naar beneden
+          float lampAtt = saturate( 1.0 - lampD2 / 620.0 ) / ( 1.0 + lampD2 * 0.028 );
+          vec3 lampIrr = vec3( 1.0, 0.76, 0.5 ) * ( lampD.a * lampG.x * 15.0 * lampAtt * lampCone * lampNL );
+          reflectedLight.directDiffuse += lampIrr * BRDF_Lambert( material.diffuseColor );
+        }
+      }
+    }
   }
 #endif
 `;

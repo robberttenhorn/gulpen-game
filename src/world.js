@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { buildVegetation, buildPlanters } from './vegetation.js';
 import { buildHardscape, surfaceLift } from './hardscape.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { setLampMap, setLampGlobals } from './lighting.js';
+import { Q } from './quality.js';
 
 const DATA = import.meta.env.BASE_URL + 'data/';
 // versienummer van deze build achter elk databestand: nieuwe code krijgt nooit een oud (bewaard) bestand
@@ -1547,8 +1549,9 @@ export class World {
     bikes.count = bikeSpots.length; bikes.castShadow = !this.isMobile;
     this.scene.add(bikes);
 
-    // lantaarnpalen met arm en armatuur
-    const lights = this.objects.lights;
+    // lantaarnpalen met arm en armatuur: die uit de kaart (BGT), aangevuld langs alle straten
+    const lights = this.streetLamps();
+    this.lampList = lights;
     const poleGeo = mergeGeometries([
       cyl(0.06, 0.1, 6, 0, 3, 0), cyl(0.04, 0.04, 1.2, 0, 6, 0.55, Math.PI / 2),
       box(0.3, 0.12, 0.5, 0, 5.98, 1.1),
@@ -1556,7 +1559,7 @@ export class World {
     const poles = new THREE.InstancedMesh(poleGeo, new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.5, metalness: 0.6 }), lights.length);
     const lampGeo = new THREE.BoxGeometry(0.24, 0.04, 0.42);
     lampGeo.translate(0, 5.9, 1.1);
-    this.lampMaterial = new THREE.MeshStandardMaterial({ color: 0xfff1d0, emissive: 0xffc070, emissiveIntensity: 0 });
+    this.lampMaterial = new THREE.MeshStandardMaterial({ color: 0xfff1d0, emissive: 0xffb866, emissiveIntensity: 0 });
     const lamps = new THREE.InstancedMesh(lampGeo, this.lampMaterial, lights.length);
     const lightYaw = (x, z) => faceStreet(x, z);
     lights.forEach(([x, z], i) => {
@@ -1585,7 +1588,9 @@ export class World {
       glows.setMatrixAt(i, m);
     });
     glows.renderOrder = 2;
-    this.scene.add(glows);
+    // op de computer geven de lantaarns echt licht (zie bakeLamps); de platte lichtvlek is er alleen nog voor de telefoon
+    if (Q.laag) this.scene.add(glows);
+    else this.buildLampCones(lights, lightYaw);
 
     // verkeersborden, paaltjes en vlaggenmasten
     const poleList = this.objects.poles || [];
@@ -1614,8 +1619,133 @@ export class World {
 
   setNight(t) {
     this.nightUniform.value = t;
-    if (this.lampMaterial) this.lampMaterial.emissiveIntensity = t * 3;
+    if (this.lampMaterial) this.lampMaterial.emissiveIntensity = t * 7;
     if (this.glowMaterial) this.glowMaterial.opacity = t * 0.55;
+    if (this.coneMaterial) { this.coneMaterial.uniforms.opacity.value = t * 0.16; this.coneMesh.visible = t > 0.02; }
+    setLampGlobals(t, this.wet || 0);
+  }
+
+  // De kaart levert maar een handvol lantaarns. Hier komen er langs alle straten bij: om de 30 meter,
+  // om en om links en rechts, net naast de rijbaan, en nooit vlak bij een lantaarn die er al staat.
+  streetLamps() {
+    const out = this.objects.lights.map(([x, z]) => [x, z]);
+    const cell = 24, grid = new Map();
+    const key = (x, z) => Math.floor(x / cell) + ',' + Math.floor(z / cell);
+    const put = (x, z) => { const k = key(x, z); if (!grid.has(k)) grid.set(k, []); grid.get(k).push([x, z]); };
+    const near = (x, z, d) => {
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const [px, pz] of grid.get((cx + i) + ',' + (cz + j)) || []) if (Math.hypot(px - x, pz - z) < d) return true;
+      return false;
+    };
+    out.forEach(([x, z]) => put(x, z));
+    const road = (c) => c === 'rijbaan' || c === 'klinkers' || c === 'parkeer' || c === 'fietspad';
+    const b = this.coreBox;
+    let side = 1;
+    for (const [name, line] of this.roads) {
+      if (!name || /voetpad|fietspad/i.test(name)) continue;
+      let acc = 12;
+      for (let i = 0; i + 3 < line.length; i += 2) {
+        const ax = line[i], az = line[i + 1], bx = line[i + 2], bz = line[i + 3];
+        const len = Math.hypot(bx - ax, bz - az);
+        if (len < 0.5) continue;
+        const dx = (bx - ax) / len, dz = (bz - az) / len, nx = -dz, nz = dx;
+        for (let s = 0; s < len; s += 2) {
+          acc += 2;
+          if (acc < 30) continue;
+          const px = ax + dx * s, pz = az + dz * s;
+          if (px < b.x0 + 20 || px > b.x1 - 20 || pz < b.z0 + 20 || pz > b.z1 - 20) continue;
+          if (!road(this.classAt(px, pz))) continue;
+          for (const sd of [side, -side]) {
+            // rand van de rijbaan zoeken
+            let d = 1.5;
+            while (d < 9 && road(this.classAt(px + nx * sd * d, pz + nz * sd * d))) d += 0.5;
+            if (d >= 9) continue;
+            const lx = px + nx * sd * (d + 0.45), lz = pz + nz * sd * (d + 0.45);
+            if (this.classAt(lx, lz) === 'water' || this.insideBuilding(lx, lz) || near(lx, lz, 21)) continue;
+            const wall = this.nearestWall(lx, lz, 0.5);
+            if (wall) continue;
+            out.push([lx, lz]); put(lx, lz);
+            acc = 0; side = -side;
+            break;
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  // Zachte lichtkegel onder elke lantaarn: je ziet het licht in de avondnevel hangen.
+  buildLampCones(lights, yawOf) {
+    const geo = new THREE.CylinderGeometry(0.12, 2.9, 5.7, 20, 1, true);
+    geo.translate(0, 5.85 - 2.85, 0);
+    // bovenaan helder, onderaan uitgedoofd
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) { const k = Math.pow(Math.max(0, pos.getY(i) / 5.85), 2.2); col[i * 3] = k; col[i * 3 + 1] = k * 0.74; col[i * 3 + 2] = k * 0.42; }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    // eigen shader: de kegel dooft uit naar zijn rand (waar je er schuin langs kijkt), zodat je geen harde vorm ziet
+    this.coneMaterial = new THREE.ShaderMaterial({
+      uniforms: { opacity: { value: 0 } },
+      vertexShader: `attribute vec3 color; varying vec3 vCol; varying vec3 vN; varying vec3 vV;
+        void main(){
+          vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+          vN = normalize(mat3(instanceMatrix) * normal);
+          vV = normalize(cameraPosition - wp.xyz);
+          vCol = color;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }`,
+      fragmentShader: `uniform float opacity; varying vec3 vCol; varying vec3 vN; varying vec3 vV;
+        void main(){
+          float edge = abs(dot(normalize(vN), normalize(vV)));
+          gl_FragColor = vec4(vCol * opacity * edge * edge * edge, 1.0);
+        }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    });
+    const im = new THREE.InstancedMesh(geo, this.coneMaterial, lights.length);
+    const m = new THREE.Matrix4();
+    lights.forEach(([x, z], i) => {
+      const yaw = yawOf(x, z);
+      m.makeTranslation(x + Math.sin(yaw) * 1.1, this.groundAt(x, z), z + Math.cos(yaw) * 1.1);
+      im.setMatrixAt(i, m);
+    });
+    im.visible = false; im.renderOrder = 3;
+    im.computeBoundingSphere();
+    this.scene.add(im);
+    this.coneMesh = im;
+  }
+
+  // extra lichtbron (bijv. een etalage): plek, hoogte boven de grond en sterkte
+  addLightSource(x, z, h = 2.7, power = 0.7) { (this.extraLights ||= []).push([x, z, this.groundAt(x, z) + h, power]); }
+
+  // Kaart met lichtbronnen voor het lantaarnlicht (zie lighting.js): per vakje van 2 m de dichtstbijzijnde bron.
+  bakeLamps() {
+    if (Q.laag) return;
+    const b = this.coreBox, res = 2, R = 25;
+    const W = Math.ceil((b.x1 - b.x0) / res), H = Math.ceil((b.z1 - b.z0) / res);
+    const best = new Float32Array(W * H).fill(1e9);
+    const data = new Uint16Array(W * H * 4);
+    const hf = THREE.DataUtils.toHalfFloat;
+    const src = [];
+    for (const [x, z] of this.lampList || []) {
+      const s = this.nearestStreet(x, z);
+      const yaw = s ? Math.atan2(s.x - x, s.z - z) : 0;
+      src.push([x + Math.sin(yaw) * 1.1, z + Math.cos(yaw) * 1.1, this.groundAt(x, z) + 5.85, 1]);
+    }
+    for (const e of this.extraLights || []) src.push(e);
+    for (const [x, z, y, power] of src) {
+      const c0 = Math.max(0, Math.floor((x - R - b.x0) / res)), c1 = Math.min(W - 1, Math.floor((x + R - b.x0) / res));
+      const r0 = Math.max(0, Math.floor((z - R - b.z0) / res)), r1 = Math.min(H - 1, Math.floor((z + R - b.z0) / res));
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+        const cx = b.x0 + (c + 0.5) * res, cz = b.z0 + (r + 0.5) * res;
+        // een zwakkere bron (etalage) telt als verder weg, zodat een lantaarn vlakbij wint
+        const d = Math.hypot(cx - x, cz - z) / Math.sqrt(power);
+        const i = r * W + c;
+        if (d >= R || d >= best[i]) continue;
+        best[i] = d;
+        data[i * 4] = hf(x - cx); data[i * 4 + 1] = hf(z - cz); data[i * 4 + 2] = hf(y); data[i * 4 + 3] = hf(power);
+      }
+    }
+    setLampMap(data, W, H, [b.x0, b.z0, W * res, H * res]);
+    console.info(`lantaarnlicht: ${src.length} lichtbronnen`);
   }
 
   // ------------------------------------------------------------ straatnamen

@@ -70,6 +70,7 @@ export function buildHardscape(world, scene) {
     const m = new THREE.Mesh(curbGeo, new THREE.MeshStandardMaterial({ map: tx.band.map, color: 0xd8d4cc, roughness: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12 }));
     m.receiveShadow = true;
     m.castShadow = false;
+    keepNormals(m.material);
     scene.add(m);
   }
 
@@ -95,6 +96,7 @@ export function buildHardscape(world, scene) {
       color: 0xf2f0e8, roughness: 0.6, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12,
     }));
     m.receiveShadow = true;
+    keepNormals(m.material);
     scene.add(m);
   }
 
@@ -106,6 +108,18 @@ export function buildHardscape(world, scene) {
       }
     },
   };
+}
+
+// Stoepranden en wegmarkering worden van twee kanten getekend. three.js keert dan de normaal om voor de
+// 'achterkant', waardoor ze geen zon- en lantaarnlicht kregen. De normalen in de geometrie kloppen al: zo laten.
+function keepNormals(mat) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, r) => {
+    prev?.call(mat, shader, r);
+    shader.fragmentShader = shader.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
+  };
+  const key = mat.customProgramCacheKey?.bind(mat);
+  mat.customProgramCacheKey = () => 'kn' + (key ? key() : '');
 }
 
 // ------------------------------------------------------------ geometrie
