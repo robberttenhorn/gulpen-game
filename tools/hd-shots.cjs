@@ -57,7 +57,7 @@ async function open(browser, mobile) {
 
 // standpunt en uur instellen, een paar beelden tekenen (zodat alles is bijgewerkt) en het canvas uitlezen
 async function shot(page, v, hour, file) {
-  const data = await page.evaluate(({ v, hour }) => {
+  const data = await page.evaluate(({ v, hour, pre }) => {
     const g = window.game;
     let x = v.x, z = v.z;
     if (v.start) [x, z] = g.startPos;
@@ -76,6 +76,7 @@ async function shot(page, v, hour, file) {
     } else if (g.camDistSave != null) { g.camDist = g.camDistSave; g.camDistSave = null; }
     g.camYaw = v.yaw; g.camPitch = v.pitch; g.lastManualLook = g.time + 1e6;
     if (g.timeOfDay !== hour) { g.timeOfDay = hour; g.applyTime(); }
+    if (pre) (0, eval)(pre); // PRE=...: eigen code vóór de opname (om iets te proberen of te controleren)
     const gl = g.renderer.getContext(), px = new Uint8Array(4);
     const t0 = performance.now();
     g.clock.getDelta();
@@ -84,7 +85,7 @@ async function shot(page, v, hour, file) {
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
     const ms = performance.now() - t0;
     return { url: g.canvas.toDataURL('image/jpeg', 0.9), ms };
-  }, { v, hour });
+  }, { v, hour, pre: process.env.PRE || '' });
   fs.writeFileSync(file, Buffer.from(data.url.split(',')[1], 'base64'));
   return data.ms;
 }
@@ -110,6 +111,7 @@ async function shot(page, v, hour, file) {
         console.log('gemaakt', id, Math.round(ms) + ' ms');
       }
     }
+    if (filter && !filter.startsWith('alleen-')) { await ctx.close(); if (errors.length) console.log(tag, 'fouten:', errors); continue; } // losse opname: geen meting
     // tijd per beeld: op de Markt, overdag, drie beelden na elkaar (eerst opwarmen)
     await shot(page, VIEWS[0], 15, path.join(out, `${tag}-dag-markt.jpg`));
     const info = await page.evaluate(() => {

@@ -33,20 +33,33 @@ export function installLighting() {
   }
 #endif
 `;
+  // Mist als atmosfeer in plaats van een grijze wand:
+  // - luchtperspectief: hoe verder weg, hoe meer het landschap naar de kleur van de horizon trekt (fogFar regelt de sterkte);
+  // - hoogtemist: in het dal van de Gulp hangt meer nevel dan boven op de heuvels (fogNear regelt de sterkte);
+  // - richting de zon kleurt de nevel warm en licht op.
   C.fog_fragment = `
 #ifdef USE_FOG
   #ifdef FOG_EXP2
     float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+    vec3 fogCol = fogColor;
   #else
-    float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
-    fogFactor = pow( fogFactor, 0.8 ) * 0.8; // zachter begin, en verre heuvels blijven nog net zichtbaar
-  #endif
-  vec3 fogCol = fogColor;
-  #if defined( LOCALS_HAS_LIGHTS ) && NUM_DIR_LIGHTS > 0
-    {
-      float toSun = pow( saturate( dot( normalize( -vViewPosition ), directionalLights[ 0 ].direction ) ), 5.0 );
-      fogCol = mix( fogCol, fogCol * 0.55 + directionalLights[ 0 ].color * vec3( 0.22, 0.17, 0.11 ), toSun * 0.75 );
-    }
+    float fogBeta = 2.3 / fogFar;
+    float fogTau = fogBeta * vFogDepth;
+    vec3 fogCol = fogColor;
+    #if defined( LOCALS_HAS_LIGHTS )
+      {
+        // straal van de camera naar dit punt, in wereldrichting
+        vec3 fogRay = transpose( mat3( viewMatrix ) ) * ( - vViewPosition );
+        float fk = clamp( fogRay.y / 38.0, -20.0, 20.0 );
+        float fogH = exp( clamp( - ( cameraPosition.y + 12.0 ) / 38.0, -8.0, 1.5 ) ) * ( abs( fk ) > 0.001 ? ( 1.0 - exp( - fk ) ) / fk : 1.0 );
+        fogTau += fogBeta * fogNear * 2.5 * vFogDepth * fogH;
+        #if NUM_DIR_LIGHTS > 0
+          float toSun = pow( saturate( dot( normalize( - vViewPosition ), directionalLights[ 0 ].direction ) ), 6.0 );
+          fogCol = mix( fogCol, fogCol * 0.9 + directionalLights[ 0 ].color * vec3( 0.12, 0.09, 0.06 ), toSun * 0.8 );
+        #endif
+      }
+    #endif
+    float fogFactor = 1.0 - exp( - fogTau );
   #endif
   gl_FragColor.rgb = mix( gl_FragColor.rgb, fogCol, fogFactor );
 #endif

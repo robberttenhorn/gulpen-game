@@ -1399,11 +1399,29 @@ export class World {
     }
   }
 
+  // Bomen tijdelijk weghalen (bijv. rond het podium van de Bierfeesten, zodat ze het zicht niet blokkeren).
+  // pred(x, z) zegt welke bomen weg moeten, binnen straal R rond het middelpunt. Geeft een functie terug die ze terugzet.
+  hideTrees(pred, [cx, cz], R) {
+    const hidden = [];
+    const tiles = (this.treeTiles || []).filter((t) => Math.hypot(Math.max(t.minX - cx, 0, cx - t.maxX), Math.max(t.minZ - cz, 0, cz - t.maxZ)) < R);
+    for (const t of tiles) for (const r of t.recs) {
+      if (!r.hidden && Math.hypot(r.x - cx, r.z - cz) < R && pred(r.x, r.z)) { r.hidden = true; hidden.push(r); }
+    }
+    const refresh = () => {
+      const cam = this._treeCam || [cx, cz];
+      const RR = this.treeRange || (this.isMobile ? 120 : 200);
+      for (const t of tiles) this.splitTreeTile(t, { x: cam[0], z: cam[1] }, RR);
+    };
+    refresh();
+    return () => { for (const r of hidden) r.hidden = false; refresh(); };
+  }
+
   splitTreeTile(t, cam, R) {
     let fc = 0;
     const nc = t.nearMeshes.map(() => 0);
     const tm = t.trunk.instanceMatrix.array, cm = t.canopy.instanceMatrix.array, cc = t.canopy.instanceColor?.array;
     for (const r of t.recs) {
+      if (r.hidden) continue;
       const nm = r.vi >= 0 ? t.nearMeshes[r.vi] : null;
       if (nm && Math.hypot(r.x - cam.x, r.z - cam.z) < R) {
         const i = nc[r.vi]++;

@@ -1,0 +1,68 @@
+{
+ "dag": {
+  "id": "kloofendal_48d_partly_cloudy_puresky",
+  "naam": "Kloofendal 48d Partly Cloudy (Pure Sky)",
+  "makers": [
+   "Greg Zaal",
+   "Jarod Guest"
+  ],
+  "belichting": 0.5,
+  "deel": 0.53,
+  "zonU": 0.59515,
+  "zonHoogte": 47.87,
+  "horizon": [
+   0.438,
+   0.4705,
+   0.5703
+  ],
+  "zenit": [
+   0.4658,
+   0.5141,
+   0.676
+  ],
+  "hemellicht": [
+   0.3773,
+   0.4443,
+   0.6491
+  ],
+  "zonkleur": [
+   0.973,
+   1.0,
+   0.924
+  ],
+  "piek": 74608.8
+ },
+ "nacht": {
+  "id": "qwantani_night_puresky",
+  "naam": "Qwantani Night (Pure Sky)",
+  "makers": [
+   "Greg Zaal",
+   "Jarod Guest"
+  ],
+  "belichting": 0.5,
+  "deel": 0.53,
+  "zonU": 0.62226,
+  "zonHoogte": 9.72,
+  "horizon": [
+   1.641,
+   2.0535,
+   2.0423
+  ],
+  "zenit": [
+   0.4836,
+   0.4473,
+   0.4584
+  ],
+  "hemellicht": [
+   0.8384,
+   0.895,
+   0.8867
+  ],
+  "zonkleur": [
+   0.941,
+   1.0,
+   0.857
+  ],
+  "piek": 554.8
+ }
+}
