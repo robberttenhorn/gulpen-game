@@ -27,7 +27,8 @@ const VIEWS = [
   { name: 'woonwijk', x: 420, z: -230, yaw: 0.4, pitch: 0.22 },
   { name: 'auto', car: true, x: 235, z: -30, yaw: 1.2, pitch: 0.2 },
   { name: 'gras', grass: true, yaw: 2.4, pitch: 0.1 },
-  ...(process.env.FRAME ? [{ name: 'gevel-' + process.env.FRAME, frame: process.env.FRAME, yaw: 0, pitch: 0.2 }] : []),
+  // FRAME=anpiet,donnys: per genoemde gevel een opname recht ervoor (namen uit facades.frames)
+  ...(process.env.FRAME ? process.env.FRAME.split(',').map((id) => ({ name: 'gevel-' + id, frame: id, yaw: 0, pitch: 0.2 })) : []),
 ];
 const TIMES = [['dag', 15], ['gouden-uur', 18.6], ['avond', 22]];
 
@@ -64,7 +65,7 @@ async function shot(page, v, hour, file) {
     let x = v.x, z = v.z;
     if (v.start) [x, z] = g.startPos;
     // voor een gevel (bijv. FRAME=donnys): een eind van de gevel af, kijkend naar de gevel
-    if (v.frame && g.facades.frames[v.frame]) { const f = g.facades.frames[v.frame]; x = f.x + f.nx * 12 + f.ux * 2.5; z = f.z + f.nz * 12 + f.uz * 2.5; v = { ...v, yaw: Math.atan2(f.nx, f.nz) + 0.25 }; }
+    if (v.frame && g.facades.frames[v.frame]) { const f = g.facades.frames[v.frame], d = +(new URLSearchParams(location.search).get('afstand') || 12) - g.camDist; x = f.x + f.nx * d + f.ux * 1.5; z = f.z + f.nz * d + f.uz * 1.5; v = { ...v, yaw: Math.atan2(f.nx, f.nz) + 0.2 }; }
     // midden in een grasveld (dichtstbijzijnde bij het dorp, met rondom ook gras)
     if (v.grass) {
       const w = g.world, isG = (a, b) => w.classAt(a, b) === 'gras' && !w.insideBuilding(a, b);

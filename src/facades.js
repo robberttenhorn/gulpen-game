@@ -6,6 +6,7 @@ import { signTexture } from './textures.js';
 import { makeCart, makeStringLights, makeVlaai } from './props.js';
 import { pointInRing } from './world.js';
 import { buildShops } from './shops.js';
+import { Parts, buildAwning, signFrame, windowFrame, doorParts, parasolParts, terraceSetParts, flagGeometry } from './gevelbouw.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
 const at = (m, x, y, z) => { m.position.set(x, y, z); return m; };
@@ -124,57 +125,47 @@ export class Facades {
     return g;
   }
 
-  sign(parent, text, { w = 4, h = 0.8, y = 3.4, z = 0.05, bg, fg, font, sub, border, glow = true } = {}) {
+  // Gevelbord: een plaat met een opliggende lijst en, bij grotere borden, zwanenhalslampjes die er 's avonds op schijnen.
+  sign(parent, text, { w = 4, h = 0.8, x = 0, y = 3.4, z = 0.05, bg, fg, font, sub, border, glow = true } = {}) {
     const tex = signTexture(text, { bg, fg, font, sub, border, w: 1024, h: Math.round((1024 * h) / w) });
     const mat = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: glow ? 0xffffff : 0x000000, emissiveIntensity: 0, roughness: 0.5 });
     if (glow) this.signMats.push(mat);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, h + 0.1, 0.08), std(0x1b1b1b));
-    back.position.set(0, y, z);
+    const p = new Parts();
+    const spots = signFrame(p, { w, h, x, y, z, lamps: glow });
+    p.build(parent);
+    if (spots.length) {
+      if (!this.bulbMat) {
+        this.bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff1d6, emissive: 0xffd9a0, emissiveIntensity: 0.05 });
+        this.signMats.push({ isWindow: true, mat: this.bulbMat });
+      }
+      const geo = new THREE.SphereGeometry(0.035, 8, 6);
+      for (const [lx, ly, lz] of spots) { const b = new THREE.Mesh(geo, this.bulbMat); b.position.set(lx, ly, lz); parent.add(b); }
+    }
     const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-    face.position.set(0, y, z + 0.045);
-    back.castShadow = true;
-    parent.add(back, face);
+    face.position.set(x, y, z + 0.047);
+    parent.add(face);
     return face;
   }
 
-  awning(parent, { w = 4, depth = 1.4, y = 2.7, colors = ['#c62828', '#ffffff'], stripes = 10 } = {}) {
-    const c = document.createElement('canvas');
-    c.width = 512; c.height = 64;
-    const ctx = c.getContext('2d');
-    for (let i = 0; i < stripes; i++) {
-      ctx.fillStyle = colors[i % colors.length];
-      ctx.fillRect((i * 512) / stripes, 0, 512 / stripes + 1, 64);
-    }
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: 0.9 });
-    const geo = new THREE.PlaneGeometry(w, depth, 1, 1);
-    const m = new THREE.Mesh(geo, mat);
-    m.rotation.x = -Math.PI / 2 + 0.38;
-    m.position.set(0, y, depth * 0.46);
-    m.castShadow = true;
-    // valletje aan de voorkant
-    const val = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.25), mat);
-    val.position.set(0, y - Math.sin(0.38) * depth * 0.5 - 0.17, depth * 0.92);
-    parent.add(m, val);
-  }
+  // Markies (uitvalscherm) met doek, volant, cassette en armen; zie gevelbouw.js.
+  awning(parent, opts = {}) { return buildAwning(parent, opts); }
 
   // Etalageruit met een kijkje naar binnen (zie interior-window.js): type bepaalt de inrichting.
+  // Rond de ruit zit een kozijn met diepte, roeden, een vensterbank en een plint.
   shopWindow(parent, { w = 2.6, h = 1.8, x = 0, y = 0.6, type = 'winkel', seed = 1 } = {}) {
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.16, h + 0.16, 0.06), std(0x222222));
-    frame.position.set(x, y + h / 2, 0.02);
+    const p = new Parts();
+    windowFrame(p, { w, h, x, y });
+    p.build(parent);
     const glass = makeInteriorWindow(w, h, type, seed);
     glass.position.set(x, y + h / 2, 0.06);
     this.signMats.push({ interior: glass });
-    parent.add(frame, glass);
+    parent.add(glass);
   }
 
   door(parent, { x = 0, color = 0x3b2a1e } = {}) {
-    const d = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.2, 0.06), std(color, { roughness: 0.5 }));
-    d.position.set(x, 1.1, 0.03);
-    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), std(0xd4af37, { metalness: 1, roughness: 0.3 }));
-    handle.position.set(x + 0.38, 1.05, 0.08);
-    parent.add(d, handle);
+    const p = new Parts();
+    doorParts(p, { x, color });
+    p.build(parent);
   }
 
   // ------------------------------------------------------------ alle plekken
@@ -204,6 +195,16 @@ export class Facades {
       hm.rotation.y = Math.PI / 2;
       hm.position.set(f.len / 2 - 0.6, 3.4, 0.9);
       g.add(hm);
+      {
+        // smeedwerk: schoor naar de muur, twee ophangoogjes, een lijst om het bord en een knop op het eind van de arm
+        const p = new Parts(), hx = f.len / 2 - 0.6, ijzer = 0x101113, goud = 0xd9b25a;
+        p.beam(0.035, ijzer, hx, 3.42, 0.02, hx, 3.88, 0.62).beam(0.03, ijzer, hx, 3.6, 0.02, hx, 3.6, 0.26);
+        for (const hz of [0.62, 1.18]) p.beam(0.02, ijzer, hx, 3.9, hz, hx, 3.8, hz);
+        p.box(0.07, 0.05, 0.88, goud, hx, 3.82, 0.9, 'metaal').box(0.07, 0.05, 0.88, goud, hx, 2.98, 0.9, 'metaal');
+        p.box(0.07, 0.8, 0.05, goud, hx, 3.4, 0.475, 'metaal').box(0.07, 0.8, 0.05, goud, hx, 3.4, 1.325, 'metaal');
+        p.add(new THREE.SphereGeometry(0.05, 10, 8), goud, hx, 3.9, 1.13, 0, 0, 0, 'metaal');
+        p.build(g);
+      }
       this.terrace(f, 5);
     }
 
@@ -216,8 +217,7 @@ export class Facades {
       this.awning(g, { w, colors: ['#c62828', '#fff4e0'] });
       this.shopWindow(g, { type: 'friture', w: w - 1.4, x: -0.6, h: 1.6, y: 0.8 });
       this.door(g, { x: w / 2 - 0.55, color: 0xb71c1c });
-      const cash = this.sign(g, 'ALLEEN CONTANT', { w: 1.2, h: 0.35, y: 1.25, z: 0.1, bg: '#ffeb3b', fg: '#b71c1c', font: '800 150px Inter, sans-serif', glow: false });
-      cash.position.x = w / 2 - 0.55; cash.parent.children.at(-2).position.x = w / 2 - 0.55;
+      this.sign(g, 'ALLEEN CONTANT', { w: 0.62, h: 0.2, x: w / 2 - 0.55, y: 1.86, z: 0.03, bg: '#ffeb3b', fg: '#b71c1c', font: '800 150px Inter, sans-serif', glow: false });
       this.busStop(f);
     }
 
@@ -311,7 +311,8 @@ export class Facades {
       for (let i = 0; i < 3; i++) {
         const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 7, 8), std(0xeeeeee, { metalness: 0.6 }));
         pole.position.set(-w / 2 - 1.5 - i * 1.2, 3.5, 3);
-        const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), std(i === 1 ? 0x0d47a1 : 0xffffff, { side: THREE.DoubleSide }));
+        const flag = new THREE.Mesh(flagGeometry(1.2, 0.8), std(i === 1 ? 0x0d47a1 : 0xffffff, { side: THREE.DoubleSide, roughness: 0.9 }));
+        flag.castShadow = true;
         flag.position.set(-w / 2 - 1.5 - i * 1.2 + 0.62, 6.5, 3);
         g.add(pole, flag);
       }
@@ -445,11 +446,9 @@ export class Facades {
     this.buildMaria(pois.mariabeeld.pos);
   }
 
+  // Terras voor de gevel: tafels met bistrostoelen, glazen en een parasol. Per tafel twee à drie meshes.
   terrace(f, n) {
     const w = this.world;
-    const parasolMat = new THREE.MeshStandardMaterial({ color: 0xf3ead7, roughness: 0.9, side: THREE.DoubleSide });
-    const chairMat = std(0x2b2b2b, { metalness: 0.4 });
-    const tableMat = std(0x6d4c33);
     // nooit op de rijbaan, het fietspad of een parkeervak: alleen op stoep of plein
     const bad = new Set(['rijbaan', 'fietspad', 'parkeer']);
     const free = (x, z) => !w.insideBuilding(x, z) && !w.blocked(x, z) && !bad.has(w.classAt(x, z));
@@ -463,29 +462,11 @@ export class Facades {
       if (!ok) continue;
       const g = new THREE.Group();
       g.position.set(x, w.groundAt(x, z), z);
-      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 16), tableMat);
-      top.position.y = 0.74;
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.74, 6), chairMat);
-      leg.position.y = 0.37;
-      g.add(top, leg);
-      for (let k = 0; k < 4; k++) {
-        const a = (k / 4) * Math.PI * 2 + 0.4;
-        const ch = new THREE.Group();
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.04, 0.42), chairMat);
-        seat.position.y = 0.45;
-        const back = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.45, 0.04), chairMat);
-        back.position.set(0, 0.68, -0.2);
-        ch.add(seat, back);
-        ch.position.set(Math.sin(a) * 0.75, 0, Math.cos(a) * 0.75);
-        ch.rotation.y = a + Math.PI;
-        g.add(ch);
-      }
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 6), std(0xdddddd));
-      pole.position.y = 1.25;
-      const umb = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.5, 8, 1, true), parasolMat);
-      umb.position.y = 2.45;
-      g.add(pole, umb);
-      g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      g.rotation.y = f.yaw + i * 0.7;
+      const p = new Parts();
+      terraceSetParts(p);
+      parasolParts(p, { r: 1.5, top: 2.7, drop: 0.5 });
+      p.build(g);
       this.scene.add(g);
     }
   }
@@ -511,6 +492,17 @@ export class Facades {
     const bord = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.03), new THREE.MeshStandardMaterial({ map: signTexture('H', { w: 128, h: 128, bg: '#1565c0', fg: '#fff', font: '800 100px Inter, sans-serif' }) }));
     bord.position.set(2.2, 2.6, 0.42);
     g.add(back, roof, bench, pole, bord);
+    {
+      // staanders, zijruiten in een lijst, pootjes onder het bankje, een dakrand en een bordje met de vertrektijden
+      const p = new Parts(), staal = 0x37474f;
+      for (const sx of [-1.62, 1.62]) for (const sz of [-0.72, 0.62]) p.box(0.06, 2.35, 0.06, staal, sx, 1.175, sz, 'metaal');
+      p.box(3.3, 0.05, 0.05, staal, 0, 0.12, -0.72, 'metaal').box(3.3, 0.05, 0.05, staal, 0, 2.28, -0.72, 'metaal');
+      p.box(3.5, 0.05, 0.06, 0x263238, 0, 2.33, 0.82, 'metaal').box(3.5, 0.05, 0.06, 0x263238, 0, 2.33, -0.82, 'metaal');
+      for (const sx of [-1.0, 1.0]) p.box(0.05, 0.46, 0.34, staal, sx, 0.23, -0.45, 'metaal');
+      p.box(0.5, 0.7, 0.04, 0xf3f1ea, 1.2, 1.5, -0.66).box(0.56, 0.76, 0.03, staal, 1.2, 1.5, -0.68, 'metaal');
+      p.build(g);
+      for (const sx of [-1.62, 1.62]) { const side = new THREE.Mesh(new THREE.BoxGeometry(0.03, 2.0, 1.3), glass); side.position.set(sx, 1.25, -0.05); g.add(side); }
+    }
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.scene.add(g);
   }
@@ -732,7 +724,7 @@ export class Facades {
       }
       const roofG = new THREE.Group();
       roofG.position.set(0, 2.3, 0);
-      this.awning(roofG, { w: 2.8, depth: 1.4, y: 0, colors: c, stripes: 8 });
+      this.awning(roofG, { w: 2.8, depth: 1.4, y: 0, colors: c, stripes: 8, stall: true });
       roofG.children.forEach((m) => { m.position.z -= 0.65; });
       stall.add(roofG);
       stall.position.set(x, w.groundAt(x, z), z);
