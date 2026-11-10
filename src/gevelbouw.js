@@ -93,7 +93,7 @@ function stripeTexture(colors, stripes) {
 }
 
 // Rooster van punten (nu punten breed, nv punten diep) als geometrie met gedeelde hoekpunten, zodat het licht vloeiend valt.
-function gridGeo(nu, nv, fn) {
+export function gridGeo(nu, nv, fn) {
   const pos = [], uv = [], idx = [];
   for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
     const u = i / nu, v = j / nv, p = fn(u, v);
@@ -254,4 +254,12 @@ export function terraceSetParts(p, { wood = 0x6d4c33, metal = 0x2a2b2d } = {}) {
 // Vlag die een beetje wappert (in plaats van een strak plat vlak).
 export function flagGeometry(w, h) {
   return gridGeo(10, 4, (u, v) => [u * w - w / 2, (v - 0.5) * h - u * u * 0.06, Math.sin(u * 7.5 + v * 0.8) * 0.07 * u]);
+}
+
+// Spandoek dat tussen twee palen hangt: in het midden iets lager en met een lichte rimpel in het doek.
+export function bannerGeometry(w, h) {
+  return gridGeo(28, 3, (u, v) => {
+    const mid = 1 - (2 * u - 1) ** 2;
+    return [(u - 0.5) * w, (v - 0.5) * h - mid * 0.14, Math.sin(u * 11) * 0.035 * (0.3 + (1 - v)) + mid * 0.05];
+  });
 }
