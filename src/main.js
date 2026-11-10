@@ -203,9 +203,6 @@ class Game {
         click(b, () => { if (b.dataset.q !== Q.name) setQuality(b.dataset.q); else close(); });
       }
     }
-    // uitleg bij het vrij rondkijken: één keer als de muis gevangen wordt, en telkens als je hem zelf vrijmaakt
-    this.input.onMouseLocked = () => { if (!this._lookTold) { this._lookTold = true; this.ui.toast('Beweeg de muis om rond te kijken. Esc maakt de muis vrij.', 3800); } };
-    this.input.onMouseFreed = () => this.ui.toast('Muis vrij. Klik in het beeld om weer rond te kijken.', 2600);
     this.clock.getDelta();
     this.renderer.setAnimationLoop(() => this.tick());
 
@@ -745,28 +742,18 @@ class Game {
   }
 
   // Naambordjes boven de plekken: vóór de gevel, zodat ze niet half in het pand verdwijnen.
+  // Alle plekken krijgen hetzelfde kleine bordje dat pas dichtbij verschijnt. De grote zwevende borden bij
+  // plekken met een missie zijn weg: ze stonden er niet bij elke missie, en de missies vind je via de kaart.
   setupPoiLabels() {
     this.poiLabels = [];
     const spots = this.world.meta.pois.filter((p) => !(p.id === 'ringweg' || p.id === 'volvo' || p.cafe)).map((p) => {
       const f = this.facades.frames[p.id];
       return { p, f, x: f ? f.x + f.nx * 1.6 : p.pos[0], z: f ? f.z + f.nz * 1.6 : p.pos[1] };
     });
-    // alleen plekken die als missieplek in de missielijst staan krijgen een groot bord
-    const heads = this.missions.list().map((m) => m.place.split(',')[0].trim().toLowerCase());
-    const missionSpots = new Set(spots.filter(({ p }) => {
-      const nm = p.name.toLowerCase();
-      return heads.some((h) => h.length > 3 && (nm.includes(h) || h.includes(nm)));
-    }));
-    for (const sp of spots) {
-      const { p, f, x, z } = sp;
-      let y;
-      // winkels en plekken zonder missie krijgen een klein bordje dat pas dichtbij verschijnt
-      const big = missionSpots.has(sp) && !p.memorial;
-      const label = makeLabel(p.name, { small: !big });
-      label.userData.near = !big;
-      if (f) y = f.y + (big ? 6.2 : 4.6);
-      else y = this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : !big ? 3.2 : 11);
-      label.position.set(x, y, z);
+    for (const { p, f, x, z } of spots) {
+      const label = makeLabel(p.name, { small: true });
+      label.userData.near = true;
+      label.position.set(x, f ? f.y + 4.6 : this.world.heightAt(x, z) + (p.id === 'mariabeeld' ? 14 : 3.2), z);
       label.material.depthTest = false; // altijd volledig leesbaar
       this.scene.add(label);
       this.poiLabels.push(label);
@@ -1448,7 +1435,6 @@ class Game {
     const dt = Math.min(0.05, realDt);
     this.time += dt;
     this.input.update(dt);
-    this.input.setMouseLook(this.wantsMouseLook());
     if (this.bigmap.open) { this.render(); return; }
     if (this.mode === 'car') this.updateCar(dt);
     else this.updatePlayer(dt);
@@ -1478,16 +1464,6 @@ class Game {
     this.grass?.update(this.camera, this.time);
     this.updateDof();
     this.render(dt);
-  }
-
-  // Vrij rondkijken met de muis mag alleen als je vrij rondloopt, fietst of rijdt. In een gesprek, minispel,
-  // tussenfilmpje, op de kaart of in het instellingenmenu heb je de muis zelf nodig.
-  wantsMouseLook() {
-    if (!this.started || this.ui.dialogOpen || this.minigame || this.penalty || this.pov || this.fading || this.bigmap?.open) return false;
-    const c = document.body.classList;
-    if (c.contains('intro') || c.contains('cutscene') || c.contains('live')) return false;
-    if (!(this._sp ||= document.getElementById('settings-panel')).hidden) return false;
-    return !document.querySelector('.mini-overlay');
   }
 
   // Scherptediepte tijdens gesprekken: de achtergrond wordt zacht, zoals in een film. Niet in minispellen.
