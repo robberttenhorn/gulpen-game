@@ -18,6 +18,7 @@ De game is in één nacht een flink stuk filmischer geworden, zonder dat de game
 **Wat je moet weten**
 - **De echte beeldsnelheid is niet gemeten.** De testomgeving heeft geen videokaart. In softwareweergave kost een beeld op computerformaat nu 9,5 s (was 6,8 s) en op telefoonformaat 4,1 s (was 4,2 s). Of de stand hoog op een gewone laptop 30 beelden per seconde haalt, moet je op een echt apparaat nakijken; hapert het, dan schaalt het spel zelf af.
 - **Alle 51 missies starten en stoppen zonder fouten** in de rooktest (`tools/hd-missies.cjs`), ook met getekend beeld. De test speelt missies niet uit.
+- **De gepubliceerde site zelf heb ik niet kunnen openen**: `github.io` is vanuit de testomgeving geblokkeerd. De publicatie-workflow is na elke push geslaagd en precies dezelfde build is lokaal getest, maar kijk zelf even of https://robberttenhorn.github.io/gulpen-game-hd/ goed start.
 - **Niet gedaan**: WebGPU (bewust, zie Keuzes vooraf), echte kozijnen en deuren aan de gevels, een fijner hoogtemodel, het MakeHuman-model. Het budget van 150 tot 250 MB is niet gebruikt: de site is ongeveer 37 MB.
 - **Eén bestaande fout hersteld**: de Bierfeesten-missie liep vast in deze kopie. En één eigen fout gevonden en hersteld: na de nacht bleef de straat nat (zie stap 5).
 
@@ -259,7 +260,7 @@ Wat dit betekent:
 10. **Poppetjes buiten beeld worden niet meer getekend** (ze hadden dat eerst uit staan). Mocht er ergens een poppetje onterecht verdwijnen, dan zit het in `src/character.js` (de omhullende bol).
 11. **De Bierfeesten-missie liep vast** op een ontbrekende functie (`hideTrees`) in deze kopie. Die heb ik toegevoegd. Controleer of het origineel dezelfde fout heeft.
 12. **Twee hulpagents** hebben de poppetjes en de auto's gemaakt, elk in een eigen werkkopie; ik heb hun werk bekeken, samengevoegd en opnieuw getest. Hun notities staan in `docs/hd/poppetjes/NOTITIES.md` en `docs/hd/autos/NOTITIES.md`.
-13. **De missietest is een rooktest.** Hij start elke missie, loopt het gesprek door tot het minispel of de opdracht begint, geeft wat invoer en stopt. Hij speelt missies niet uit. Laatste run, met per missie een echt getekend beeld: 51 van 51 zonder fouten.
+13. **De missietest is een rooktest.** Hij start elke missie, loopt het gesprek door tot het minispel of de opdracht begint, geeft wat invoer en stopt. Hij speelt missies niet uit. Laatste runs: met per missie een echt getekend beeld (op de versie vóór de schoorstenen) 51 van 51 zonder fouten, en zonder beeld op de eindversie ook 51 van 51.
 14. **Er is direct naar `main` gepusht**, zoals gevraagd; dezelfde commits staan ook op de branch `claude/modest-einstein-59p2fn`.
 
 ## Wat er nog beter kan (vervolg)
