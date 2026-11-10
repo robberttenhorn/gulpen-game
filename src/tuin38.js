@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { makeInteriorWindow } from './interior-window.js';
 import { leafyMaterial } from './foliage.js';
 import { Q } from './quality.js';
+import { Parts, parasolParts, trimMat } from './gevelbouw.js';
 
 const A = [456.2, -304.88]; // westelijke hoek aan de straat (lokale x, z)
 const U = [0.93659, -0.35043]; // langs de straat, naar het oosten
@@ -350,10 +351,13 @@ export function buildTuin38(g) {
   // ronde terracotta parasol op een voet, naast de bistroset
   const pu = 12.55, pv = 33.5;
   add(boxGeo(0.5, 0.08, 0.5).translate(0, 0.04, 0), mats.bistro, place(pu, pv, 0.1));
-  add(new THREE.CylinderGeometry(0.025, 0.025, 2.45, 8).translate(0, 1.22, 0), mats.metaal, place(pu, pv, 0.1));
-  add(new THREE.ConeGeometry(1.55, 0.45, 20, 1, true).translate(0, 2.38, 0), mats.terracotta, place(pu, pv, 0.1));
-  add(new THREE.CylinderGeometry(1.55, 1.55, 0.12, 20, 1, true).translate(0, 2.1, 0), mats.terracotta, place(pu, pv, 0.1)); // rand (volant)
-  add(new THREE.SphereGeometry(0.05, 8, 6).translate(0, 2.64, 0), mats.metaal, place(pu, pv, 0.1));
+  {
+    // doek in banen dat tussen de baleinen doorhangt, met volant, baleinen en stok (zie gevelbouw.js)
+    const pp = new Parts();
+    parasolParts(pp, { r: 1.55, top: 2.6, drop: 0.45, color: 0xc8643c, pole: 0x3b3b3b });
+    const mtx = place(pu, pv, 0.1);
+    for (const [kind, list] of Object.entries(pp.lists)) for (const geo of list) add(geo, trimMat(kind), mtx);
+  }
   solid(pu - 0.25, pu + 0.25, pv - 0.25, pv + 0.25);
   // moestuinbakken achter het terras, voor de achterhaag
   for (const [u0, u1] of [[9.0, 11.2], [11.45, 13.6]]) {

@@ -1,6 +1,7 @@
 // Kleine voorwerpen en effecten: bier, friet, pakketjes, confetti, spetters.
 // De voorwerpen zijn iets groter dan in het echt, zodat je ze vanaf de camera goed ziet.
 import * as THREE from 'three';
+import { bannerGeometry } from './gevelbouw.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
@@ -225,10 +226,16 @@ export function makeFinishBanner(width = 9) {
   ctx.fillText('FINISH', 256, 50);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const banner = new THREE.Mesh(new THREE.PlaneGeometry(width, 1.2), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
+  // het doek hangt tussen de palen: in het midden iets lager, met een rimpel erin
+  tex.anisotropy = 8;
+  const banner = new THREE.Mesh(bannerGeometry(width, 1.2), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: 0.9 }));
   banner.position.y = 4.2;
   g.add(banner);
-  for (const x of [-width / 2, width / 2]) g.add(cyl(0.08, 0.1, 4.8, mat(0xe8a33d), x, 2.4, 0, 8));
+  for (const x of [-width / 2, width / 2]) {
+    g.add(cyl(0.08, 0.1, 4.8, mat(0xe8a33d), x, 2.4, 0, 8));
+    g.add(cyl(0.34, 0.4, 0.1, mat(0x4a4a4a, { roughness: 0.9 }), x, 0.05, 0, 14)); // voetplaat
+    g.add(cyl(0.11, 0.11, 0.06, mat(0x2b2b2b, { metalness: 0.6 }), x, 4.83, 0, 10)); // dop
+  }
   return shadows(g);
 }
 

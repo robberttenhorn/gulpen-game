@@ -308,3 +308,37 @@ In het avondbeeld van de Rijksweg waren drie dingen te zien, en alle drie zijn a
 - **Getrapte randen in het licht**: de lichtveeg van een lantaarn op de natte weg brak af op de rand van een vakje van de lichtkaart (2 m), wat getrapte donkere en lichte randen gaf, ook op de stoep. De lichtkaart heeft nu een tweede helft met per vakje de dichtstbijzijnde lantaarn; de veeg zoekt daarin op vijf plekken langs de kijkrichting en dooft geleidelijk uit. Het gewone lantaarnlicht wordt nu vloeiend gemengd tussen de vier omliggende vakjes (`src/lighting.js`, `src/world.js`).
 
 Gecontroleerd met de zeven avondbeelden op de computer (geen fouten in de console). De gemiddelde helderheid van de beelden is vrijwel gelijk gebleven (Rijksweg 101,7 naar 99,9 op rood; Markt 24,1 naar 24,0). Niet gemeten: het effect op de beeldsnelheid op een echte videokaart; de natte weg rekent 's avonds per pixel iets meer uit dan eerst.
+
+## Gevels en minispellen met meer diepte
+
+Vraag: de speciale gevels (markiezen, parasols en dergelijke) en veel missies zagen er nog plat uit. Alleen het uiterlijk mocht veranderen; de werking van de missies niet.
+
+### Gevels (`src/gevelbouw.js`, `src/facades.js`, `src/props.js`, `src/tuin38.js`)
+
+De onderdelen van de speciale gevels bestonden uit platte vlakken en losse blokken. Ze zijn opnieuw opgebouwd:
+
+- **Markies**: doek dat licht doorhangt, een volant met schulprand, een cassette tegen de muur, een voorlijst en twee knikarmen. De marktkramen van de Hubertusmarkt gebruiken hetzelfde doek als dak.
+- **Parasol en terras**: doek in banen dat tussen de baleinen doorhangt, met volant, baleinen, schoren en stok; tafels met een metalen rand, bistrostoelen met poten en latten, en twee glazen bier. Ook de parasol in de tuin van Ringweg 38.
+- **Gevelbord**: plaat met een opliggende lijst en zwanenhalslampjes die 's avonds branden.
+- **Etalage en deur**: kozijn met diepte, roeden, vensterbank en plint; paneeldeur met ruit, schopplaat, klink en stoepje.
+- **Overig**: smeedwerk aan het uithangbord van De Zwarte Ruiter, staanders en zijruiten bij de bushalte, vlaggen die wapperen, een finishdoek dat tussen de palen hangt.
+
+Alle stukjes worden per soort materiaal samengevoegd tot één mesh. Gemeten op de Markt overdag (zonder videokaart, alleen om te vergelijken): 1191 tekenopdrachten (was 1091) en 6,88 miljoen driehoeken (was 6,82 miljoen); de tijd per beeld bleef gelijk (9,9 s, was 10,1 s).
+
+### Minispellen die als platte tekening over het beeld lagen
+
+Deze spellen zijn opnieuw getekend met volume, schaduw, glans en herkenbare materialen. Spelregels, timing, scores en de plek en maat van alles waar je op klikt zijn niet veranderd; vaste achtergronden worden één keer voorgetekend, zodat het per beeld weinig kost.
+
+- `src/skills2.js`: gyros (grillkast, vleeskegel met lagen, taverne), deurtjes (keukenblok in een showroom), tuutjes (gevel, automaat, poppetjes), stempelen (bureau, houten stempel), de krachtbalk en jurybordjes van het bommetje.
+- `src/skills3.js`, `src/skills4.js`: heg knippen (bladerdek, heggenschaar), BBQ (ketel met gloeiende kolen, rooster, burgers met korst), ijsjes (vitrine, bolletjes, schep), bonbons (marmer, lopende band, dozen), de warm-koudmeter van de kabouters.
+- `src/skills.js`, `src/verbouwing.js`, `src/fitness.js`, `src/knotwilg.js`: pils vangen (café achter de toog, glazen, dienblad), tegels (gestucte muur met tegellijm, geglazuurde tegels), biceps (spiegel, lijf met licht en schaduw), de houten vogel en het vizier van het vogelschieten, de zaag en meter van de knotwilgen, het doek van de slalompoortjes.
+
+Bij het vogelschieten zijn de oude blokken onzichtbaar gebleven als raakvlak; de nieuwe vogel is alleen wat je ziet.
+
+Bewust niet aangepast: muizen, de kruiwagen, de geit en inparkeren (die spelen helemaal in 3D), en de binnenruimtes. In de binnenruimtes is de vorm van de voorwerpen ook de botsvorm, dus een verbouwing zou daar de werking raken.
+
+### Controle
+
+- Hulpmiddel `tools/hd-missiebeelden.cjs` maakt van elke missie een schermafbeelding, om voor en na te vergelijken.
+- De gevels zijn vergeleken op voor- en na-beelden van zes gevels overdag en twee 's avonds; geen fouten in de console.
+- Niet gecontroleerd: een echte telefoon of videokaart. De minispellen zijn op telefoonformaat (844x390) bekeken in de testbrowser, de snelheid op een toestel is niet gemeten.
