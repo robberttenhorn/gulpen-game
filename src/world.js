@@ -130,6 +130,7 @@ export class World {
     this.buildBuildings(bBuf);
     if (!Q.laag) { try { this.buildRoofTrim(); } catch (e) { console.warn('dakranden', e); } }
     this.setupCollision(footprints);
+    if (!Q.laag) { try { this.buildChimneys(); } catch (e) { console.warn('schoorstenen', e); } }
     this.paintBuilding([190985.6, 314375.8]); // Ringweg 38 (RD-coördinaten): roodbruine baksteen
     this.buildAO();
 
@@ -1104,6 +1105,61 @@ export class World {
     this.scene.add(mesh);
     this.roofTrim = mesh;
     console.info(`dakranden: ${pos.length / 9} driehoeken`);
+  }
+
+  // Schoorstenen: op de meeste gewone huizen met een schuin dak komt een gemetselde schoorsteen bij de nok.
+  // De plek volgt uit het dak zelf: het hoogste punt van het dak boven het pand, een stukje naar het midden toe.
+  buildChimneys() {
+    const { f32, i8, n, stride } = this.bld;
+    // per pand het hoogste en laagste dakpunt
+    const top = new Map();
+    for (let v = 0; v < n; v += 3) {
+      if (i8[v * stride + 23] !== 1) continue;
+      const cx = (f32[v * 7] + f32[(v + 1) * 7] + f32[(v + 2) * 7]) / 3, cz = (f32[v * 7 + 2] + f32[(v + 1) * 7 + 2] + f32[(v + 2) * 7 + 2]) / 3;
+      let fi = -1;
+      for (const i of this.nearbyFootprints(cx, cz)) if (pointInRing(cx, cz, this.footprints[i].ring)) { fi = i; break; }
+      if (fi < 0) continue;
+      let rec = top.get(fi);
+      if (!rec) top.set(fi, rec = { max: -1e9, min: 1e9, x: 0, z: 0 });
+      for (let k = 0; k < 3; k++) {
+        const y = f32[(v + k) * 7 + 1];
+        if (y > rec.max) { rec.max = y; rec.x = f32[(v + k) * 7]; rec.z = f32[(v + k) * 7 + 2]; }
+        if (y < rec.min) rec.min = y;
+      }
+    }
+    const rand = rng(1907);
+    const spots = [];
+    for (const [fi, r] of top) {
+      const f = this.footprints[fi];
+      const area = (f.maxX - f.minX) * (f.maxZ - f.minZ);
+      if (area < 35 || area > 420 || r.max - r.min < 1.6 || rand() > 0.7) continue;
+      // een stukje van het hoogste punt naar het midden van het pand: dan staat hij op het dak en niet op de rand
+      const mx = (f.minX + f.maxX) / 2, mz = (f.minZ + f.maxZ) / 2;
+      const d = Math.hypot(mx - r.x, mz - r.z) || 1, k = Math.min(1.3, d * 0.5) / d;
+      // recht met het huis mee: de richting van de langste gevel
+      let best = 0, ang = 0;
+      for (let i = 0; i < f.ring.length; i++) {
+        const [ax, az] = f.ring[i], [bx, bz] = f.ring[(i + 1) % f.ring.length], l = Math.hypot(bx - ax, bz - az);
+        if (l > best) { best = l; ang = Math.atan2(bx - ax, bz - az); }
+      }
+      spots.push([r.x + (mx - r.x) * k, r.max, r.z + (mz - r.z) * k, rand(), ang]);
+    }
+    if (!spots.length) return;
+    const body = new THREE.BoxGeometry(0.55, 2.3, 0.55).translate(0, -0.45, 0); // steekt 70 cm boven de nok uit, de rest zit in het dak
+    const cap = new THREE.BoxGeometry(0.68, 0.08, 0.68).translate(0, 0.72, 0);
+    const pot = new THREE.CylinderGeometry(0.09, 0.11, 0.3, 8).translate(0, 0.9, 0);
+    const bodies = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ roughness: 0.9 }), spots.length);
+    const caps = new THREE.InstancedMesh(mergeGeometries([cap, pot]), new THREE.MeshStandardMaterial({ color: 0x3b3a39, roughness: 0.8 }), spots.length);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+    const bricks = [0x6e3b2c, 0x5a3327, 0x7a5a45, 0x8a8478, 0x4a3a33];
+    spots.forEach(([x, y, z, r, ang], i) => {
+      p.set(x, y, z); q.setFromAxisAngle(up, ang);
+      m.compose(p, q, one);
+      bodies.setMatrixAt(i, m); caps.setMatrixAt(i, m);
+      bodies.setColorAt(i, col.set(bricks[Math.floor(r * bricks.length) % bricks.length]));
+    });
+    for (const im of [bodies, caps]) { im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); this.scene.add(im); }
+    console.info(`schoorstenen: ${spots.length}`);
   }
 
   // ------------------------------------------------------------ botsingen

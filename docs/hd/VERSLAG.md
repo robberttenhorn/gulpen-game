@@ -10,16 +10,16 @@ De game is in één nacht een flink stuk filmischer geworden, zonder dat de game
 - **Lucht en licht**: een gefotografeerde lucht (blauw met stapelwolken overdag, sterren en Melkweg 's nachts) die ook het hemellicht en de reflecties levert; fellere zon met koele schaduwen; een grote, stabiele schaduwkaart; luchtperspectief en hoogtemist.
 - **Nabewerking**: ambient occlusion, zonnestralen, scherptediepte in gesprekken, bloom, filmische tone mapping, kleurcorrectie, vignet en korrel.
 - **Avond**: lantaarns langs alle straten die echt licht geven, zachte lichtkegels, etalages die de stoep verlichten, en een natte straat waarin elke lantaarn spiegelt.
-- **Wereld**: gras dat je ziet staan, bladerige hagen en struiken, water met fijne rimpels, dakranden met overstek en goot.
+- **Wereld**: gras dat je ziet staan, bladerige hagen en struiken, water met fijne rimpels, dakranden met overstek en goot, schoorstenen, ramen die terugliggen in de muur, en rustig asfalt zonder steeds dezelfde scheuren.
 - **Poppetjes**: nieuw lichaam, en lopen, joggen, rennen en zitten uit echte motion capture (CMU).
 - **Auto's**: ronde carrosserie, glas met interieur, draaiende wielen, lampen, kentekens.
 - **Drie kwaliteitsstanden** (hoog, midden, laag), te kiezen op het startscherm, met een automatische regeling die verder afschaalt als het hapert.
 
 **Wat je moet weten**
-- **De echte beeldsnelheid is niet gemeten.** De testomgeving heeft geen videokaart. In softwareweergave kost een beeld op computerformaat nu 9,6 s (was 6,8 s) en op telefoonformaat 4,1 s (was 4,2 s). Of de stand hoog op een gewone laptop 30 beelden per seconde haalt, moet je op een echt apparaat nakijken; hapert het, dan schaalt het spel zelf af.
+- **De echte beeldsnelheid is niet gemeten.** De testomgeving heeft geen videokaart. In softwareweergave kost een beeld op computerformaat nu 9,5 s (was 6,8 s) en op telefoonformaat 4,1 s (was 4,2 s). Of de stand hoog op een gewone laptop 30 beelden per seconde haalt, moet je op een echt apparaat nakijken; hapert het, dan schaalt het spel zelf af.
 - **Alle 51 missies starten en stoppen zonder fouten** in de rooktest (`tools/hd-missies.cjs`), ook met getekend beeld. De test speelt missies niet uit.
 - **Niet gedaan**: WebGPU (bewust, zie Keuzes vooraf), echte kozijnen en deuren aan de gevels, een fijner hoogtemodel, het MakeHuman-model. Het budget van 150 tot 250 MB is niet gebruikt: de site is ongeveer 37 MB.
-- **Eén bestaande fout hersteld**: de Bierfeesten-missie liep vast in deze kopie.
+- **Eén bestaande fout hersteld**: de Bierfeesten-missie liep vast in deze kopie. En één eigen fout gevonden en hersteld: na de nacht bleef de straat nat (zie stap 5).
 
 Bronnen en licenties: [`BRONNEN.md`](BRONNEN.md). Beelden voor en na: [`voor/`](voor) en [`na/`](na), en per stap hieronder.
 
@@ -163,6 +163,26 @@ Geprobeerd en aangepast: de eerste versie had te weinig en te donkere sprieten o
 | --- | --- |
 | ![](stap1/computer-dag-tuin38.jpg) | ![](stap4/computer-dag-tuin38.jpg) |
 
+## Stap 5: ramen met diepte, rustig asfalt en een herstelde fout
+
+- **Ramen liggen terug in de muur** (gevelshader in `src/world.js`). De ramen waren op een vlakke muur getekend. Nu rekent de shader van dichtbij (tot ongeveer 50 meter) uit waar je kijklijn het raam raakt dat 11 cm terugligt: je ziet de zijkant van de muur (de negge), de onderkant van de latei is donker, en het raam verschuift ten opzichte van de muur als je erlangs loopt. Het is dezelfde techniek als de kamers achter het glas, dus het kost geen extra geometrie.
+- **Asfalt**: de oude textuur had grote scheuren die zich om de drie meter herhaalden. Vervangen door een schone, fijnkorrelige asfalttextuur (Poly Haven, `clean_asphalt`), met in de shader grote slijtagevlekken eroverheen zodat een lange straat geen egaal vlak is.
+- **Fout gevonden en hersteld**: na een nacht bleef de straat overdag nat, en lantaarns konden blijven branden of juist uit blijven. Oorzaak: three.js maakt van elke texture in zijn standaardmaterialen een kopie per materiaal, en mijn gedeelde lichtkaart (lampen aan, straat nat) werd dus ook gekopieerd; een wijziging kwam alleen door als er toevallig een nieuw materiaal in beeld kwam. In de eerdere tests viel dat niet op omdat daar steeds iets nieuws werd getekend. De twee gedeelde textures geven nu zichzelf terug als er om een kopie wordt gevraagd. Gecontroleerd met een opname overdag, na heen en weer schakelen naar de nacht.
+
+| Voor (stap 1) | Na |
+| --- | --- |
+| ![](stap1/computer-dag-rijksweg.jpg) | ![](stap5/computer-dag-rijksweg.jpg) |
+
+Ramen van dichtbij (uitsnede uit hetzelfde beeld, links de rechtergevel, rechts de linkergevel):
+
+![](stap5/ramen-dichtbij.jpg)
+
+- **Schoorstenen** (`buildChimneys` in `src/world.js`): op ongeveer zeven van de tien gewone huizen met een schuin dak staat nu een gemetselde schoorsteen met een pot, bij de nok en recht met het huis mee. De plek volgt uit het dak zelf (het hoogste punt boven het pand, een stukje naar het midden). Ze zijn toegevoegd ná de eindbeelden in `na/`; daar staan ze dus nog niet op. Ze zijn zo klein dat de meting er niet merkbaar door verandert (ze zijn daarna niet opnieuw gemeten).
+
+![](stap5/computer-dag-woonwijk.jpg)
+
+Geprobeerd en aangepast: in de eerste versie schoof het raam de verkeerde kant op (je zag de voorste negge in plaats van de achterste). De richting waarin de gevelmaat loopt verschilt per muur; de shader leidt die nu af uit het beeld zelf.
+
 ## Eindresultaat
 
 Alle eindbeelden staan in `docs/hd/na/` (zelfde standpunten als `docs/hd/voor/`).
@@ -186,7 +206,7 @@ Alle eindbeelden staan in `docs/hd/na/` (zelfde standpunten als `docs/hd/voor/`)
 | Rijksweg, telefoon, dag | ![](voor/telefoon-dag-rijksweg.jpg) | ![](na/telefoon-dag-rijksweg.jpg) |
 | Markt, telefoon, avond | ![](voor/telefoon-avond-markt.jpg) | ![](na/telefoon-avond-markt.jpg) |
 
-De beelden met 'gouden-uur' in de naam (18.36 uur) zijn alleen ter controle van de overgang gemaakt; in het spel komt dat tijdstip niet voor (het is 9 uur, 15 uur of avond).
+De beelden met 'gouden-uur' in de naam (18.36 uur) zijn alleen ter controle gemaakt: de zon is dan in het spel al onder, dus ze zien eruit als de avond. In het spel zelf komt dat tijdstip niet voor (het is 9 uur, 15 uur of avond). Een echt gouden uur met lage zon bestaat dus nog niet; dat staat bij het vervolg.
 
 ## Beeldsnelheid
 
@@ -196,9 +216,9 @@ Gemeten op de Markt, overdag, kleinste van drie metingen, zonder andere processe
 
 | | Voor | Na |
 | --- | --- | --- |
-| Computer (1280x720, stand hoog): tijd per beeld | 6,8 s | 9,6 s |
+| Computer (1280x720, stand hoog): tijd per beeld | 6,8 s | 9,5 s |
 | Computer: driehoeken per beeld | 3,6 miljoen (zonder schaduwkaart geteld) | 6,7 miljoen (alle stappen samen, met schaduwkaart) |
-| Computer: tekenopdrachten per beeld | 823 (zonder schaduwkaart geteld) | 1093 (alle stappen samen) |
+| Computer: tekenopdrachten per beeld | 823 (zonder schaduwkaart geteld) | 1088 (alle stappen samen) |
 | Telefoon (844x390 bij pixelverhouding 2, stand laag): tijd per beeld | 4,2 s | 4,1 s |
 | Telefoon: driehoeken per beeld | 2,9 miljoen | 3,5 miljoen (alle stappen samen) |
 | Telefoon: tekenopdrachten per beeld | 599 | 822 (alle stappen samen) |
@@ -207,7 +227,7 @@ De telling van driehoeken is tussentijds verbeterd: in de nulmeting telde het sc
 
 Wat dit betekent:
 - De telefoonstand is ongeveer even zwaar als de oorspronkelijke game. Daar komt wel bij: nieuwe poppetjes (zelfde aantal driehoeken als voorheen op de telefoon), lichtere hagen, extra lantaarnpalen en de nieuwe auto's in hun lichtste vorm.
-- De computerstand is in software ongeveer 41 procent zwaarder per beeld. Het zwaarst wegen het gras (ongeveer 0,6 miljoen driehoeken), de schaduwkaart van 4096 pixels en de nabewerking. Software rekent heel anders dan een videokaart (driehoeken zijn daar relatief goedkoop, pixels duur), dus dit percentage zegt weinig over een echte laptop.
+- De computerstand is in software ongeveer 39 procent zwaarder per beeld. Het zwaarst wegen het gras (ongeveer 0,6 miljoen driehoeken), de schaduwkaart van 4096 pixels en de nabewerking. Software rekent heel anders dan een videokaart (driehoeken zijn daar relatief goedkoop, pixels duur), dus dit percentage zegt weinig over een echte laptop.
 - Vangnet: hapert het op een echt apparaat, dan schakelt `adaptQuality` stap voor stap af (zie stap 1 en 4), en met de knoppen op het startscherm kan iemand zelf een lichtere stand kiezen.
 - Het laden duurt in software merkbaar langer dan voorheen, vooral door het compileren van de extra shaders. Op een echte videokaart is dat naar verwachting een kwestie van seconden, maar ook dat is niet gemeten.
 
@@ -234,7 +254,7 @@ Wat dit betekent:
 5. **Er staan nu lantaarns langs alle straten** (960 in totaal, waarvan 40 uit de kaartdata). Ze staan op berekende plekken, niet op de echte plekken in Gulpen. Je kunt er niet tegenaan botsen (dat kon bij de bestaande lantaarns ook niet).
 6. **Scherptediepte tijdens gesprekken**: de achtergrond wordt zacht zodra er een gesprekvenster open is (niet in minispellen en niet bij de introductie).
 7. **Naambordjes worden na de nabewerking getekend** en zijn dus niet meer meegekleurd met het beeld. Ze zijn zo altijd scherp, maar 's nachts ogen ze iets lichter dan voorheen.
-8. **Dakranden zijn berekend**, niet opgemeten: elk dak steekt even ver uit. Waar een dak tegen een hogere muur aanloopt, zit de rand soms deels in die muur.
+8. **Dakranden en schoorstenen zijn berekend**, niet opgemeten: elk dak steekt even ver uit, en of een huis een schoorsteen heeft is willekeurig gekozen. Waar een dak tegen een hogere muur aanloopt, zit de rand soms deels in die muur.
 9. **De speler jogt** bij normale snelheid (4 m/s is hardlooptempo); wandelen zie je bij voetgangers. De snelheden zelf zijn niet veranderd.
 10. **Poppetjes buiten beeld worden niet meer getekend** (ze hadden dat eerst uit staan). Mocht er ergens een poppetje onterecht verdwijnen, dan zit het in `src/character.js` (de omhullende bol).
 11. **De Bierfeesten-missie liep vast** op een ontbrekende functie (`hideTrees`) in deze kopie. Die heb ik toegevoegd. Controleer of het origineel dezelfde fout heeft.
@@ -251,7 +271,7 @@ Wat dit betekent:
 - **Schaduwen**: één schaduwkaart rond de speler. Verderop (voorbij ongeveer 85 meter) zijn er geen schaduwen. Lantaarns werpen geen schaduw.
 - **Poppetjes**: geen gezichtsanimatie, de sprint schuift nog, fietsen en stilstaan zijn berekend, de zithouding past niet precies op de bankjes.
 - **Auto's**: de XC40 verdient een eigen carrosserie; de wissel tussen ver en dichtbij is zichtbaar.
-- **Lucht**: één daglucht en één nachtlucht. Een aparte ochtend- en zonsonderganglucht zou afwisseling geven.
+- **Lucht en tijd**: één daglucht en één nachtlucht, en de overgang is een sprong achter een zwart scherm. Een aparte ochtendlucht, een echt gouden uur met lage zon en een vloeiende zonsondergang zouden veel sfeer toevoegen.
 - **Hoogtemodel**: het fijnere AHN is niet opgehaald; het terrein is ongewijzigd.
 - **Binnenruimtes**: niet aangepakt, behalve dat ze de nieuwe nabewerking meekrijgen.
 - **Laadtijd**: gecomprimeerde texturen (KTX2) en het vooraf compileren van shaders in stapjes zouden het laden korter en rustiger maken.

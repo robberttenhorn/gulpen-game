@@ -10,7 +10,7 @@ Het volledige verslag met voor- en na-beelden staat in [`docs/hd/VERSLAG.md`](do
 - **Licht en atmosfeer** (`src/main.js`, `src/lighting.js`): fellere zon tegenover koel hemellicht, een grote stabiele schaduwkaart, luchtperspectief en hoogtemist in het dal.
 - **Nabewerking** (`src/post.js`): ambient occlusion, zonnestralen, scherptediepte tijdens gesprekken, bloom, filmische tone mapping, kleurcorrectie, vignet en korrel.
 - **Avond**: lantaarns langs alle straten die echt licht geven op straat, gevels, auto's en mensen (één lichtkaart in plaats van honderden lampen), zachte lichtkegels, etalages die de stoep verlichten, en een natte straat waarin elke lantaarn spiegelt.
-- **Wereld**: gras dat je echt ziet staan rond de speler (`src/grass.js`), bladerige hagen en struiken (`src/vegetation.js`, `src/foliage.js`), water met fijne rimpels dat de lucht spiegelt (`src/hardscape.js`).
+- **Wereld**: gras dat je echt ziet staan rond de speler (`src/grass.js`), bladerige hagen en struiken (`src/vegetation.js`, `src/foliage.js`), water met fijne rimpels dat de lucht spiegelt (`src/hardscape.js`), dakranden met overstek en goot, schoorstenen en ramen die terugliggen in de muur (`src/world.js`), en rustig asfalt.
 - **Poppetjes** (`src/character.js`, `src/mocap.js`): nieuw lichaam, en lopen, joggen, rennen en zitten uit echte motion capture (Carnegie Mellon University).
 - **Auto's** (`src/vehicles.js`, `src/carmodel.js`, `src/cartypes.js`, `src/carmat.js`): carrosserie met rondingen, glas met interieur, draaiende en sturende wielen, lampen die 's avonds aangaan, Nederlandse kentekens (verzonnen).
 - **WebGL 2 is de enige route.** Er is bewust niet overgestapt op WebGPU; het verslag legt uit waarom.

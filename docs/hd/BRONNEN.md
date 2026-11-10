@@ -27,7 +27,8 @@ Opgehaald met `tools/fetch-textures.py` (bestond al in de oorspronkelijke game).
 | [roof_slates_03](https://polyhaven.com/a/roof_slates_03) | dak: leien | Rob Tuytel | CC0 |
 | [roof_tiles](https://polyhaven.com/a/roof_tiles) | dak: rode pannen | Stephan Seeliger | CC0 |
 | [grey_roof_tiles](https://polyhaven.com/a/grey_roof_tiles) | dak: antraciet pannen | Rob Tuytel | CC0 |
-| [asphalt_02](https://polyhaven.com/a/asphalt_02) | plat dak, asfalt | Rob Tuytel | CC0 |
+| [asphalt_02](https://polyhaven.com/a/asphalt_02) | plat dak | Rob Tuytel | CC0 |
+| [clean_asphalt](https://polyhaven.com/a/clean_asphalt) | asfalt van rijbaan en fietspad | Dimitrios Savva | CC0 |
 | [herringbone_pavement](https://polyhaven.com/a/herringbone_pavement) | klinkers | Charlotte Baglioni | CC0 |
 | [concrete_tiles](https://polyhaven.com/a/concrete_tiles) | stoeptegels | Dimitrios Savva | CC0 |
 | [concrete_pavers](https://polyhaven.com/a/concrete_pavers) | parkeervakken en erven | Amal Kumar | CC0 |
