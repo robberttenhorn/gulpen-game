@@ -153,8 +153,8 @@ varying float vGloed;`)
     float g = 0.0;
     if ( k < 0.5 ) g = 0.05 + aan * ( 0.3 + uNacht * 5.5 );           // dimlicht
     else if ( k < 1.5 ) g = 0.06 + aan * ( 2.4 + uNacht * 0.4 );       // dagrijlicht
-    else if ( k < 2.5 ) g = 0.1 + aan * ( 0.25 + uNacht * 2.4 );       // achterlicht
-    else if ( k < 3.5 ) g = 0.1 + aan * ( 0.2 + uNacht * 1.8 ) + uLamp.y * 9.0; // remlicht
+    else if ( k < 2.5 ) g = 0.1 + aan * ( 0.25 + uNacht * 1.7 );       // achterlicht
+    else if ( k < 3.5 ) g = 0.1 + aan * ( 0.2 + uNacht * 1.2 ) + uLamp.y * 5.0; // remlicht
     else if ( k < 4.5 ) g = 0.04 + uLamp.z * 6.0;                      // achteruitrijlicht
     else if ( k < 5.5 ) g = 0.08 + max( 0.0, uLamp.w * sign( position.x ) ) * 6.0; // knipperlicht (w > 0: links)
     else if ( k < 6.5 ) g = aan * uNacht * 0.4;                        // verlichte kentekenplaat
