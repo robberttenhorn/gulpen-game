@@ -4,6 +4,7 @@ import { installLighting } from './lighting.js';
 import { Q, isMobile } from './quality.js';
 import { SkyDome } from './sky.js';
 import { Post } from './post.js';
+import { buildGrass } from './grass.js';
 import { World } from './world.js';
 import { Input } from './input.js';
 import { UI, Minimap, BigMap } from './ui.js';
@@ -93,6 +94,7 @@ class Game {
     this.setupSky();
     await this.skyDome.load(Q.texFijn, () => { if (this.sunDir) this.updateEnvironment(); });
     this.setupPlayer();
+    try { this.grass = buildGrass(this.world, this.scene, Q); } catch (e) { console.warn('gras', e); }
     this.facades = new Facades(this);
     this.facades.build();
     try { buildStatues(this.facades); } catch (e) { console.warn('beelden', e); }
@@ -1437,6 +1439,7 @@ class Game {
     this.updateCamera(dt);
     this.updateHud(dt);
     this.skyDome.update(this.camera, this.time);
+    this.grass?.update(this.camera, this.time);
     this.updateDof();
     this.render(dt);
   }

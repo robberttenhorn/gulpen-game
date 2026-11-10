@@ -120,3 +120,16 @@ export function installLighting({ lamps = true } = {}) {
 #endif
 `;
 }
+
+// Vlakken die van twee kanten getekend worden (stoepranden, wegmarkering, gras): three.js keert de normaal om
+// voor de 'achterkant', waardoor ze daar geen zon- en lantaarnlicht krijgen. De normalen in de geometrie kloppen
+// al, dus zo laten. (Het stukje shader wordt pas later ingevoegd; daarom wordt hier het hele blok vervangen.)
+export function keepNormals(mat) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, r) => {
+    prev?.call(mat, shader, r);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;'));
+  };
+  const key = mat.customProgramCacheKey?.bind(mat);
+  mat.customProgramCacheKey = () => 'kn' + (key ? key() : '') + (prev ? prev.toString().length : 0);
+}

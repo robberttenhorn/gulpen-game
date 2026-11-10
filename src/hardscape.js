@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { Earcut } from 'three/src/extras/Earcut.js';
 import { makeTextures } from './textures.js';
+import { keepNormals } from './lighting.js';
 
 // klasse -> [texture, wereldmaat van één herhaling in meters, hoogte boven terrein, polygonOffset]
 const LAYERS = {
@@ -108,19 +109,6 @@ export function buildHardscape(world, scene) {
       }
     },
   };
-}
-
-// Stoepranden en wegmarkering worden van twee kanten getekend. three.js keert dan de normaal om voor de
-// 'achterkant', waardoor ze geen zon- en lantaarnlicht kregen. De normalen in de geometrie kloppen al: zo laten.
-function keepNormals(mat) {
-  const prev = mat.onBeforeCompile;
-  mat.onBeforeCompile = (shader, r) => {
-    prev?.call(mat, shader, r);
-    // (het stukje shader wordt pas later ingevoegd, dus hier het hele blok vervangen)
-    shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;'));
-  };
-  const key = mat.customProgramCacheKey?.bind(mat);
-  mat.customProgramCacheKey = () => 'kn' + (key ? key() : '');
 }
 
 // ------------------------------------------------------------ geometrie

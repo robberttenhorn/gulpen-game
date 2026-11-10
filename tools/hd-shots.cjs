@@ -26,6 +26,7 @@ const VIEWS = [
   { name: 'gulperberg', x: 560, z: 120, yaw: 1.9, pitch: 0.2 },
   { name: 'woonwijk', x: 420, z: -230, yaw: 0.4, pitch: 0.22 },
   { name: 'auto', car: true, x: 235, z: -30, yaw: 1.2, pitch: 0.2 },
+  { name: 'gras', grass: true, yaw: 2.4, pitch: 0.1 },
 ];
 const TIMES = [['dag', 15], ['gouden-uur', 18.6], ['avond', 22]];
 
@@ -61,6 +62,14 @@ async function shot(page, v, hour, file) {
     const g = window.game;
     let x = v.x, z = v.z;
     if (v.start) [x, z] = g.startPos;
+    // midden in een grasveld (dichtstbijzijnde bij het dorp, met rondom ook gras)
+    if (v.grass) {
+      const w = g.world, isG = (a, b) => w.classAt(a, b) === 'gras' && !w.insideBuilding(a, b);
+      find: for (let r = 60; r < 700; r += 12) for (let k = 0; k < 40; k++) {
+        const a = (k / 40) * Math.PI * 2, px = 150 + Math.cos(a) * r, pz = -60 + Math.sin(a) * r;
+        if ([[0, 0], [9, 0], [-9, 0], [0, 9], [0, -9], [6, 6], [-6, -6], [14, 0], [0, 14]].every(([dx, dz]) => isG(px + dx, pz + dz))) { x = px; z = pz; break find; }
+      }
+    }
     // aan de oever van de Gulp, met het water voor je
     if (v.gulp && g.fishing) { const f = g.fishing; x = f.x; z = f.z; v = { ...v, yaw: Math.atan2(f.x - f.wx, f.z - f.wz) + 0.35 }; }
     if (g.mode === 'car') { g.car.speed = 0; g.exitCar(); }
@@ -104,7 +113,7 @@ async function shot(page, v, hour, file) {
         if (KORT && mobile && !(v.name === 'markt' || (v.name === 'rijksweg' && tname === 'dag'))) continue;
         if (mobile && !['markt', 'rijksweg', 'tuin38', 'gulp'].includes(v.name)) continue;
         if (tname === 'gouden-uur' && !['markt', 'gulperberg', 'woonwijk', 'gulp'].includes(v.name)) continue;
-        if (tname === 'avond' && ['gulperberg', 'woonwijk'].includes(v.name)) continue;
+        if (tname === 'avond' && ['gulperberg', 'woonwijk', 'gras'].includes(v.name)) continue;
         const id = `${tag}-${tname}-${v.name}`;
         if (filter && !filter.startsWith('alleen-') && !id.includes(filter)) continue;
         const ms = await shot(page, v, hour, path.join(out, id + '.jpg'));

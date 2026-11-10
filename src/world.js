@@ -534,6 +534,7 @@ export class World {
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWorld = position.xz;');
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
+          #define GRASS_SHADE ${Q.gras ? '0.8' : '1.0'}
           varying vec2 vWorld;
           uniform sampler2D uOrtho;
           uniform vec4 uOrthoBox;
@@ -576,6 +577,8 @@ export class World {
             oc = mix(vec3(dot(oc, vec3(0.3, 0.55, 0.15))), oc, 1.12) * 1.12;
             float soft = (1.0 - paved) * uOrthoOn;
             diffuseColor.rgb = mix(diffuseColor.rgb, oc * blade * mix(1.0, 0.92 + fine * 0.16, green), soft);
+            // dichtbij staat er echt gras op (grass.js): de grond eronder iets donkerder, als de schaduw tussen de sprieten
+            diffuseColor.rgb *= mix(1.0, GRASS_SHADE, green * soft * (1.0 - smoothstep(20.0, 32.0, distance(vWorld, cameraPosition.xz))));
             diffuseColor.rgb *= texture2D(uAO, (vWorld - uOrthoBox.xy) / uOrthoBox.zw).r;
           }`);
     };
