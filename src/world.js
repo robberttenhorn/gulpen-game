@@ -919,31 +919,43 @@ export class World {
               rough = mix(rough, 0.5, door * allowed);
             } else {
               vec2 lo = vec2(0.32, 0.32), hi = vec2(0.68, 0.84);
-              float win = boxMask(f, lo, hi, aa);
-              float frame = boxMask(f, lo - 0.025, hi + vec2(0.025, 0.02), aa) - win;
-              float sill = boxMask(f, vec2(0.3, lo.y - 0.045), vec2(0.7, lo.y - 0.01), aa);
-              // roeden: één staander en een kalf
-              float mull = boxMask(f, vec2(0.493, lo.y), vec2(0.507, hi.y), aa) + boxMask(f, vec2(lo.x, 0.655), vec2(hi.x, 0.668), aa);
-              mull = clamp(mull, 0.0, 1.0) * win;
-              // diepte: schaduw bovenin de dagkant
-              float reveal = smoothstep(hi.y, hi.y - 0.06, f.y) ;
-              glass = win * allowed * (1.0 - mull);
-              vec3 frameCol = r2 < 0.75 ? srgb(vec3(0.9, 0.89, 0.86)) : srgb(vec3(0.12, 0.13, 0.13));
-              base = mix(base, frameCol, (frame + mull) * allowed);
-              base = mix(base, srgb(vec3(0.6, 0.59, 0.56)), sill * allowed);
-              // binnenkant: donker met soms gordijnen
-              float curtain = step(0.55, r2) * (smoothstep(lo.x + 0.07, lo.x + 0.05, f.x) + smoothstep(hi.x - 0.07, hi.x - 0.05, f.x));
-              vec3 inside = mix(vec3(0.015, 0.018, 0.022), srgb(vec3(0.7, 0.62, 0.5)) * 0.35, clamp(curtain, 0.0, 1.0));
-              // dichtbij: echt naar binnen kijken (kamer met lamp, schilderij, kast, plant); veraf het oude, donkere glas
+              vec2 loO = lo - 0.025, hiO = hi + vec2(0.025, 0.02); // buitenmaat van het kozijn = de opening in de muur
+              // Het raam ligt 11 cm terug in de muur. Van dichtbij wordt uitgerekend waar de kijklijn het teruggelegde
+              // raam raakt: je ziet dan de zijkant van de muur (de negge) en het raam verschuift mee als je erlangs loopt.
               vec3 wpos = vec3(vWXZ.x, vWY, vWXZ.y);
               float camD = distance(wpos, cameraPosition);
+              vec3 V = normalize(wpos - cameraPosition);
+              vec3 Nw2 = normalize(vec3(vWN.x, 0.0, vWN.z) + 1e-5);
+              vec3 Tw2 = vec3(-Nw2.z, 0.0, Nw2.x);
+              // loopt de gevelmaat (vB.x) met Tw2 mee of ertegenin? Dat verschilt per gevel; de afgeleiden vertellen het.
+              float uDir = dot(Tw2, dFdx(wpos)) * dFdx(vB.x) + dot(Tw2, dFdy(wpos)) * dFdy(vB.x) < 0.0 ? -1.0 : 1.0;
+              vec3 dT = vec3(dot(V, Tw2) * uDir, V.y, dot(V, Nw2));
+              vec2 shiftM = dT.xy / max(-dT.z, 0.2) * 0.11 * (1.0 - smoothstep(35.0, 60.0, camD));
+              shiftM *= min(1.0, 0.3 / max(length(shiftM), 1e-4));
+              vec2 fr = f + shiftM / vec2(2.8, 2.9);
+              float inO = boxMask(f, loO, hiO, aa);
+              float hitO = boxMask(fr, loO, hiO, aa);
+              float win = boxMask(fr, lo, hi, aa);
+              float frame = clamp(hitO - win, 0.0, 1.0);
+              float sill = boxMask(f, vec2(0.3, lo.y - 0.045), vec2(0.7, lo.y - 0.01), aa);
+              // roeden: één staander en een kalf
+              float mull = boxMask(fr, vec2(0.493, lo.y), vec2(0.507, hi.y), aa) + boxMask(fr, vec2(lo.x, 0.655), vec2(hi.x, 0.668), aa);
+              mull = clamp(mull, 0.0, 1.0) * win;
+              // diepte: schaduw bovenin de dagkant
+              float reveal = smoothstep(hi.y, hi.y - 0.06, fr.y) ;
+              glass = win * inO * allowed * (1.0 - mull);
+              vec3 frameCol = r2 < 0.75 ? srgb(vec3(0.9, 0.89, 0.86)) : srgb(vec3(0.12, 0.13, 0.13));
+              // de negge: bovenin donker (onderkant van de latei), opzij in de schaduw, onderin licht (de vensterbank loopt door)
+              vec3 jamb = base * (fr.y > hiO.y ? 0.45 : (fr.y < loO.y ? 1.0 : 0.66));
+              vec3 content = mix(base, frameCol, clamp(frame + mull, 0.0, 1.0));
+              // binnenkant: donker met soms gordijnen
+              float curtain = step(0.55, r2) * (smoothstep(lo.x + 0.07, lo.x + 0.05, fr.x) + smoothstep(hi.x - 0.07, hi.x - 0.05, fr.x));
+              vec3 inside = mix(vec3(0.015, 0.018, 0.022), srgb(vec3(0.7, 0.62, 0.5)) * 0.35, clamp(curtain, 0.0, 1.0));
+              // dichtbij: echt naar binnen kijken (kamer met lamp, schilderij, kast, plant); veraf het oude, donkere glas
               float lightOn = step(r, 0.58);
               if (camD < 70.0 && glass > 0.01) {
-                vec3 V = normalize(wpos - cameraPosition);
-                vec3 Nw2 = normalize(vec3(vWN.x, 0.0, vWN.z) + 1e-5);
-                vec3 Tw2 = vec3(-Nw2.z, 0.0, Nw2.x);
-                vec2 wuv = vec2((f.x - lo.x) / (hi.x - lo.x), (f.y - lo.y) / (hi.y - lo.y));
-                vec3 room = roomView(wuv, vec3(dot(V, Tw2), V.y, dot(V, Nw2)), vec2((hi.x - lo.x) * 2.8, (hi.y - lo.y) * 2.9), r2 + id.x * 0.137 + id.y * 0.713 + vSeed, uNight, lightOn);
+                vec2 wuv = vec2((fr.x - lo.x) / (hi.x - lo.x), (fr.y - lo.y) / (hi.y - lo.y));
+                vec3 room = roomView(wuv, dT, vec2((hi.x - lo.x) * 2.8, (hi.y - lo.y) * 2.9), r2 + id.x * 0.137 + id.y * 0.713 + vSeed, uNight, lightOn);
                 room = mix(room, srgb(vec3(0.75, 0.66, 0.52)), clamp(curtain, 0.0, 1.0) * 0.85); // gordijnen
                 gInside = room;
                 gNear = 1.0 - smoothstep(50.0, 70.0, camD);
@@ -952,9 +964,11 @@ export class World {
                 inside = mix(inside, mix(dayRoom, room * 0.06, uNight), gNear);
               }
               inside *= mix(1.0, 0.6, reveal);
-              base = mix(base, inside, glass);
+              content = mix(content, inside, win * (1.0 - mull));
+              base = mix(base, mix(jamb, content, hitO), inO * allowed);
+              base = mix(base, srgb(vec3(0.6, 0.59, 0.56)), sill * allowed);
               lit = glass * lightOn * uNight;
-              opening = clamp((win + frame + sill) * allowed, 0.0, 1.0);
+              opening = clamp((inO + sill) * allowed, 0.0, 1.0);
             }
             tnAmt *= (1.0 - opening) * (1.0 - plint);
             // vuil en schaduw onderaan de gevel

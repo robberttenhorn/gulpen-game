@@ -16,6 +16,11 @@ lampTex.magFilter = lampTex.minFilter = THREE.NearestFilter; lampTex.needsUpdate
 const globals = new Float32Array(8);
 const globalTex = new THREE.DataTexture(globals, 2, 1, THREE.RGBAFormat, THREE.FloatType);
 globalTex.magFilter = globalTex.minFilter = THREE.NearestFilter; globalTex.needsUpdate = true;
+// three.js maakt van elke texture in de standaardmaterialen een kopie per materiaal. Een wijziging (lampen aan of uit,
+// straat nat of droog) kwam daardoor niet betrouwbaar bij alle materialen aan. Daarom geven deze twee zichzelf terug
+// als er om een kopie wordt gevraagd: alle materialen delen dan echt dezelfde texture.
+lampTex.clone = () => lampTex;
+globalTex.clone = () => globalTex;
 
 // kaart met lichtbronnen zetten: data = Uint16Array (halve floats, 4 per vakje), box = [x0, z0, breedte, diepte]
 export function setLampMap(data, w, h, box) {

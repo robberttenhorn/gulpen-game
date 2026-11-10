@@ -59,6 +59,7 @@ export function buildHardscape(world, scene) {
     });
     if (t.normalMap) mat.normalScale.set(0.8, 0.8);
     if (t.color) mat.color.copy(t.color);
+    else if (texName === 'asfalt' && ph) mat.color.setScalar(1.3); // het schone asfalt is van zichzelf erg donker
     world.applyAO?.(mat);
     if (Q.natteWeg && world.applyAO) wetSurface(mat);
     const m = new THREE.Mesh(geo, mat);
@@ -424,6 +425,8 @@ function wetSurface(mat) {
           return mix(mix(wetH(i), wetH(i + vec2(1, 0)), f.x), mix(wetH(i + vec2(0, 1)), wetH(i + vec2(1, 1)), f.x), f.y); }
         float wetPud = 0.0; float wetAmt = 0.0;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        // grote vlekken in het wegdek (slijtage, oude reparaties), zodat een lange straat geen egaal vlak is
+        diffuseColor.rgb *= 0.9 + 0.14 * wetN(vAOxz * 0.085) + 0.08 * wetN(vAOxz * 0.6);
         #ifdef LOCALS_LAMPS
           wetAmt = texelFetch(uGlobals, ivec2(0, 0), 0).y;
           if (wetAmt > 0.01) {
