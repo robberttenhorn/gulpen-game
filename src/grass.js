@@ -136,6 +136,9 @@ export function buildGrass(world, scene, q) {
           vec3 transformed = vec3(root.x + lxz.x + bend.x * t * t * hgt, terrainY(root) + position.y * hgt - 0.01, root.y + lxz.y + bend.y * t * t * hgt);
           vec3 oc = texture2D(uOrtho, (root - uOrthoBox.xy) / uOrthoBox.zw).rgb;
           oc = mix(vec3(dot(oc, vec3(0.3, 0.55, 0.15))), oc, 1.12) * 1.12;
+          // waar de luchtfoto geen groen laat zien (kale plek, pad, schaduw) blijft het gras toch groen
+          float gl = dot(oc, vec3(0.3, 0.55, 0.15));
+          oc = mix(vec3(0.42, 0.56, 0.24) * (0.3 + min(gl, 0.3) * 1.3), oc, 0.3 + 0.7 * smoothstep(0.0, 0.05, oc.g - max(oc.r, oc.b)));
           // onderin donker (schaduw tussen de sprieten), bovenin licht en iets geler
           vGrass = oc * mix(0.74, 1.28, t) * (0.9 + h2 * 0.2) * mix(vec3(1.0), vec3(1.08, 1.06, 0.82), t * 0.6);
         `);

@@ -129,7 +129,9 @@ async function shot(page, v, hour, file) {
     const info = await page.evaluate(() => {
       const g = window.game, gl = g.renderer.getContext(), px = new Uint8Array(4), ts = [];
       for (let i = 0; i < 3; i++) { const t = performance.now(); g.tickInner(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); ts.push(performance.now() - t); }
+      // driehoeken en tekenopdrachten van één heel beeld (alle stappen samen: schaduwkaart, wereld, nabewerking)
       const r = g.renderer.info;
+      r.autoReset = false; r.reset(); g.tickInner(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
       return { msPerBeeld: Math.round(Math.min(...ts)), driehoeken: r.render.triangles, tekenopdrachten: r.render.calls, pixelverhouding: g.renderer.getPixelRatio(), kwaliteit: g.quality?.name || null, texturen: r.memory.textures, geometrie: r.memory.geometries };
     });
     report[tag] = { ...info, fouten: errors };

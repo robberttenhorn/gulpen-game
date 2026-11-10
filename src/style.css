@@ -651,3 +651,10 @@ body.map-open #btn-home, body.map-open #home-confirm { display: none !important;
 .kn-say.on { opacity: 1; transform: none; }
 .kn-say b { display: block; font: 800 12px Inter, sans-serif; color: #1f4e9a; }
 .kn-say span { font-weight: 700; font-size: 15px; }
+
+/* keuze van de beeldkwaliteit op het startscherm */
+#quality-pick { margin-top: 14px; display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 13px; }
+#quality-pick[hidden] { display: none; }
+#quality-pick span { opacity: .7; margin-right: 4px; }
+#quality-pick button { font: inherit; padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: inherit; cursor: pointer; }
+#quality-pick button.on { background: #e8a33d; border-color: #e8a33d; color: #1b2430; font-weight: 600; }

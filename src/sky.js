@@ -53,6 +53,9 @@ const FRAG = `
     // onder de horizon: de kleur van de verte (de mistkleur), zodat het landschap naadloos in de lucht overloopt
     c = mix(c, uGround, smoothstep(0.0, -0.06, d.y));
     gl_FragColor = vec4(c, 1.0);
+    // zonder nabewerking (telefoon) gaat dit beeld rechtstreeks naar het scherm: dan hier tone mapping en kleurruimte
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }`;
 
 export class SkyDome {
@@ -69,7 +72,7 @@ export class SkyDome {
     const mk = (env) => {
       const mat = new THREE.ShaderMaterial({
         uniforms: { ...this.uniforms, uEnv: { value: env } }, vertexShader: VERT, fragmentShader: FRAG,
-        side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false, toneMapped: false,
+        side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false,
       });
       const m = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), mat);
       m.frustumCulled = false;

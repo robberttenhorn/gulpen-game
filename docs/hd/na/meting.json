@@ -1,0 +1,22 @@
+{
+  "computer": {
+    "msPerBeeld": 9084,
+    "driehoeken": 2,
+    "tekenopdrachten": 1,
+    "pixelverhouding": 1,
+    "kwaliteit": "hoog",
+    "texturen": 343,
+    "geometrie": 1591,
+    "fouten": []
+  },
+  "telefoon": {
+    "msPerBeeld": 6719,
+    "driehoeken": 2916724,
+    "tekenopdrachten": 544,
+    "pixelverhouding": 1.5,
+    "kwaliteit": "laag",
+    "texturen": 307,
+    "geometrie": 1489,
+    "fouten": []
+  }
+}

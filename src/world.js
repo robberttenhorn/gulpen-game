@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { buildVegetation, buildPlanters } from './vegetation.js';
 import { buildHardscape, surfaceLift } from './hardscape.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { setLampMap, setLampGlobals } from './lighting.js';
+import { setLampMap, setLampGlobals, keepNormals } from './lighting.js';
 import { Q } from './quality.js';
 
 const DATA = import.meta.env.BASE_URL + 'data/';
@@ -128,6 +128,7 @@ export class World {
     const [bBuf, footprints, photo] = await Promise.all([fetchBin('buildings.bin'), fetchJson('footprints.json'), photoP]);
     this.photo = photo;
     this.buildBuildings(bBuf);
+    if (!Q.laag) { try { this.buildRoofTrim(); } catch (e) { console.warn('dakranden', e); } }
     this.setupCollision(footprints);
     this.paintBuilding([190985.6, 314375.8]); // Ringweg 38 (RD-coördinaten): roodbruine baksteen
     this.buildAO();
@@ -1027,6 +1028,70 @@ export class World {
     this.buildingMesh = mesh;
   }
 
+  // Dakranden: de daken uit de 3D BAG eindigen precies op de gevel, waardoor huizen op dozen lijken.
+  // Hier krijgt elke vrije rand van een dak een overstek (het dak steekt 28 cm uit) met een boeibord eronder:
+  // langs de dakvoet een zinken goot, langs de schuine kanten een lichte windveer, bij platte daken een daktrim.
+  // Het overstek werpt een echte schaduw op de gevel.
+  buildRoofTrim() {
+    const { f32, i8, n, stride } = this.bld;
+    const key = (i) => Math.round(f32[i * 7] * 50) + ',' + Math.round(f32[i * 7 + 1] * 50) + ',' + Math.round(f32[i * 7 + 2] * 50);
+    const edges = new Map();
+    for (let v = 0; v < n; v += 3) {
+      if (i8[v * stride + 23] !== 1) continue; // alleen dakvlakken
+      const k = [key(v), key(v + 1), key(v + 2)];
+      for (let e = 0; e < 3; e++) {
+        const a = v + e, b = v + (e + 1) % 3, c = v + (e + 2) % 3;
+        const id = k[e] < k[(e + 1) % 3] ? k[e] + '|' + k[(e + 1) % 3] : k[(e + 1) % 3] + '|' + k[e];
+        const rec = edges.get(id);
+        if (rec) rec.count++; else edges.set(id, { a, b, c, count: 1 });
+      }
+    }
+    const pos = [], col = [], nrm = [];
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), N = new THREE.Vector3(), E = new THREE.Vector3(), O = new THREE.Vector3(), T = new THREE.Vector3();
+    const quad = (p0, p1, p2, p3, nn, c) => {
+      for (const p of [p0, p1, p2, p0, p2, p3]) { pos.push(p.x, p.y, p.z); nrm.push(nn.x, nn.y, nn.z); col.push(c[0], c[1], c[2]); }
+    };
+    const P = () => new THREE.Vector3();
+    for (const { a, b, c, count } of edges.values()) {
+      if (count !== 1) continue;
+      A.set(f32[a * 7], f32[a * 7 + 1], f32[a * 7 + 2]); B.set(f32[b * 7], f32[b * 7 + 1], f32[b * 7 + 2]); C.set(f32[c * 7], f32[c * 7 + 1], f32[c * 7 + 2]);
+      E.subVectors(B, A);
+      const len = E.length();
+      if (len < 0.5) continue;
+      N.set(i8[a * stride + 20], i8[a * stride + 21], i8[a * stride + 22]).normalize();
+      if (N.y < 0.2) continue;
+      // richting in het dakvlak, van het dak af
+      O.crossVectors(N, E).normalize();
+      if (O.dot(T.subVectors(C, A)) > 0) O.negate();
+      const flat = N.y > 0.97, eave = Math.abs(E.y) / len < 0.08;
+      const w = flat ? 0.1 : 0.28, drop = flat ? 0.22 : eave ? 0.16 : 0.14;
+      // het overstek ligt een fractie boven het dak (anders flikkert het tegen het dakvlak)
+      const up = T.copy(N).multiplyScalar(0.015);
+      const a0 = P().copy(A).add(up).addScaledVector(O, -0.05), b0 = P().copy(B).add(up).addScaledVector(O, -0.05);
+      const a1 = P().copy(A).add(up).addScaledVector(O, w), b1 = P().copy(B).add(up).addScaledVector(O, w);
+      const a2 = P().copy(a1), b2 = P().copy(b1); a2.y -= drop; b2.y -= drop;
+      const a3 = P().copy(A).addScaledVector(O, 0.0), b3 = P().copy(B); a3.y -= drop * 0.9; b3.y -= drop * 0.9;
+      const dark = [0.035, 0.036, 0.04], board = flat ? [0.2, 0.2, 0.21] : eave ? [0.16, 0.17, 0.18] : [0.62, 0.61, 0.58];
+      quad(a0, b0, b1, a1, N, dark);                                   // bovenkant: verlengde van het dak
+      const out = P().set(O.x, 0, O.z).normalize();
+      quad(a1, b1, b2, a2, out, board);                                // boeibord, goot of windveer
+      quad(a2, b2, b3, a3, P().set(0, -1, 0), [0.3, 0.3, 0.3]);       // onderkant van het overstek
+    }
+    if (!pos.length) return;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.computeBoundingSphere();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.1, side: THREE.DoubleSide });
+    keepNormals(mat);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    this.scene.add(mesh);
+    this.roofTrim = mesh;
+    console.info(`dakranden: ${pos.length / 9} driehoeken`);
+  }
+
   // ------------------------------------------------------------ botsingen
 
   setupCollision(footprints) {
@@ -1338,6 +1403,7 @@ export class World {
     const leafMat = new THREE.MeshStandardMaterial({
       map: v.leafMap, color: leafColor, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85,
     });
+    if (Q.msaa) leafMat.alphaToCoverage = true; // zachtere bladranden (alleen met kantverzachting in de nabewerking)
     leafMat.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = time;
       // zacht wiegen in de wind (per boom een andere fase)
@@ -1379,7 +1445,7 @@ export class World {
   // begroeiing alleen in de buurt tekenen (struiken en gras zie je van ver toch niet)
   updateVegetation(cam) {
     if (!this.vegTiles) return;
-    const R = this.isMobile ? 200 : 290;
+    const R = Q.begroeiingBereik;
     for (const g of this.vegTiles) g.visible = Math.hypot(g.userData.c[0] - cam.x, g.userData.c[1] - cam.z) < R;
   }
 
@@ -1388,7 +1454,7 @@ export class World {
     if (!this.treeTiles) return;
     if (this.treeTime) this.treeTime.value = time;
     // per boom kiezen: binnen R de echte boom, daarbuiten de grove. Alleen opnieuw indelen als de camera een paar meter verplaatst is.
-    const R = this.isMobile ? 120 : 200;
+    const R = this.treeRange = Q.boomBereik;
     const last = this._treeCam;
     if (last && Math.hypot(last[0] - cam.x, last[1] - cam.z) < 3) return;
     this._treeCam = [cam.x, cam.z];

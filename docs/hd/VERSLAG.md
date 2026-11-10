@@ -93,3 +93,44 @@ Geprobeerd en aangepast: de eerste lichtkegels waren harde, goed zichtbare 'fees
 ![](stap2/computer-dag-tuin38.jpg)
 
 **Test**: alle 51 missies nagelopen met `tools/hd-missies.cjs`: geen fouten.
+
+## Stap 3: gras, auto's, water en de natte avondstraat
+
+**Gras** (`src/grass.js`)
+- Rond de speler staan nu echte grassprieten, in twee ringen: dichtbij fijne sprieten (elke 17 cm een polletje, tot 10 meter), verderop grovere pollen tot 30 meter. Samen ongeveer 38.000 polletjes van vijf sprieten.
+- De videokaart plaatst ze zelf: de plek volgt uit een vast raster in de wereld (het gras staat dus stil als je loopt), de hoogte uit de hoogtekaart, de vraag "is hier gras?" uit een graskaart (BGT-vlakken gras, berm en oever, zonder gebouwen en zonder de nagebouwde tuin van Ringweg 38), en de kleur uit de luchtfoto. Elke spriet heeft daardoor de kleur van de grond eronder, en het veld loopt verderop naadloos over in de luchtfoto.
+- Het gras wuift in de wind en krijgt hetzelfde licht als de rest (zon, schaduw, lantaarns, mist).
+- Alleen in de standen `hoog` (beide ringen) en `midden` (alleen de dichte ring). Op de telefoon geen gras.
+
+| Voor | Na |
+| --- | --- |
+| ![](voor/computer-gouden-uur-gulperberg.jpg) | ![](stap3/computer-dag-gras.jpg) |
+
+(De linkerfoto is een ander standpunt uit de nulmeting, om te laten zien hoe gras er eerst uitzag: een vlakke luchtfoto.)
+
+Geprobeerd en aangepast: de eerste versie had te weinig en te donkere sprieten op een lichte ondergrond; dat oogde als losse stekels. Nu staan ze dichter, gebruikt het gras hetzelfde soort materiaal als het terrein (zodat het ook het hemellicht krijgt) en is de grond eronder iets donkerder gemaakt.
+
+**Auto's** (gemaakt door een hulpagent in een eigen werkkopie, daarna samengevoegd; details en aantallen in `docs/hd/autos/NOTITIES.md`)
+- Carrosserie als een reeks dwarsdoorsneden met vloeiende vormen (bolle neus en kont, schouders, echte wielkasten, naden, spiegels, deurgrepen), per type eigen verhoudingen. Maten voor botsingen en parkeren zijn gelijk gebleven.
+- Doorzichtig getint glas met een interieur (stoelen, dashboard, stuur); verkeer heeft een bestuurder.
+- Wielen draaien en sturen bij rijdende auto's. Remlichten, achteruitrijlicht, knipperlicht in bochten, en 's avonds koplampen met een lichtvlek op de weg en verlichte kentekens (verzonnen).
+- De Volvo XC40 heeft zijn kenmerken behouden (zwart dak, knik in de ruitlijn, hamerkoplampen, turbinevelgen).
+- Drie detailniveaus: een losse auto 18.000 tot 20.000 driehoeken, geparkeerd dichtbij 6.600 tot 7.500, ver weg en op de telefoon 1.700 tot 1.850.
+- De spiegeling in lak en glas was afgesteld op de oude, zwakke omgeving; die is teruggezet nu de echte lucht het werk doet.
+- Niet af: de XC40 gebruikt de algemene SUV-vorm met eigen maten en onderdelen; de wissel tussen het verre model (ondoorzichtig glas) en het nabije is zichtbaar als je erop let.
+
+| Voor | Na |
+| --- | --- |
+| ![](voor/computer-dag-auto.jpg) | ![](stap3/computer-dag-auto.jpg) |
+
+**Water** (`src/hardscape.js`): het water had grote, striperige golven. Nu is het donker en helder, spiegelt het de lucht (sterker naarmate je er vlakker overheen kijkt) en heeft het twee lagen fijne rimpels in wereldmaten die tegen elkaar in schuiven.
+
+| Voor | Na |
+| --- | --- |
+| ![](stap1/computer-dag-gulp.jpg) | ![](stap3/computer-dag-gulp.jpg) |
+
+**Natte avondstraat** (`wetSurface` in `src/hardscape.js`): 's avonds is de straat nat, alsof het net geregend heeft. Het wegdek is donkerder en glanst, in de plassen spiegelt de lucht, en elke lantaarn krijgt een lichtveeg op het natte wegdek. Die veeg is een echte spiegeling: voor elk punt op de weg rekent de shader uit welke lantaarn daar in de spiegel zou staan, met dezelfde lichtkaart als het lantaarnlicht. Overdag is de straat droog.
+
+![](stap3/computer-avond-rijksweg.jpg)
+
+**Kleinere dingen**: de bolle kruinen en struiken in de tuin van Ringweg 38 hebben een bladmateriaal gekregen in plaats van kale vlakjes; het glas van de huizen is gladder, zodat de lucht erin spiegelt; boomblad heeft zachtere randen.

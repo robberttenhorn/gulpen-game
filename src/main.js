@@ -1,7 +1,7 @@
 import { GAME_NAME, PLACE } from './config.js';
 import * as THREE from 'three';
 import { installLighting } from './lighting.js';
-import { Q, isMobile } from './quality.js';
+import { Q, isMobile, setQuality } from './quality.js';
 import { SkyDome } from './sky.js';
 import { Post } from './post.js';
 import { buildGrass } from './grass.js';
@@ -135,6 +135,15 @@ class Game {
 
     const btn = document.getElementById('start-btn');
     btn.hidden = false;
+    // beeldkwaliteit kiezen: herlaadt de game in de gekozen stand
+    const qb = document.getElementById('quality-pick');
+    if (qb) {
+      qb.hidden = false;
+      for (const b of qb.querySelectorAll('button')) {
+        b.classList.toggle('on', b.dataset.q === Q.name);
+        b.addEventListener('click', () => { if (b.dataset.q !== Q.name) setQuality(b.dataset.q); });
+      }
+    }
     await new Promise((r) => btn.addEventListener('click', r, { once: true }));
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
@@ -248,16 +257,24 @@ class Game {
       if (q.low >= 10) statsPerf('haperend', device, fps);
       else if (q.play >= 120) statsPerf('soepel', device, fps);
     }
-    if (fps < 48) {
+    // In de hoogste stand is 30 beelden per seconde goed genoeg; pas daaronder wordt er afgeschaald.
+    const lowAt = Q.hoog ? 27 : Q.name === 'midden' ? 36 : 48, highAt = Q.hoog ? 45 : 57;
+    if (fps < lowAt) {
       q.good = 0;
       // eerst de duurste effecten uit, dan minder pixels, en als laatste de hele nabewerking uit
       const on = this.post?.on;
       if (on?.dof || on?.rays) { on.dof = false; on.rays = false; }
       else if (this.resScale > 0.8) { this.resScale = Math.max(0.78, this.resScale - 0.12); this.applyResolution(); }
       else if (on?.ao) on.ao = false;
+      else if (!q.light && (this.grass || Q.schaduw > 2048)) {
+        // lichter: het verre gras weg en een kleinere schaduwkaart
+        q.light = true;
+        if (this.grass?.rings[1]) this.grass.rings[1].visible = false;
+        if (Q.schaduw > 2048) { this.sun.shadow.mapSize.set(2048, 2048); this.sun.shadow.map?.dispose(); this.sun.shadow.map = null; Q.schaduw = 2048; }
+      }
       else if (this.resScale > 0.62) { this.resScale = Math.max(0.6, this.resScale - 0.12); this.applyResolution(); }
       else if (this.post && !this.postOff) { this.postOff = true; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.camera.layers.enable(1); } // laatste stap: zonder nabewerking
-    } else if (fps > 57) {
+    } else if (fps > highAt) {
       q.good += 2;
       if (q.good >= 10 && this.resScale < 1) { q.good = 0; this.resScale = Math.min(1, this.resScale + 0.08); this.applyResolution(); }
     } else q.good = 0;
@@ -298,11 +315,12 @@ class Game {
     const dusk = THREE.MathUtils.smoothstep(elev, -4, 6) * (1 - THREE.MathUtils.smoothstep(elev, 6, 22));
     // hoofdlicht: de zon, warmer naarmate hij lager staat; 's nachts koel maanlicht uit dezelfde hoek
     const low = 1 - THREE.MathUtils.smoothstep(elev, 10, 50);
-    this.sun.intensity = 4.4 * day + 0.8 * night;
+    const nk = Q.laag ? 1.7 : 1; // op de telefoon geven de lantaarns geen licht: daar is het maanlicht sterker
+    this.sun.intensity = 4.4 * day + 0.8 * nk * night;
     this.sun.color.setRGB(1, 0.94 - low * 0.07 - dusk * 0.3, 0.84 - low * 0.14 - dusk * 0.45);
     if (night > 0.5) this.sun.color.setRGB(0.5, 0.63, 1);
     // opvullicht: het meeste komt nu van de echte lucht (omgevingslicht); de hemisfeer vult alleen nog wat bij
-    this.hemi.intensity = 0.3 * day + 0.5 * night;
+    this.hemi.intensity = 0.3 * day + 0.5 * nk * night;
     this.hemi.color.setRGB(0.55 * day + 0.22 * night, 0.68 * day + 0.3 * night, 1 * day + 0.6 * night);
     this.hemi.groundColor.setRGB(0.3, 0.28, 0.22);
     this.renderer.toneMappingExposure = 0.68 * day + 1.05 * night;
