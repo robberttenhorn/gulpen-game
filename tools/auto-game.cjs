@@ -101,7 +101,7 @@ fs.mkdirSync(out, { recursive: true });
     }
     res.bouwtijdMs = Math.round(res.bouwtijdMs);
     res.autos = c.cars.length; res.verkeer = c.traffic.length;
-    res.bundels = Object.fromEntries(Object.entries(c.batches).map(([k, b]) => [k, { autos: b.cars.length, perTrap: b.sets.map((q) => `niveau ${q.lod}: ${q.n}`) }]));
+    res.bundels = Object.fromEntries(Object.entries(c.batches).map(([k, b]) => [k, { autos: b.cars.length, perTrap: b.sets.map((q) => `niveau ${q.lod}${q.meshes[0].castShadow ? '' : ' zonder schaduw'}: ${q.n}`) }]));
     return res;
   });
   console.log(JSON.stringify(report.modellen));

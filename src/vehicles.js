@@ -22,8 +22,11 @@ const PAINTS = [0x2b2d30, 0xd8d9db, 0x8d9196, 0x1e2a44, 0x7a1e1e, 0xeeeeee, 0x3b
 
 // Gebundelde (geparkeerde) auto's krijgen een model naar afstand tot de camera: vlakbij het volledige model,
 // daarna een lichter model (nog met glas en interieur) en ver weg het eenvoudige. Op de telefoon alleen het eenvoudige.
-// [detailniveau, afstand in meters]; de laatste trap geldt voor alles daarbuiten.
-const TIERS = Q.laag ? [[2, Infinity]] : Q.name === 'midden' ? [[1, 32], [2, Infinity]] : [[0, 13], [1, 50], [2, Infinity]];
+// [detailniveau, afstand in meters, werpt schaduw]; de laatste trap geldt voor alles daarbuiten.
+// Heel ver weg werpen de auto's geen schaduw meer: daar reikt de schaduwkaart toch niet, en het scheelt de helft van het werk.
+const TIERS = Q.laag ? [[2, 70, true], [2, Infinity, false]]
+  : Q.name === 'midden' ? [[1, 32, true], [2, 85, true], [2, Infinity, false]]
+    : [[0, 13, true], [1, 50, true], [2, 100, true], [2, Infinity, false]];
 const _e = new THREE.Euler(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _col = new THREE.Color();
 
 // lichtvlek op de weg voor de auto: plat vlak dat bij het beeld wordt opgeteld
@@ -167,7 +170,7 @@ export class Vehicles {
       if (!cars.length) continue;
       const sphere = new THREE.Box3().setFromPoints(cars.map((c) => new THREE.Vector3(c.x, this.world.groundAt(c.x, c.z), c.z))).getBoundingSphere(new THREE.Sphere());
       sphere.radius += 6;
-      const mk = ([lod, range]) => {
+      const mk = ([lod, range, shadow]) => {
         const m = this.model(type, lod), n = cars.length;
         // eigen geometrie voor de lampen (zelfde gegevens), met per auto een kenteken
         const lg = new THREE.BufferGeometry();
@@ -180,7 +183,7 @@ export class Vehicles {
           new THREE.InstancedMesh(m.baked, this.detailMat, n),
           new THREE.InstancedMesh(lg, this.lightMat, n),
         ];
-        meshes[0].castShadow = meshes[1].castShadow = true;
+        meshes[0].castShadow = meshes[1].castShadow = shadow;
         meshes[0].receiveShadow = meshes[1].receiveShadow = true;
         if (m.glass) meshes.push(new THREE.InstancedMesh(m.glass, this.mats.glass, n));
         meshes[0].setColorAt(0, _col.set(0xffffff));

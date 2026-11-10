@@ -42,7 +42,7 @@ fs.mkdirSync(out, { recursive: true });
           T.setRow(types, paints);
           T.cars.updateTraffic(0.016, { x: 999, z: 999 });
           const tris = {};
-          for (const [k, b] of Object.entries(T.cars.batches)) tris[k] = Object.fromEntries(b.sets.filter((q) => q.n).map((q) => ['niveau' + q.lod, q.meshes.reduce((n, m) => n + m.geometry.index.count / 3, 0)]));
+          for (const [k, b] of Object.entries(T.cars.batches)) tris[k] = Object.fromEntries(b.sets.filter((q) => q.n).map((q, i) => ['niveau' + q.lod + (q.meshes[0].castShadow ? '' : ' zonder schaduw'), q.meshes.reduce((n, m) => n + m.geometry.index.count / 3, 0)]));
           return { url: T.shot(), tris, calls: T.renderer.info.render.calls };
         }, { types, paints: types.map((t) => PAINT[t]), night, v });
         fs.writeFileSync(path.join(out, `rij-${tname}-${v}-${quality}.jpg`), Buffer.from(res.url.split(',')[1], 'base64'));

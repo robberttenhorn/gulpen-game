@@ -1,0 +1,294 @@
+{
+  "modellen": {
+    "bouwtijdMs": 54,
+    "types": {
+      "hatch": {
+        "0": {
+          "los": 18246,
+          "lak": 6368,
+          "details": 4446,
+          "glas": 1368,
+          "lampen": 288,
+          "wielen": 5776
+        },
+        "1": {
+          "los": 6718,
+          "lak": 2420,
+          "details": 1506,
+          "glas": 520,
+          "lampen": 160,
+          "wielen": 2112
+        },
+        "2": {
+          "los": 1668,
+          "lak": 764,
+          "details": 448,
+          "glas": 0,
+          "lampen": 24,
+          "wielen": 432
+        }
+      },
+      "sedan": {
+        "0": {
+          "los": 18832,
+          "lak": 6988,
+          "details": 4234,
+          "glas": 1380,
+          "lampen": 294,
+          "wielen": 5936
+        },
+        "1": {
+          "los": 6980,
+          "lak": 2632,
+          "details": 1414,
+          "glas": 492,
+          "lampen": 170,
+          "wielen": 2272
+        },
+        "2": {
+          "los": 1696,
+          "lak": 792,
+          "details": 448,
+          "glas": 0,
+          "lampen": 24,
+          "wielen": 432
+        }
+      },
+      "suv": {
+        "0": {
+          "los": 19082,
+          "lak": 6456,
+          "details": 5090,
+          "glas": 1428,
+          "lampen": 300,
+          "wielen": 5808
+        },
+        "1": {
+          "los": 7026,
+          "lak": 2464,
+          "details": 1730,
+          "glas": 512,
+          "lampen": 176,
+          "wielen": 2144
+        },
+        "2": {
+          "los": 1836,
+          "lak": 796,
+          "details": 584,
+          "glas": 0,
+          "lampen": 24,
+          "wielen": 432
+        }
+      },
+      "van": {
+        "0": {
+          "los": 19386,
+          "lak": 7724,
+          "details": 4178,
+          "glas": 1740,
+          "lampen": 272,
+          "wielen": 5472
+        },
+        "1": {
+          "los": 6982,
+          "lak": 2620,
+          "details": 1418,
+          "glas": 576,
+          "lampen": 160,
+          "wielen": 2208
+        },
+        "2": {
+          "los": 1684,
+          "lak": 888,
+          "details": 344,
+          "glas": 0,
+          "lampen": 20,
+          "wielen": 432
+        }
+      },
+      "sport": {
+        "0": {
+          "los": 18110,
+          "lak": 6700,
+          "details": 3828,
+          "glas": 1356,
+          "lampen": 290,
+          "wielen": 5936
+        },
+        "1": {
+          "los": 6630,
+          "lak": 2372,
+          "details": 1312,
+          "glas": 512,
+          "lampen": 162,
+          "wielen": 2272
+        },
+        "2": {
+          "los": 1720,
+          "lak": 780,
+          "details": 488,
+          "glas": 0,
+          "lampen": 20,
+          "wielen": 432
+        }
+      },
+      "tractor": {
+        "0": {
+          "los": 6206,
+          "lak": 420,
+          "details": 1032,
+          "glas": 8,
+          "lampen": 202,
+          "wielen": 4544
+        },
+        "1": {
+          "los": 4138,
+          "lak": 384,
+          "details": 584,
+          "glas": 8,
+          "lampen": 170,
+          "wielen": 2992
+        },
+        "2": {
+          "los": 1170,
+          "lak": 72,
+          "details": 176,
+          "glas": 0,
+          "lampen": 138,
+          "wielen": 784
+        }
+      },
+      "xc40": {
+        "0": {
+          "los": 20022,
+          "lak": 5956,
+          "details": 6030,
+          "glas": 1500,
+          "lampen": 440,
+          "wielen": 6096
+        },
+        "1": {
+          "los": 7492,
+          "lak": 2096,
+          "details": 2320,
+          "glas": 508,
+          "lampen": 296,
+          "wielen": 2272
+        },
+        "2": {
+          "los": 1846,
+          "lak": 740,
+          "details": 642,
+          "glas": 0,
+          "lampen": 32,
+          "wielen": 432
+        }
+      }
+    },
+    "autos": 212,
+    "verkeer": 11,
+    "bundels": {
+      "hatch": {
+        "autos": 50,
+        "perTrap": [
+          "niveau 0: 0",
+          "niveau 1: 0",
+          "niveau 2: 0",
+          "niveau 2 zonder schaduw: 50"
+        ]
+      },
+      "sedan": {
+        "autos": 46,
+        "perTrap": [
+          "niveau 0: 0",
+          "niveau 1: 0",
+          "niveau 2: 0",
+          "niveau 2 zonder schaduw: 46"
+        ]
+      },
+      "suv": {
+        "autos": 53,
+        "perTrap": [
+          "niveau 0: 0",
+          "niveau 1: 0",
+          "niveau 2: 0",
+          "niveau 2 zonder schaduw: 53"
+        ]
+      },
+      "van": {
+        "autos": 28,
+        "perTrap": [
+          "niveau 0: 0",
+          "niveau 1: 0",
+          "niveau 2: 0",
+          "niveau 2 zonder schaduw: 28"
+        ]
+      },
+      "sport": {
+        "autos": 33,
+        "perTrap": [
+          "niveau 0: 0",
+          "niveau 1: 1",
+          "niveau 2: 0",
+          "niveau 2 zonder schaduw: 32"
+        ]
+      },
+      "tractor": {
+        "autos": 1,
+        "perTrap": [
+          "niveau 0: 0",
+          "niveau 1: 0",
+          "niveau 2: 0",
+          "niveau 2 zonder schaduw: 1"
+        ]
+      }
+    }
+  },
+  "aandeel": {
+    "met": {
+      "driehoeken": 4513547,
+      "tekenopdrachten": 451
+    },
+    "zonder": {
+      "driehoeken": 4078677,
+      "tekenopdrachten": 411
+    },
+    "autos": {
+      "driehoeken": 434870,
+      "tekenopdrachten": 40
+    }
+  },
+  "rijden": {
+    "mode": "car",
+    "verplaatst": 6.43,
+    "snelheid": 8.46,
+    "wielhoek": 17.87,
+    "stuurhoek": 0.04,
+    "lampenAan": 1,
+    "bestuurder": true,
+    "gesprekOpen": false
+  },
+  "nacht": {
+    "nacht": 1,
+    "lamp": [
+      1,
+      1,
+      0,
+      0
+    ],
+    "bundel": true,
+    "spot": 55
+  },
+  "verkeer": {
+    "autos": 11,
+    "bewogen": 11,
+    "lampenAan": 1,
+    "bestuurder": true
+  },
+  "activeren": {
+    "ingestapt": true,
+    "bundelVoor": 50,
+    "bundelNa": 49
+  },
+  "fouten": []
+}
