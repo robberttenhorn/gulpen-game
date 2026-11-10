@@ -1,6 +1,6 @@
 // Maakt contactvellen van de poppetjes via de losse testpagina (tools/poppetje-test.html).
 // Gebruik: npx vite --port 4182 --strictPort &   en dan   node tools/poppetje-shots.cjs <uitvoermap> <voorvoegsel> [filter]
-// LAAG=1 ervoor: het eenvoudige model voor telefoons.
+// LAAG=1 ervoor: het eenvoudige model voor telefoons. MODULE=/pad/character.js: een andere versie (om te vergelijken).
 // Draait in Chromium zonder videokaart (SwiftShader); de testpagina is klein, dus dat gaat snel genoeg.
 const fs = require('fs');
 const path = require('path');
@@ -34,6 +34,7 @@ const SHEETS = {
   stilstaan: ['sheet', { mode: 'idle', speed: 0, dtPhase: 4.1, warm: 3 }],
   zitten: ['sheet', { mode: 'sit', speed: 0, dtPhase: 0.6 }],
   fietsen: ['sheet', { mode: 'bike', speed: 5, dtPhase: 0.18, bike: true, cell: 1.9, ppm: 110 }],
+  hometrainer: ['sheet', { mode: 'bike', speed: 7, dtPhase: 0.14, n: 4 }], // fietsen zonder fiets van makeBike ernaast (sportschool)
   skaten: ['sheet', { mode: 'skate', speed: 6, dtPhase: 0.4 }],
   zwaaien: ['sheet', { mode: 'wave', speed: 0, dtPhase: 0.11 }],
   drinken: ['sheet', { mode: 'drink', speed: 0, dtPhase: 0.3, hold: true, n: 4 }],
@@ -59,7 +60,7 @@ const SHEETS = {
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  await page.goto(URL + (process.env.LAAG ? '?laag=1' : ''));
+  await page.goto(URL + (process.env.LAAG ? '?laag=1' : process.env.MODULE ? '?module=' + encodeURIComponent(process.env.MODULE) : ''));
   await page.waitForFunction(() => window.__klaar);
   for (const [name, [fn, cfg]] of Object.entries(SHEETS)) {
     if (filter && !filter.split(',').some((f) => name.includes(f))) continue;

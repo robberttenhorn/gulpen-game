@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 // ?laag=1: het eenvoudige model voor telefoons
 if (new URLSearchParams(location.search).has('laag')) globalThis.__POPPETJES_LAAG = true;
-const { makeCharacter, makeBike } = await import('../src/character.js');
+// ?module=/pad/naar/character.js: een andere versie laden (bijv. de oude, om te vergelijken)
+const { makeCharacter, makeBike } = await import(/* @vite-ignore */ new URLSearchParams(location.search).get('module') || '../src/character.js');
 
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });

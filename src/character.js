@@ -216,7 +216,7 @@ const TORSO = [
 const LEG = [
   [1.0, 0.030, 0.035, 0.035, 0, 0],
   [0.97, 0.062, 0.080, 0.090, 0, 0],
-  [0.90, 0.085, 0.093, 0.104, 0.5, 0],
+  [0.90, 0.080, 0.092, 0.103, 0.5, 0],
   [0.82, 0.088, 0.093, 0.096, 0.88, 0],
   [0.74, 0.082, 0.088, 0.086, 1, 0],
   [0.64, 0.072, 0.080, 0.074, 1, 0],
@@ -326,7 +326,9 @@ export function makeCharacter(opts = {}) {
     if (y < HEM) break;
     torsoRings.push(torsoRing(y, (coat || jacket) && y > 1.4 ? cSleeve : cShirt, LOOSE * smooth(1.5, 1.4, y)));
   }
-  torsoRings.push(torsoRing(HEM, cShirt, LOOSE + 0.008), torsoRing(HEM + 0.004, cShirt, 0), torsoRing(HEM + 0.004, cPants, 0));
+  // de zoom beweegt aan de zijkant een beetje met de bovenbenen mee, zodat het been er niet doorheen steekt
+  const hemW = (s) => { const l = Math.max(0, -s) * 0.35, r = Math.max(0, s) * 0.35; return [[B.hips, 1 - l - r], [B.thL, l], [B.thR, r]]; };
+  torsoRings.push({ ...torsoRing(HEM, cShirt, LOOSE + 0.008), w: hemW }, { ...torsoRing(HEM + 0.004, cShirt, 0), w: hemW }, torsoRing(HEM + 0.004, cPants, 0));
   for (const [y] of TORSO) if (y < HEM) torsoRings.push(torsoRing(y, cPants, 0));
   b.tube(torsoRings, nT, { cap1: true });
   // boord van het shirt
@@ -695,7 +697,7 @@ export function makeCharacter(opts = {}) {
       bike.gx = d.grip[0] * k; bike.gy = (d.grip[1] + oy) * k; bike.gz = (d.grip[2] + oz) * k;
       bike.crank = d.crank;
     } else {
-      bike.sy = 0.6; bike.sz = -0.08; bike.cy = 0; bike.cz = 0.17; bike.r = 0.165; bike.gx = 0.22; bike.gy = 0.66; bike.gz = 0.6; bike.crank = null;
+      bike.sy = 0.6; bike.sz = -0.08; bike.cy = 0; bike.cz = 0.17; bike.r = 0.165; bike.gx = 0.22; bike.gy = 0.68; bike.gz = 0.52; bike.crank = null;
     }
     // zo ver voorover dat de handen met licht gebogen armen bij het stuur komen
     const by = bike.sy - 0.85, bz = bike.sz + 0.03;
