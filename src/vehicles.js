@@ -1,262 +1,37 @@
-// Auto's: modellen, geparkeerde auto's om in te stappen, rijgedrag en verkeer.
+// Auto's: geparkeerde auto's om in te stappen, rijgedrag en verkeer.
+// De modellen zelf staan in cartypes.js (vorm) en carmat.js (materialen); hier worden ze neergezet en bewogen.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng } from './world.js';
+import { Q } from './quality.js';
+import { buildCar } from './cartypes.js';
+import { CarMaterials, PLATE_COUNT } from './carmat.js';
 
-// Zijaanzicht per type: punten [lengte-as, hoogte] vanaf de achterkant, plus de raamlijn.
+// Maten per type: lengte, breedte, wielstraal en wielbasis (ook gebruikt voor botsingen, parkeren en instappen).
 const TYPES = {
-  hatch: {
-    L: 4.05, W: 1.76, wheelR: 0.31, wheelbase: 2.55, belt: 1.04, pillars: [1.55],
-    body: [[0, 0.32], [0.05, 0.95], [0.25, 1.05], [0.45, 1.46], [2.5, 1.5], [3.25, 1.02], [4.0, 0.9], [4.05, 0.32]],
-  },
-  sedan: {
-    L: 4.65, W: 1.82, wheelR: 0.32, wheelbase: 2.8, belt: 1.02, pillars: [2.25],
-    body: [[0, 0.34], [0.05, 0.95], [0.85, 1.02], [1.35, 1.42], [3.0, 1.45], [3.75, 1.0], [4.6, 0.9], [4.65, 0.34]],
-  },
-  suv: {
-    L: 4.43, W: 1.86, wheelR: 0.36, wheelbase: 2.7, belt: 1.18, pillars: [0.75, 1.75],
-    body: [[0, 0.4], [0.03, 1.1], [0.22, 1.2], [0.42, 1.62], [2.75, 1.66], [3.45, 1.15], [4.38, 1.02], [4.43, 0.4]],
-  },
-  van: {
-    L: 4.95, W: 1.95, wheelR: 0.34, wheelbase: 3.1, belt: 1.16, pillars: [3.55],
-    body: [[0, 0.36], [0.02, 1.9], [3.7, 1.95], [4.4, 1.15], [4.92, 1.0], [4.95, 0.36]],
-  },
-  sport: {
-    L: 4.4, W: 1.88, wheelR: 0.33, wheelbase: 2.6, belt: 0.92, pillars: [], vmax: 36,
-    body: [[0, 0.3], [0.04, 0.88], [0.6, 0.98], [1.4, 1.2], [2.55, 1.22], [3.3, 0.86], [4.35, 0.68], [4.4, 0.3]],
-  },
-  tractor: { L: 4.0, W: 2.2, wheelR: 0.75, wheelbase: 2.3, vmax: 11, custom: 'tractor' },
+  hatch: { L: 4.05, W: 1.76, wheelR: 0.31, wheelbase: 2.55 },
+  sedan: { L: 4.65, W: 1.82, wheelR: 0.32, wheelbase: 2.8 },
+  suv: { L: 4.43, W: 1.86, wheelR: 0.36, wheelbase: 2.7 },
+  van: { L: 4.95, W: 1.95, wheelR: 0.34, wheelbase: 3.1 },
+  sport: { L: 4.4, W: 1.88, wheelR: 0.33, wheelbase: 2.6, vmax: 36 },
+  tractor: { L: 4.0, W: 2.2, wheelR: 0.75, wheelbase: 2.3, vmax: 11 },
   // de grijze Volvo XC40 van Ringweg 38: eigen model met de typische vormen en lampen
-  xc40: { L: 4.43, W: 1.86, wheelR: 0.36, wheelbase: 2.7, belt: 1.12, pillars: [], custom: 'xc40' },
+  xc40: { L: 4.43, W: 1.86, wheelR: 0.36, wheelbase: 2.7 },
 };
 
 const PAINTS = [0x2b2d30, 0xd8d9db, 0x8d9196, 0x1e2a44, 0x7a1e1e, 0xeeeeee, 0x3b4a3a, 0x6b6e72, 0x101012, 0x9c9fa3, 0x2f4f7a];
 
-// snijdt een polygoon af tussen twee hoogtes (Sutherland-Hodgman)
-function clipBand(pts, y0, y1) {
-  const clip = (poly, keep, inter) => {
-    const out = [];
-    for (let i = 0; i < poly.length; i++) {
-      const a = poly[i], b = poly[(i + 1) % poly.length];
-      const ka = keep(a), kb = keep(b);
-      if (ka) out.push(a);
-      if (ka !== kb) out.push(inter(a, b));
-    }
-    return out;
-  };
-  const at = (y) => (a, b) => [a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0]), y];
-  let p = clip(pts, (q) => q[1] >= y0, at(y0));
-  p = clip(p, (q) => q[1] <= y1, at(y1));
-  return p;
-}
+// Gebundelde auto's binnen deze afstand van de camera krijgen het fijnere model (met glas en interieur).
+const NEAR_IN = 50, NEAR_OUT = 58;
+const _e = new THREE.Euler(), _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _col = new THREE.Color();
 
-function shapeOf(pts) {
-  const s = new THREE.Shape();
-  pts.forEach(([x, y], i) => (i ? s.lineTo(x, y) : s.moveTo(x, y)));
-  s.closePath();
-  return s;
-}
-
-function colorize(geo, hex) {
-  const c = new THREE.Color(hex);
-  const n = geo.attributes.position.count;
-  const arr = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
-  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-  // uv's weg zodat alles samen te voegen is
-  geo.deleteAttribute('uv');
-  return geo;
-}
-
-// Tractor: motorkap, cabine, grote achterwielen.
-function buildTractor(t) {
-  const box = (w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return g.toNonIndexed(); };
-  const paint = mergeGeometries([
-    box(1.0, 0.9, 2.0, 0, 1.25, 0.9),   // motorkap
-    box(1.5, 0.12, 1.5, 0, 2.95, -0.6), // dak
-    box(1.6, 0.25, 1.4, 0, 1.25, -0.6), // bodem cabine
-    box(2.3, 0.08, 0.9, 0, 1.85, -1.0), // spatbord
-  ]);
-  paint.computeVertexNormals();
-  const parts = [];
-  const glass = box(1.4, 1.5, 1.4, 0, 2.15, -0.6);
-  parts.push(colorize(glass, 0x15202a));
-  for (const sx of [-1, 1]) {
-    for (const [r, w, z] of [[0.75, 0.5, -0.9], [0.45, 0.3, 1.4]]) {
-      const tire = new THREE.CylinderGeometry(r, r, w, 20); tire.rotateZ(Math.PI / 2); tire.translate(sx * (0.85 + w / 2), r, z);
-      parts.push(colorize(tire.toNonIndexed(), 0x161616));
-      const rim = new THREE.CylinderGeometry(r * 0.55, r * 0.55, w + 0.02, 12); rim.rotateZ(Math.PI / 2); rim.translate(sx * (0.85 + w / 2), r, z);
-      parts.push(colorize(rim.toNonIndexed(), 0xd8c23a));
-    }
-  }
-  const exhaust = new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8); exhaust.translate(0.35, 2.2, 1.5);
-  parts.push(colorize(exhaust.toNonIndexed(), 0x222222));
-  const grille = box(0.9, 0.6, 0.05, 0, 1.2, 1.92);
-  parts.push(colorize(grille, 0x222222));
-  const detail = mergeGeometries(parts);
-  const lights = mergeGeometries([colorize(box(0.2, 0.12, 0.05, -0.35, 1.5, 1.93), 0xfff6e0), colorize(box(0.2, 0.12, 0.05, 0.35, 1.5, 1.93), 0xfff6e0),
-    colorize(box(0.12, 0.12, 0.05, -0.9, 1.75, -1.46), 0xd01818), colorize(box(0.12, 0.12, 0.05, 0.9, 1.75, -1.46), 0xd01818)]);
-  return { paint, detail, lights, ...t };
-}
-
-
-// Volvo XC40: zwart zwevend dak met spoiler, knik omhoog in de achterste ruitlijn, zwarte wielkasten en dorpels,
-// grille met schuine streep en logo, 'Thor's hammer'-koplampen, hoge verticale achterlichten en turbinevelgen.
-function buildXC40(t) {
-  const { L, W, wheelR, wheelbase } = t;
-  // zijprofiel (vanaf de achterkant gemeten) extruderen over de breedte; lengte langs z, voorkant naar +z
-  const side = (pts, depth, bev = 0.06) => {
-    const g = new THREE.ExtrudeGeometry(shapeOf(pts), { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev * 0.8, bevelSegments: 3, curveSegments: 4 });
-    g.translate(-L / 2, 0, -depth / 2);
-    g.rotateY(-Math.PI / 2);
-    return g;
-  };
-  const box = (w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.rotateX(rx); g.rotateY(ry); g.rotateZ(rz); g.translate(x, y, z); return g.toNonIndexed(); };
-  const col = (g, hex) => colorize(g.index ? g.toNonIndexed() : g, hex);
-  // ---- lak: onderkant met de knik bij de achterste stijl, plus de achterste stijlen (de 'vinnen' naast de achterruit)
-  const lower = side([[0, 0.44], [0.02, 0.98], [0.1, 1.15], [0.92, 1.21], [1.04, 1.12], [3.3, 1.1], [4.2, 0.98], [4.39, 0.86], [4.43, 0.62], [4.43, 0.44]], W - 0.16, 0.08);
-  const fins = [-1, 1].map((sx) => { const g = side([[0.1, 1.13], [0.36, 1.52], [0.78, 1.54], [0.96, 1.2]], 0.08, 0.03); g.translate(sx * (W / 2 - 0.1), 0, 0); return g; });
-  const paint = mergeGeometries([lower, ...fins]);
-  paint.computeVertexNormals();
-  const parts = [];
-  const BLACK = 0x111214, TRIM = 0x1c1d1f, CHROME = 0xcfd3d7;
-  // ---- glas (donker) met voorruit en achterruit, en zwarte B-stijl
-  parts.push(col(side([[0.16, 1.12], [0.42, 1.52], [2.85, 1.555], [3.36, 1.1]], W - 0.24, 0.05), 0x0b0e12));
-  parts.push(col(box(W - 0.18, 0.4, 0.1, 0, 1.33, -L / 2 + 2.05), TRIM));
-  // ---- zwart dak (zwevend) met dakspoiler achter
-  parts.push(col(side([[0.34, 1.53], [0.4, 1.61], [2.78, 1.64], [2.9, 1.555]], W - 0.28, 0.04), BLACK));
-  parts.push(col(box(W - 0.3, 0.05, 0.34, 0, 1.6, -L / 2 + 0.28, -0.12), BLACK));
-  // ---- zwarte wielkasten, dorpels en onderkant van de bumpers
-  const zF = wheelbase / 2, zR = -wheelbase / 2;
-  for (const z of [zF, zR]) for (const sx of [-1, 1]) {
-    const arch = new THREE.TorusGeometry(wheelR + 0.07, 0.065, 6, 18, Math.PI);
-    arch.scale(1, 1, 0.6); arch.rotateY(Math.PI / 2); arch.translate(sx * (W / 2 - 0.03), wheelR + 0.02, z);
-    parts.push(col(arch, TRIM));
-  }
-  for (const sx of [-1, 1]) parts.push(col(box(0.08, 0.16, wheelbase - 2 * (wheelR + 0.1), sx * (W / 2 - 0.02), 0.5, 0), TRIM));
-  parts.push(col(box(W - 0.12, 0.2, 0.14, 0, 0.5, L / 2 + 0.04), TRIM));
-  parts.push(col(box(W - 0.08, 0.26, 0.14, 0, 0.55, -L / 2 - 0.04), 0x2a2b2d));
-  // ---- voorkant: grille met verticale lamellen, schuine chromen streep en rond logo
-  const GY = 0.67;
-  parts.push(col(box(0.84, 0.24, 0.05, 0, GY, L / 2 + 0.07), 0x0d0e10));
-  for (let k = -6; k <= 6; k++) parts.push(col(box(0.012, 0.2, 0.02, k * 0.062, GY, L / 2 + 0.095), 0x4a4e54));
-  parts.push(col(box(0.66, 0.022, 0.02, 0, GY, L / 2 + 0.11, 0, 0, -0.3), CHROME));
-  { const ring = new THREE.TorusGeometry(0.065, 0.012, 6, 20); ring.translate(0, GY, L / 2 + 0.115); parts.push(col(ring, CHROME)); }
-  { const arrow = box(0.05, 0.014, 0.02, 0.065, GY + 0.05, L / 2 + 0.115, 0, 0, 0.75); parts.push(col(arrow, CHROME)); }
-  // koplamphuizen (donker), de lampen zelf staan bij 'lights'
-  for (const sx of [-1, 1]) parts.push(col(box(0.38, 0.12, 0.06, sx * 0.62, 0.81, L / 2 + 0.035, -0.3), 0x14171b));
-  // ---- achterkant: chromen strip en het merk
-  parts.push(col(box(0.7, 0.02, 0.02, 0, 0.9, -L / 2 - 0.07), CHROME));
-  // ---- spiegels, deurgrepen, kentekens
-  for (const sx of [-1, 1]) {
-    parts.push(col(box(0.16, 0.12, 0.22, sx * (W / 2 + 0.08), 1.18, L / 2 - 1.2), BLACK));
-    for (const z of [0.55, -0.45]) parts.push(col(box(0.02, 0.03, 0.16, sx * (W / 2 + 0.005), 1.02, z), 0xb9bdc2));
-  }
-  for (const z of [L / 2 + 0.125, -L / 2 - 0.115]) parts.push(col(box(0.52, 0.11, 0.02, 0, z > 0 ? 0.5 : 0.62, z), 0xf2c200));
-  // ---- wielen: band, zilveren velg met vijf donkere turbinespaken en een naafdop
-  for (const z of [zF, zR]) for (const sx of [-1, 1]) {
-    const x = sx * (W / 2 - 0.1);
-    const tire = new THREE.CylinderGeometry(wheelR, wheelR, 0.24, 20); tire.rotateZ(Math.PI / 2); tire.translate(x, wheelR, z);
-    parts.push(col(tire, 0x141414));
-    const rim = new THREE.CylinderGeometry(wheelR * 0.72, wheelR * 0.72, 0.25, 20); rim.rotateZ(Math.PI / 2); rim.translate(x, wheelR, z);
-    parts.push(col(rim, 0x33363b)); // donkere velg
-    for (let k = 0; k < 5; k++) { // vijf gepolijste turbinespaken
-      const a = (k / 5) * Math.PI * 2;
-      const sp = new THREE.BoxGeometry(0.03, wheelR * 0.62, 0.075); sp.translate(0, wheelR * 0.36, 0.02); sp.rotateX(a); sp.translate(x + sx * 0.14, wheelR, z);
-      parts.push(col(sp, 0xd5d9dd));
-    }
-    const cap = new THREE.CylinderGeometry(0.05, 0.05, 0.26, 10); cap.rotateZ(Math.PI / 2); cap.translate(x, wheelR, z);
-    parts.push(col(cap, 0x1a1b1d));
-  }
-  const detail = mergeGeometries(parts);
-  // ---- lampen: 'Thor's hammer' (liggende T) voor, hoge verticale achterlichten met een voetje naar binnen
-  const lp = [];
-  for (const sx of [-1, 1]) {
-    lp.push(col(box(0.3, 0.024, 0.02, sx * 0.62, 0.82, L / 2 + 0.07, -0.3), 0xfff8ec));
-    lp.push(col(box(0.024, 0.09, 0.02, sx * 0.55, 0.82, L / 2 + 0.075, -0.3), 0xfff8ec));
-    lp.push(col(box(0.16, 0.02, 0.02, sx * 0.62, 0.5, L / 2 + 0.09), 0xfff8ec)); // dagrijlicht onder in de bumper
-    // achterlicht: hoog en verticaal in de achterste stijl, om de hoek doorlopend, met een voetje naar binnen
-    // langs de schuine achterrand van de stijl: van (0,1 m; 1,13 m) naar (0,36 m; 1,52 m) vanaf de achterkant
-    lp.push(col(box(0.1, 0.46, 0.035, sx * (W / 2 - 0.1), 1.3, -L / 2 + 0.2 - 0.03, 0.59), 0xd01818));
-    lp.push(col(box(0.022, 0.46, 0.12, sx * (W / 2 - 0.055), 1.3, -L / 2 + 0.25, 0.59), 0xb01414));
-    lp.push(col(box(0.26, 0.07, 0.035, sx * (W / 2 - 0.2), 1.08, -L / 2 - 0.015), 0xd01818));
-    lp.push(col(box(0.14, 0.03, 0.02, sx * (W / 2 - 0.2), 0.62, -L / 2 - 0.085), 0x9a1010)); // reflector
-  }
-  const lights = mergeGeometries(lp);
-  return { paint, detail, lights, ...t };
-}
-
-// Bouwt de geometrie van één autotype: {paint, detail, lights}
-function buildType(t) {
-  if (t.custom === 'tractor') return buildTractor(t);
-  if (t.custom === 'xc40') return buildXC40(t);
-  const { L, W, wheelR, wheelbase } = t;
-  const bevel = { depth: W - 0.16, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 3, curveSegments: 4 };
-  const paint = new THREE.ExtrudeGeometry(shapeOf(t.body), bevel);
-  paint.translate(-L / 2, 0, -(W - 0.16) / 2);
-  paint.rotateY(-Math.PI / 2); // lengte langs z, voorkant naar +z
-  paint.computeVertexNormals();
-
-  const parts = [];
-  // ramen: de band van de carrosserie tussen gordellijn en dak, iets groter zodat het glas net naar buiten steekt
-  const roofY = Math.max(...t.body.map((q) => q[1]));
-  const band = clipBand(t.body, t.belt, roofY - 0.1);
-  const glass = new THREE.ExtrudeGeometry(shapeOf(band), { depth: W - 0.16, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.085, bevelSegments: 1 });
-  glass.translate(-L / 2, 0, -(W - 0.16) / 2);
-  glass.rotateY(-Math.PI / 2);
-  parts.push(colorize(glass, 0x0b0e12));
-  // stijlen tussen de ramen (in een donkere kleur, zoals bij moderne auto's)
-  for (const fx of t.pillars) {
-    const pil = new THREE.BoxGeometry(W + 0.03, roofY - t.belt - 0.05, 0.09);
-    pil.translate(0, (t.belt + roofY) / 2, -L / 2 + fx);
-    parts.push(colorize(pil.toNonIndexed(), 0x15171a));
-  }
-
-  // bumpers en dorpels in zwart kunststof
-  const bumperF = new THREE.BoxGeometry(W + 0.02, 0.22, 0.18); bumperF.translate(0, 0.42, L / 2 - 0.02);
-  const bumperR = new THREE.BoxGeometry(W + 0.02, 0.22, 0.18); bumperR.translate(0, 0.42, -L / 2 + 0.02);
-  const sill = new THREE.BoxGeometry(W + 0.04, 0.12, L * 0.62); sill.translate(0, 0.36, 0);
-  for (const g of [bumperF, bumperR, sill]) parts.push(colorize(g.toNonIndexed(), 0x1a1b1d));
-  // spiegels
-  for (const sx of [-1, 1]) {
-    const m = new THREE.BoxGeometry(0.18, 0.12, 0.1);
-    m.translate(sx * (W / 2 + 0.08), t.belt + 0.05, L * 0.18);
-    parts.push(colorize(m.toNonIndexed(), 0x1a1b1d));
-  }
-  // wielen: band + velg
-  const zF = wheelbase / 2, zR = -wheelbase / 2;
-  for (const z of [zF, zR]) {
-    for (const sx of [-1, 1]) {
-      const tire = new THREE.CylinderGeometry(wheelR, wheelR, 0.24, 18);
-      tire.rotateZ(Math.PI / 2);
-      tire.translate(sx * (W / 2 - 0.1), wheelR, z);
-      parts.push(colorize(tire.toNonIndexed(), 0x141414));
-      const rim = new THREE.CylinderGeometry(wheelR * 0.62, wheelR * 0.62, 0.26, 12);
-      rim.rotateZ(Math.PI / 2);
-      rim.translate(sx * (W / 2 - 0.1), wheelR, z);
-      parts.push(colorize(rim.toNonIndexed(), 0xb8bcc2));
-    }
-  }
-  // kenteken voor en achter (geel, Nederlands)
-  for (const z of [L / 2 + 0.075, -L / 2 - 0.075]) {
-    const plate = new THREE.BoxGeometry(0.52, 0.11, 0.02);
-    plate.translate(0, 0.48, z);
-    parts.push(colorize(plate.toNonIndexed(), 0xf2c200));
-  }
-  const detail = mergeGeometries(parts);
-
-  // koplampen en achterlichten
-  const fl = [], rl = [];
-  const frontY = t.body.at(-2)[1] - 0.12;
-  const rearY = t.body[1][1] - 0.12;
-  for (const sx of [-1, 1]) {
-    const h = new THREE.BoxGeometry(0.34, 0.1, 0.06); h.translate(sx * (W / 2 - 0.25), frontY, L / 2 + 0.01);
-    fl.push(colorize(h.toNonIndexed(), 0xfff6e0));
-    const r = new THREE.BoxGeometry(0.3, 0.1, 0.06); r.translate(sx * (W / 2 - 0.22), rearY, -L / 2 - 0.01);
-    rl.push(colorize(r.toNonIndexed(), 0xd01818));
-  }
-  const lights = mergeGeometries([...fl, ...rl]);
-  return { paint, detail, lights, ...t };
+// lichtvlek op de weg voor de auto: plat vlak dat bij het beeld wordt opgeteld
+let beamGeo = null;
+function getBeamGeo() {
+  if (beamGeo) return beamGeo;
+  beamGeo = new THREE.PlaneGeometry(7.5, 15);
+  beamGeo.rotateX(-Math.PI / 2); beamGeo.rotateY(Math.PI); // plat op de grond, bovenkant van de textuur ver weg
+  beamGeo.translate(0, 0.05, 6.6);
+  return beamGeo;
 }
 
 export class Vehicles {
@@ -264,31 +39,91 @@ export class Vehicles {
     this.g = game;
     this.world = game.world;
     this.scene = game.scene;
-    this.types = Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, buildType(t)]));
-    this.paintMat = new THREE.MeshPhysicalMaterial({ roughness: 0.38, metalness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 0.7 });
-    this.detailMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.3 });
-    this.lightMat = new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0xffffff, emissiveIntensity: 0.15, roughness: 0.2 });
+    this.types = Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, { ...t }]));
+    this.models = {}; // geometrie per type en detailniveau, pas gebouwd als hij nodig is
+    this.mats = new CarMaterials();
+    this.paintMat = this.mats.paintBase;
+    this.detailMat = this.mats.detail;
+    this.lightMat = this.mats.lightBase;
     this.cars = []; // alle auto's waar je in kunt stappen (dynamisch)
     this.traffic = [];
+    this.night = 0;
+    this.clock = 0;
+    // één echte lamp voor de auto waarin de speler rijdt (niet op de telefoon); de rest krijgt een lichtvlek
+    if (!Q.laag) {
+      this.spot = new THREE.SpotLight(0xfff0dc, 0, 46, 0.62, 0.7, 1.5);
+      this.spot.castShadow = false;
+      this.scene.add(this.spot, this.spot.target);
+    }
+  }
+
+  // geometrie van een type op een detailniveau (0 = los en dichtbij, 1 = gebundeld dichtbij, 2 = ver weg / telefoon)
+  model(type, lod) {
+    return (this.models[type + lod] ??= buildCar(type, TYPES[type], lod));
   }
 
   // los, bestuurbaar automodel
-  makeCarMesh(type, paint) {
-    const t = this.types[type];
+  makeCarMesh(type, paint, car = null) {
+    const lod = Q.laag ? 2 : Q.name === 'midden' && car?.ai ? 1 : 0;
+    const m = this.model(type, lod);
     const g = new THREE.Group();
-    const mat = this.paintMat.clone();
-    mat.color.set(paint);
-    const body = new THREE.Mesh(t.paint, mat);
-    const det = new THREE.Mesh(t.detail, this.detailMat);
-    const lig = new THREE.Mesh(t.lights, this.lightMat);
+    const lm = this.mats.lights(car?.isVolvo ? 0 : 1 + Math.floor(Math.random() * (PLATE_COUNT - 1)));
+    const baked = lod === 2; // eenvoudig model: wielen zitten vast in de details
+    const body = new THREE.Mesh(m.paint, this.mats.paint(paint));
+    const det = new THREE.Mesh(baked ? m.baked : m.detail, this.detailMat);
+    const lig = new THREE.Mesh(m.lights, lm);
     body.castShadow = det.castShadow = true;
-    body.receiveShadow = true;
-    g.add(body, det, lig);
+    body.receiveShadow = det.receiveShadow = true;
+    g.add(body, det, lig); // de lak blijft het eerste kind (missies passen dat materiaal aan)
+    const rig = { lamp: lm.userData.u.uLamp.value, wheels: [], dist: 0, steer: 0, on: 0, px: null, pz: null, ph: 0, pv: 0, done: null };
+    if (m.glass) {
+      const gl = new THREE.Mesh(m.glass, this.mats.glass);
+      gl.renderOrder = 2;
+      g.add(gl);
+    }
+    if (!baked) {
+      // draaiende wielen: per soort wiel één gebundelde mesh
+      m.wheelGeos.forEach((geo, gi) => {
+        const list = m.wheels.filter((w) => w.geo === gi);
+        const im = new THREE.InstancedMesh(geo, this.detailMat, list.length);
+        im.castShadow = true; im.receiveShadow = true;
+        rig.wheels.push({ im, list });
+        g.add(im);
+      });
+      this.setWheels(rig);
+      for (const w of rig.wheels) w.im.computeBoundingSphere();
+      if (m.driverGeos) {
+        rig.driver = new THREE.Mesh(m.driverGeos[0], this.detailMat);
+        rig.driverGeos = m.driverGeos;
+        rig.driver.visible = false;
+        g.add(rig.driver);
+      }
+      rig.beam = new THREE.Mesh(getBeamGeo(), this.mats.beam);
+      rig.beam.position.z = m.beam.z - 0.4;
+      rig.beam.visible = false;
+      rig.beam.renderOrder = 3;
+      g.add(rig.beam);
+    }
+    g.userData.rig = rig;
     return g;
   }
 
+  // wielen in de stand zetten: gedraaid om de as (afgelegde weg) en de voorwielen gestuurd
+  setWheels(rig) {
+    for (const grp of rig.wheels) {
+      grp.list.forEach((w, i) => {
+        const spin = rig.dist / w.r;
+        _e.set(w.flip ? -spin : spin, (w.flip ? Math.PI : 0) + (w.steer ? -rig.steer : 0), 0, 'YXZ');
+        _m.compose(_p.set(w.x, w.y, w.z), _q.setFromEuler(_e), _one);
+        grp.im.setMatrixAt(i, _m);
+      });
+      grp.im.instanceMatrix.needsUpdate = true;
+    }
+    rig.done = rig.dist + rig.steer * 1000;
+  }
+
   addCar(type, x, z, heading, paint, opts = {}) {
-    const mesh = opts.parked ? null : this.makeCarMesh(type, paint);
+    const mesh = opts.parked ? null : this.makeCarMesh(type, paint, opts);
     if (mesh) this.scene.add(mesh);
     const car = { type, mesh, x, z, heading, speed: 0, steer: 0, paint, t: this.types[type], ...opts };
     this.unstick(car);
@@ -300,13 +135,11 @@ export class Vehicles {
   // Een geparkeerde (gebundelde) auto omzetten naar een losse auto om in te rijden.
   activate(car) {
     if (car.mesh) return;
-    car.mesh = this.makeCarMesh(car.type, car.paint);
+    car.mesh = this.makeCarMesh(car.type, car.paint, car);
     this.scene.add(car.mesh);
-    const b = this.batches[car.type];
-    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
-    for (const inst of b.meshes) { inst.setMatrixAt(car.slot, zero); inst.instanceMatrix.needsUpdate = true; }
     car.parked = false;
     this.placeCar(car);
+    this.refreshBatches(true); // uit de bundel halen
   }
 
   // Geparkeerde auto's verspreid over parkeervakken.
@@ -324,28 +157,76 @@ export class Vehicles {
     // auto's op opritten en erven door het hele dorp
     for (const d of this.drivewaySpots(mobile ? 40 : 90)) list.push(this.addCar(pick(), d.x, d.z, d.heading, paint(), { parked: true }));
     for (const e of extra) list.push(this.addCar(e.type, e.x, e.z, e.heading, e.paint, { parked: true, ...e.opts }));
-    // per type één set gebundelde meshes
+    // Per type twee bundels: een fijn model voor auto's dicht bij de camera en een eenvoudig model voor de rest.
+    // Elke bundel is per materiaal één tekenopdracht (lak, details, lampen en eventueel glas).
     this.batches = {};
     const tmp = new THREE.Object3D();
-    const col = new THREE.Color();
     for (const type of Object.keys(TYPES)) {
       const cars = list.filter((c) => c.type === type);
       if (!cars.length) continue;
-      const t = this.types[type];
-      const paintMat = this.paintMat.clone();
-      const meshes = [
-        new THREE.InstancedMesh(t.paint, paintMat, cars.length),
-        new THREE.InstancedMesh(t.detail, this.detailMat, cars.length),
-        new THREE.InstancedMesh(t.lights, this.lightMat, cars.length),
-      ];
+      const sphere = new THREE.Box3().setFromPoints(cars.map((c) => new THREE.Vector3(c.x, this.world.groundAt(c.x, c.z), c.z))).getBoundingSphere(new THREE.Sphere());
+      sphere.radius += 6;
+      const mk = (lod) => {
+        const m = this.model(type, lod), n = cars.length;
+        // eigen geometrie voor de lampen (zelfde gegevens), met per auto een kenteken
+        const lg = new THREE.BufferGeometry();
+        for (const k of Object.keys(m.lights.attributes)) lg.setAttribute(k, m.lights.attributes[k]);
+        lg.setIndex(m.lights.index);
+        const plate = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+        lg.setAttribute('aPlaat', plate);
+        const meshes = [
+          new THREE.InstancedMesh(m.paint, this.paintMat, n),
+          new THREE.InstancedMesh(m.baked, this.detailMat, n),
+          new THREE.InstancedMesh(lg, this.lightMat, n),
+        ];
+        meshes[0].castShadow = meshes[1].castShadow = true;
+        meshes[0].receiveShadow = meshes[1].receiveShadow = true;
+        if (m.glass) { const gl = new THREE.InstancedMesh(m.glass, this.mats.glass, n); gl.renderOrder = 2; meshes.push(gl); }
+        meshes[0].setColorAt(0, _col.set(0xffffff));
+        for (const im of meshes) { im.boundingSphere = sphere.clone(); im.count = 0; this.scene.add(im); }
+        return { meshes, plate };
+      };
       cars.forEach((c, i) => {
         c.slot = i;
+        c.plate = c.isVolvo ? 0 : 1 + Math.floor(rand() * (PLATE_COUNT - 1));
         this.pose(c, tmp);
-        for (const m of meshes) m.setMatrixAt(i, tmp.matrix);
-        meshes[0].setColorAt(i, col.set(c.paint));
+        c.matrix = tmp.matrix.clone();
       });
-      for (const m of meshes) { m.computeBoundingSphere(); m.castShadow = true; m.receiveShadow = true; this.scene.add(m); }
-      this.batches[type] = { meshes };
+      const b = { cars, near: Q.laag ? null : mk(1), far: mk(2) };
+      b.meshes = [...(b.near ? b.near.meshes : []), ...b.far.meshes];
+      this.batches[type] = b;
+    }
+    this.refreshBatches(true);
+  }
+
+  // Auto's over de fijne en de eenvoudige bundel verdelen, naar afstand tot de camera.
+  refreshBatches(force = false) {
+    if (!this.batches) return;
+    const cam = this.g.camera?.position;
+    if (!force && cam && this.lodAt && cam.distanceToSquared(this.lodAt) < 9) return;
+    if (cam) (this.lodAt ??= new THREE.Vector3()).copy(cam);
+    this.batchDirty = false;
+    for (const b of Object.values(this.batches)) {
+      let nN = 0, nF = 0;
+      for (const c of b.cars) {
+        if (c.mesh) continue; // rijdt los rond
+        let near = false;
+        if (b.near && cam) {
+          const d = (c.x - cam.x) ** 2 + (c.z - cam.z) ** 2, lim = c.near ? NEAR_OUT : NEAR_IN;
+          near = d < lim * lim;
+        }
+        c.near = near;
+        const set = near ? b.near : b.far, i = near ? nN++ : nF++;
+        for (const im of set.meshes) im.setMatrixAt(i, c.matrix);
+        set.meshes[0].setColorAt(i, _col.set(c.paint));
+        set.plate.array[i] = c.plate;
+      }
+      for (const [set, n] of [[b.near, nN], [b.far, nF]]) {
+        if (!set) continue;
+        for (const im of set.meshes) { im.count = n; im.instanceMatrix.needsUpdate = true; }
+        set.meshes[0].instanceColor.needsUpdate = true;
+        set.plate.needsUpdate = true;
+      }
     }
   }
 
@@ -399,7 +280,8 @@ export class Vehicles {
       if (car.slot == null || !this.batches) return;
       const tmp = new THREE.Object3D();
       this.pose(car, tmp);
-      for (const m of this.batches[car.type].meshes) { m.setMatrixAt(car.slot, tmp.matrix); m.instanceMatrix.needsUpdate = true; }
+      car.matrix.copy(tmp.matrix);
+      this.batchDirty = true;
       return;
     }
     this.pose(car, car.mesh);
@@ -431,6 +313,9 @@ export class Vehicles {
 
   drive(car, dt, throttle, steerIn, handbrake) {
     const w = this.world;
+    // voor de lampen en de bestuurder: er wordt gereden, en of er geremd wordt
+    car.driven = 0.3;
+    car.braking2 = (throttle < -0.1 && car.speed > 0.4) || (throttle > 0.1 && car.speed < -0.4) || (!!handbrake && Math.abs(car.speed) > 0.4);
     const surface = w.classAt(car.x, car.z);
     const onRoad = ['rijbaan', 'klinkers', 'parkeer', 'erf', 'verhard_open', 'verhard_gesloten', 'brug', 'fietspad', 'voetpad', 'berm', 'oever', 'onverhard'].includes(surface);
     const top = car.t.vmax ?? 27; // ongeveer 100 km/u: genoeg voor een dorp
@@ -519,7 +404,7 @@ export class Vehicles {
       const from = withEdges[Math.floor(rand() * withEdges.length)];
       const edge = nodes[from].edges[Math.floor(rand() * nodes[from].edges.length)];
       const type = typeKeys[k % typeKeys.length];
-      const mesh = this.makeCarMesh(type, PAINTS[Math.floor(rand() * PAINTS.length)]);
+      const mesh = this.makeCarMesh(type, PAINTS[Math.floor(rand() * PAINTS.length)], { ai: true });
       this.scene.add(mesh);
       const car = {
         ai: true, type, mesh, t: this.types[type], edge, dist: rand() * edge.len, x: 0, z: 0, heading: 0,
@@ -575,6 +460,71 @@ export class Vehicles {
       c.heading += dh * Math.min(1, dt * 6);
       this.placeCar(c);
     }
+    this.animate(dt);
+  }
+
+  // Elk beeld: wielen laten draaien en sturen, lampen (rem, achteruit, knipperlicht), bestuurder en lichtbundels.
+  animate(dt) {
+    this.clock += dt;
+    const blinkOn = (this.clock * 1.4) % 1 < 0.5;
+    let own = null;
+    const each = (c) => {
+      const rig = c.mesh?.userData.rig;
+      if (!rig) return;
+      const driven = c.driven > 0;
+      // afgelegde weg langs de rijrichting sinds het vorige beeld
+      if (rig.px != null) {
+        const d = (c.x - rig.px) * Math.sin(c.heading) + (c.z - rig.pz) * Math.cos(c.heading);
+        if (Math.abs(d) < 3) rig.dist += d;
+      }
+      let brake = false, reverse = false, blink = 0;
+      if (c.ai) {
+        // verkeer: stuurhoek uit de draaiing, remlicht bij afremmen en stilstaan, knipperlicht in de bocht
+        let dh = c.heading - rig.ph;
+        dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+        const want = c.speed > 0.5 && dt > 0 ? THREE.MathUtils.clamp(-Math.atan(((dh / dt) * c.t.wheelbase) / Math.max(1.5, c.speed)), -0.5, 0.5) : 0;
+        rig.steer += (want - rig.steer) * Math.min(1, dt * 5);
+        if (Math.abs(rig.steer) < 1e-3) rig.steer = 0;
+        brake = c.speed < 0.3 || (dt > 0 && (c.speed - rig.pv) / dt < -1.2);
+        if (Math.abs(rig.steer) > 0.1 && blinkOn) blink = rig.steer < 0 ? 1 : -1;
+      } else {
+        rig.steer = THREE.MathUtils.clamp(c.steer || 0, -0.5, 0.5);
+        brake = driven && !!c.braking2;
+        reverse = driven && c.speed < -0.3;
+        if (driven) own = c;
+      }
+      rig.px = c.x; rig.pz = c.z; rig.ph = c.heading; rig.pv = c.speed;
+      // lampen: aan bij het verkeer en bij de auto waarin gereden wordt; de geparkeerde Volvo houdt 's avonds stadslicht
+      const want = c.ai || driven ? 1 : c.isVolvo ? 0.3 * this.night : 0;
+      rig.on += (want - rig.on) * Math.min(1, dt * 5);
+      if (Math.abs(want - rig.on) < 0.01) rig.on = want;
+      rig.lamp.set(rig.on, brake ? 1 : 0, reverse ? 1 : 0, blink);
+      if (rig.beam) rig.beam.visible = rig.on > 0.6 && this.night > 0.05;
+      if (rig.driver) {
+        rig.driver.visible = !!c.ai || driven;
+        const geo = rig.driverGeos[c.ai ? 0 : 1];
+        if (rig.driver.geometry !== geo) rig.driver.geometry = geo;
+      }
+      if (rig.wheels.length && rig.done !== rig.dist + rig.steer * 1000) this.setWheels(rig);
+      if (c.driven > 0) c.driven -= dt;
+    };
+    for (let i = 0; i < this.cars.length; i++) each(this.cars[i]);
+    for (let i = 0; i < this.traffic.length; i++) each(this.traffic[i]);
+    // de echte lamp schijnt vanaf de neus van de auto van de speler
+    if (this.spot) {
+      const k = own ? own.mesh.userData.rig.on * this.night : 0;
+      this.spot.intensity = k * 55;
+      if (own) {
+        const fx = Math.sin(own.heading), fz = Math.cos(own.heading), y = own.y ?? 0;
+        this.spot.position.set(own.x + fx * own.t.L * 0.45, y + (own.type === 'tractor' ? 1.5 : 0.8), own.z + fz * own.t.L * 0.45);
+        this.spot.target.position.set(own.x + fx * 14, y - 0.6, own.z + fz * 14);
+        this.spot.target.updateMatrixWorld();
+      }
+    }
+    // bundels van geparkeerde auto's: af en toe opnieuw verdelen over dichtbij en ver weg
+    this.lodT = (this.lodT || 0) - dt;
+    if (this.batchDirty) this.refreshBatches(true);
+    else if (this.lodT <= 0) { this.lodT = 0.25; this.refreshBatches(); }
   }
 
   // Een auto uit het verkeer halen (kapen): wordt een gewone auto om zelf in te rijden.
@@ -605,8 +555,11 @@ export class Vehicles {
     return best;
   }
 
+  // 's avonds (t van 0 naar 1) gaan de lampen aan; hoe fel bepaalt het lampmateriaal per soort lamp
   setNight(t) {
-    this.lightMat.emissiveIntensity = 0.15 + t * 2.2;
+    this.night = t;
+    this.mats.nacht.value = t;
+    this.mats.beam.opacity = 0.26 * t;
   }
 }
 
