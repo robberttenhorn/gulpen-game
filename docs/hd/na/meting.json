@@ -1,18 +1,18 @@
 {
   "computer": {
-    "msPerBeeld": 9084,
-    "driehoeken": 2,
-    "tekenopdrachten": 1,
+    "msPerBeeld": 9592,
+    "driehoeken": 6741887,
+    "tekenopdrachten": 1093,
     "pixelverhouding": 1,
     "kwaliteit": "hoog",
     "texturen": 343,
-    "geometrie": 1591,
+    "geometrie": 1585,
     "fouten": []
   },
   "telefoon": {
-    "msPerBeeld": 6719,
-    "driehoeken": 2916724,
-    "tekenopdrachten": 544,
+    "msPerBeeld": 4089,
+    "driehoeken": 3507058,
+    "tekenopdrachten": 822,
     "pixelverhouding": 1.5,
     "kwaliteit": "laag",
     "texturen": 307,

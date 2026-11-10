@@ -4,7 +4,24 @@
 
 ## Samenvatting
 
-(wordt aan het eind ingevuld)
+De game is in één nacht een flink stuk filmischer geworden, zonder dat de gameplay is veranderd. Alles staat op `main` en dus online.
+
+**Wat er nu anders is**
+- **Lucht en licht**: een gefotografeerde lucht (blauw met stapelwolken overdag, sterren en Melkweg 's nachts) die ook het hemellicht en de reflecties levert; fellere zon met koele schaduwen; een grote, stabiele schaduwkaart; luchtperspectief en hoogtemist.
+- **Nabewerking**: ambient occlusion, zonnestralen, scherptediepte in gesprekken, bloom, filmische tone mapping, kleurcorrectie, vignet en korrel.
+- **Avond**: lantaarns langs alle straten die echt licht geven, zachte lichtkegels, etalages die de stoep verlichten, en een natte straat waarin elke lantaarn spiegelt.
+- **Wereld**: gras dat je ziet staan, bladerige hagen en struiken, water met fijne rimpels, dakranden met overstek en goot.
+- **Poppetjes**: nieuw lichaam, en lopen, joggen, rennen en zitten uit echte motion capture (CMU).
+- **Auto's**: ronde carrosserie, glas met interieur, draaiende wielen, lampen, kentekens.
+- **Drie kwaliteitsstanden** (hoog, midden, laag), te kiezen op het startscherm, met een automatische regeling die verder afschaalt als het hapert.
+
+**Wat je moet weten**
+- **De echte beeldsnelheid is niet gemeten.** De testomgeving heeft geen videokaart. In softwareweergave kost een beeld op computerformaat nu 9,6 s (was 6,8 s) en op telefoonformaat 4,1 s (was 4,2 s). Of de stand hoog op een gewone laptop 30 beelden per seconde haalt, moet je op een echt apparaat nakijken; hapert het, dan schaalt het spel zelf af.
+- **Alle 51 missies starten en stoppen zonder fouten** in de rooktest (`tools/hd-missies.cjs`), ook met getekend beeld. De test speelt missies niet uit.
+- **Niet gedaan**: WebGPU (bewust, zie Keuzes vooraf), echte kozijnen en deuren aan de gevels, een fijner hoogtemodel, het MakeHuman-model. Het budget van 150 tot 250 MB is niet gebruikt: de site is ongeveer 37 MB.
+- **Eén bestaande fout hersteld**: de Bierfeesten-missie liep vast in deze kopie.
+
+Bronnen en licenties: [`BRONNEN.md`](BRONNEN.md). Beelden voor en na: [`voor/`](voor) en [`na/`](na), en per stap hieronder.
 
 ## Plan
 
@@ -134,3 +151,108 @@ Geprobeerd en aangepast: de eerste versie had te weinig en te donkere sprieten o
 ![](stap3/computer-avond-rijksweg.jpg)
 
 **Kleinere dingen**: de bolle kruinen en struiken in de tuin van Ringweg 38 hebben een bladmateriaal gekregen in plaats van kale vlakjes; het glas van de huizen is gladder, zodat de lucht erin spiegelt; boomblad heeft zachtere randen.
+
+## Stap 4: dakranden, keuze van de beeldkwaliteit en de telefoon
+
+- **Dakranden** (`buildRoofTrim` in `src/world.js`): de daken uit de 3D BAG eindigen precies op de gevel, waardoor huizen op dozen leken. Elke vrije rand van een dak krijgt nu een overstek van 28 cm met een boeibord eronder: langs de dakvoet een zinken goot, langs de schuine kanten een lichte windveer, bij platte daken een daktrim. Het overstek werpt een echte schaduw op de gevel. De randen worden bij het laden uit de dakvlakken zelf afgeleid (randen die maar bij één dakvlak horen), dus het werkt voor alle 1.872 panden zonder extra data (samen ongeveer 208.000 driehoeken).
+- **Beeldkwaliteit kiezen**: op het startscherm staan de knoppen Hoog, Midden en Laag.
+- **Automatische regeling**: in de stand hoog wordt pas afgeschaald onder ongeveer 27 beelden per seconde (30 is daar goed genoeg), en er is een extra stap bijgekomen (het verre gras weg en een kleinere schaduwkaart) vóórdat de resolutie verder zakt.
+- **Telefoon**: de lucht ging daar zonder tone mapping naar het scherm en was daardoor te donker; dat is hersteld. Omdat de lantaarns op de telefoon geen licht geven, is het maanlicht daar sterker gezet.
+
+| Voor (stap 1) | Na |
+| --- | --- |
+| ![](stap1/computer-dag-tuin38.jpg) | ![](stap4/computer-dag-tuin38.jpg) |
+
+## Eindresultaat
+
+Alle eindbeelden staan in `docs/hd/na/` (zelfde standpunten als `docs/hd/voor/`).
+
+| | Voor | Na |
+| --- | --- | --- |
+| Markt, dag | ![](voor/computer-dag-markt.jpg) | ![](na/computer-dag-markt.jpg) |
+| Rijksweg, dag | ![](voor/computer-dag-rijksweg.jpg) | ![](na/computer-dag-rijksweg.jpg) |
+| Looierstraat, dag | ![](voor/computer-dag-looierstraat.jpg) | ![](na/computer-dag-looierstraat.jpg) |
+| Bij de kerk, dag | ![](voor/computer-dag-kerk.jpg) | ![](na/computer-dag-kerk.jpg) |
+| Ringweg 38, dag | ![](voor/computer-dag-tuin38.jpg) | ![](na/computer-dag-tuin38.jpg) |
+| Water, dag | ![](voor/computer-dag-gulp.jpg) | ![](na/computer-dag-gulp.jpg) |
+| Gulperberg, dag | ![](voor/computer-dag-gulperberg.jpg) | ![](na/computer-dag-gulperberg.jpg) |
+| Woonwijk, dag | ![](voor/computer-dag-woonwijk.jpg) | ![](na/computer-dag-woonwijk.jpg) |
+| Volvo XC40, dag | ![](voor/computer-dag-auto.jpg) | ![](na/computer-dag-auto.jpg) |
+| Markt, avond | ![](voor/computer-avond-markt.jpg) | ![](na/computer-avond-markt.jpg) |
+| Rijksweg, avond | ![](voor/computer-avond-rijksweg.jpg) | ![](na/computer-avond-rijksweg.jpg) |
+| Looierstraat, avond | ![](voor/computer-avond-looierstraat.jpg) | ![](na/computer-avond-looierstraat.jpg) |
+| Bij de kerk, avond | ![](voor/computer-avond-kerk.jpg) | ![](na/computer-avond-kerk.jpg) |
+| Markt, telefoon, dag | ![](voor/telefoon-dag-markt.jpg) | ![](na/telefoon-dag-markt.jpg) |
+| Rijksweg, telefoon, dag | ![](voor/telefoon-dag-rijksweg.jpg) | ![](na/telefoon-dag-rijksweg.jpg) |
+| Markt, telefoon, avond | ![](voor/telefoon-avond-markt.jpg) | ![](na/telefoon-avond-markt.jpg) |
+
+De beelden met 'gouden-uur' in de naam (18.36 uur) zijn alleen ter controle van de overgang gemaakt; in het spel komt dat tijdstip niet voor (het is 9 uur, 15 uur of avond).
+
+## Beeldsnelheid
+
+**Wat ik niet heb kunnen meten: de echte beeldsnelheid.** De testomgeving heeft geen videokaart. Chromium tekent daar met software (SwiftShader) en doet seconden over één beeld. De getallen hieronder zeggen dus alleen hoeveel zwaarder of lichter een beeld is geworden ten opzichte van de nulmeting, niet hoeveel beelden per seconde een laptop of telefoon haalt. Dat moet op echte apparaten worden nagekeken.
+
+Gemeten op de Markt, overdag, kleinste van drie metingen, zonder andere processen (`docs/hd/voor/meting.json` en `docs/hd/na/meting.json`):
+
+| | Voor | Na |
+| --- | --- | --- |
+| Computer (1280x720, stand hoog): tijd per beeld | 6,8 s | 9,6 s |
+| Computer: driehoeken per beeld | 3,6 miljoen (zonder schaduwkaart geteld) | 6,7 miljoen (alle stappen samen, met schaduwkaart) |
+| Computer: tekenopdrachten per beeld | 823 (zonder schaduwkaart geteld) | 1093 (alle stappen samen) |
+| Telefoon (844x390 bij pixelverhouding 2, stand laag): tijd per beeld | 4,2 s | 4,1 s |
+| Telefoon: driehoeken per beeld | 2,9 miljoen | 3,5 miljoen (alle stappen samen) |
+| Telefoon: tekenopdrachten per beeld | 599 | 822 (alle stappen samen) |
+
+De telling van driehoeken is tussentijds verbeterd: in de nulmeting telde het script alleen de laatste tekenstap, nu het hele beeld inclusief de schaduwkaart. De getallen voor en na zijn daardoor niet één op één te vergelijken; de tijd per beeld wel.
+
+Wat dit betekent:
+- De telefoonstand is ongeveer even zwaar als de oorspronkelijke game. Daar komt wel bij: nieuwe poppetjes (zelfde aantal driehoeken als voorheen op de telefoon), lichtere hagen, extra lantaarnpalen en de nieuwe auto's in hun lichtste vorm.
+- De computerstand is in software ongeveer 41 procent zwaarder per beeld. Het zwaarst wegen het gras (ongeveer 0,6 miljoen driehoeken), de schaduwkaart van 4096 pixels en de nabewerking. Software rekent heel anders dan een videokaart (driehoeken zijn daar relatief goedkoop, pixels duur), dus dit percentage zegt weinig over een echte laptop.
+- Vangnet: hapert het op een echt apparaat, dan schakelt `adaptQuality` stap voor stap af (zie stap 1 en 4), en met de knoppen op het startscherm kan iemand zelf een lichtere stand kiezen.
+- Het laden duurt in software merkbaar langer dan voorheen, vooral door het compileren van de extra shaders. Op een echte videokaart is dat naar verwachting een kwestie van seconden, maar ook dat is niet gemeten.
+
+## Geprobeerd en teruggedraaid of aangepast (alles bij elkaar)
+
+- **AgX-tone mapping**: flets en grijzig. Terug naar ACES met eigen kleurcorrectie.
+- **Lucht Kloofendal 38d**: goede zonnestand, maar grijs. Vervangen door Kloofendal 48d, in de hoogte opgerekt zodat de zon op 37 graden blijft.
+- **Misty-morning-lucht voor de ochtend**: opgehaald en bekeken, maar vlak en saai; niet gebruikt. De ochtend gebruikt dezelfde daglucht, gedraaid naar de ochtendzon.
+- **Eerste nachtinstelling**: melkachtig door bloom en oplichtende mist. Teruggeschroefd.
+- **Lichtkegels als gewone doorzichtige kegels**: harde 'feesthoedjes'. Vervangen door een shader die uitdooft naar de rand.
+- **Lichtkaart met de dichtstbijzijnde lamp per vakje**: zichtbare sprong tussen etalage en lantaarn. Nu wint de lamp met het meeste licht.
+- **Eerste gras**: te dun en te donker op een lichte grond. Dichter gemaakt, zelfde materiaal als het terrein, grond eronder donkerder; daarna nog bijgestuurd omdat het gras op lichte plekken van de luchtfoto vaalwit werd.
+- **Hagen met alleen een vlak bladpatroon**: nog steeds een blok. Schillen met losse blaadjes erbij.
+- **Kleurschifting aan de beeldranden**: eerst te sterk (gekleurde randen om bomen), teruggebracht tot nauwelijks zichtbaar.
+- **Plassen op de natte straat**: eerst te groot en te licht; kleiner gemaakt.
+- **Lantaarn pal voor de camera op het startpunt**: weggehaald (geen nieuwe lantaarns binnen 12 meter van het startpunt).
+
+## Keuzes waar je misschien iets van vindt
+
+1. **Geen WebGPU.** Zie Keuzes vooraf. Alles draait op WebGL 2.
+2. **De opdracht noemde 150 tot 250 MB; de hele site is ongeveer 37 MB.** Ik heb het budget niet opgemaakt. De winst zat in licht, lucht, schaduw, nabewerking en geometrie die in code wordt gemaakt, niet in zwaardere bestanden. Grotere texturen (2K of 4K voor gevels en wegen) had ik kunnen ophalen, maar zonder videokaart kan ik niet nagaan wat dat met het geheugen en de laadtijd doet, en van dichtbij zijn de huidige texturen (1024 pixels per 1 tot 3 meter) al scherp. Het stapsgewijs laden (eerst licht, dan fijn) is wel gebouwd voor de lucht.
+3. **De zon staat nog op 37 graden** (zoals jij hem had gezet), terwijl de zon op de luchtfoto op 48 graden staat. De foto wordt in de hoogte opgerekt om dat gelijk te trekken.
+4. **'s Avonds is de straat altijd nat.** Dat geeft het filmische avondbeeld met spiegelende lantaarns. Overdag is het droog. Het is één getal in `applyTime` (`world.wet`) als je het anders wilt.
+5. **Er staan nu lantaarns langs alle straten** (960 in totaal, waarvan 40 uit de kaartdata). Ze staan op berekende plekken, niet op de echte plekken in Gulpen. Je kunt er niet tegenaan botsen (dat kon bij de bestaande lantaarns ook niet).
+6. **Scherptediepte tijdens gesprekken**: de achtergrond wordt zacht zodra er een gesprekvenster open is (niet in minispellen en niet bij de introductie).
+7. **Naambordjes worden na de nabewerking getekend** en zijn dus niet meer meegekleurd met het beeld. Ze zijn zo altijd scherp, maar 's nachts ogen ze iets lichter dan voorheen.
+8. **Dakranden zijn berekend**, niet opgemeten: elk dak steekt even ver uit. Waar een dak tegen een hogere muur aanloopt, zit de rand soms deels in die muur.
+9. **De speler jogt** bij normale snelheid (4 m/s is hardlooptempo); wandelen zie je bij voetgangers. De snelheden zelf zijn niet veranderd.
+10. **Poppetjes buiten beeld worden niet meer getekend** (ze hadden dat eerst uit staan). Mocht er ergens een poppetje onterecht verdwijnen, dan zit het in `src/character.js` (de omhullende bol).
+11. **De Bierfeesten-missie liep vast** op een ontbrekende functie (`hideTrees`) in deze kopie. Die heb ik toegevoegd. Controleer of het origineel dezelfde fout heeft.
+12. **Twee hulpagents** hebben de poppetjes en de auto's gemaakt, elk in een eigen werkkopie; ik heb hun werk bekeken, samengevoegd en opnieuw getest. Hun notities staan in `docs/hd/poppetjes/NOTITIES.md` en `docs/hd/autos/NOTITIES.md`.
+13. **De missietest is een rooktest.** Hij start elke missie, loopt het gesprek door tot het minispel of de opdracht begint, geeft wat invoer en stopt. Hij speelt missies niet uit. Laatste run, met per missie een echt getekend beeld: 51 van 51 zonder fouten.
+14. **Er is direct naar `main` gepusht**, zoals gevraagd; dezelfde commits staan ook op de branch `claude/modest-einstein-59p2fn`.
+
+## Wat er nog beter kan (vervolg)
+
+- **Eerst: testen op een echte laptop en telefoon.** Beeldsnelheid meten, de drempels van `adaptQuality` afstellen, en kijken of de stand hoog op een gewone laptop de 30 beelden per seconde haalt. Dit is het grootste open punt.
+- **Gevels**: de ramen en deuren zijn nog getekend in de shader op een vlakke muur. Echte kozijnen, vensterbanken, deuren met diepte, schoorstenen en dakkapellen zouden de huizen het meest vooruit helpen. De dakvormen zelf komen al uit de 3D BAG (LoD 2.2).
+- **Bomen**: de bomen zijn dezelfde gebleven (alleen beter belicht en met zachtere bladranden). Vollere kruinen van dichtbij en beweging in de takken zijn een logische volgende stap. De bolle bomen in de tuin van Ringweg 38 hebben nu blad, maar blijven bollen.
+- **Reflecties**: de lucht en de lantaarns spiegelen, maar gebouwen en auto's spiegelen niet in plassen, ramen of lak. Daarvoor is spiegeling in beeldruimte nodig.
+- **Schaduwen**: één schaduwkaart rond de speler. Verderop (voorbij ongeveer 85 meter) zijn er geen schaduwen. Lantaarns werpen geen schaduw.
+- **Poppetjes**: geen gezichtsanimatie, de sprint schuift nog, fietsen en stilstaan zijn berekend, de zithouding past niet precies op de bankjes.
+- **Auto's**: de XC40 verdient een eigen carrosserie; de wissel tussen ver en dichtbij is zichtbaar.
+- **Lucht**: één daglucht en één nachtlucht. Een aparte ochtend- en zonsonderganglucht zou afwisseling geven.
+- **Hoogtemodel**: het fijnere AHN is niet opgehaald; het terrein is ongewijzigd.
+- **Binnenruimtes**: niet aangepakt, behalve dat ze de nieuwe nabewerking meekrijgen.
+- **Laadtijd**: gecomprimeerde texturen (KTX2) en het vooraf compileren van shaders in stapjes zouden het laden korter en rustiger maken.
+- **WebGPU**: een overstap blijft mogelijk, maar is een project op zich (alle eigen shaders herschrijven).
