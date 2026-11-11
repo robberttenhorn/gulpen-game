@@ -1,3 +1,11 @@
+/* Ruimte boven in beeld voor de statusbalk (klok, batterij). Als app op het beginscherm van een iPhone loopt het beeld
+   onder de statusbalk door, en iOS legt daar een vervaagde laag overheen die iets verder doorloopt dan de statusbalk zelf.
+   Daarom houden knoppen en borden in die stand 16 px extra afstand. In Safari en op de computer verandert er niets
+   (en zonder statusbalk, zoals liggend, ook niet: de extra ruimte is nooit groter dan de statusbalk zelf). */
+:root { --safe-top-inset: env(safe-area-inset-top, 0px); --safe-top: var(--safe-top-inset); }
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  :root { --safe-top: calc(var(--safe-top-inset) + min(16px, var(--safe-top-inset))); }
+}
 :root {
   --ink: #1b2430;
   --paper: #fffaf0;
@@ -65,14 +73,14 @@ html, body {
 #hud[hidden], [hidden] { display: none !important; }
 
 #street-sign {
-  position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  position: absolute; top: max(12px, var(--safe-top)); left: 50%; transform: translateX(-50%);
   background: var(--blue); color: #fff; border: 3px solid #fff; outline: 2px solid var(--blue);
   border-radius: 6px; padding: 4px 18px; font-weight: 600; font-size: 17px; letter-spacing: .3px;
   box-shadow: var(--shadow); white-space: nowrap; transition: opacity .3s;
 }
 
 #quest-card {
-  position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; width: min(300px, 46vw);
+  position: absolute; top: max(12px, var(--safe-top)); left: 12px; width: min(300px, 46vw);
   background: rgba(255, 250, 240, 0.94); border-radius: 14px; padding: 10px 14px 12px; box-shadow: var(--shadow);
   border-left: 6px solid var(--accent);
 }
@@ -95,7 +103,7 @@ html, body {
 #quest-card.collapsed #btn-stop { margin-top: 6px; }
 
 #minimap-wrap {
-  position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 180px; height: 180px;
+  position: absolute; top: max(12px, var(--safe-top)); right: 12px; width: 180px; height: 180px;
   border-radius: 50%; overflow: hidden; border: 4px solid var(--paper); box-shadow: var(--shadow); background: #6d8f4e;
 }
 #minimap { width: 100%; height: 100%; display: block; }
@@ -110,7 +118,7 @@ html, body {
 
 /* aftelklok: compact en duidelijk, onder de minikaart (botst niet met de opdracht) */
 #race-timer {
-  position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 192px); right: 12px;
+  position: absolute; top: calc(max(12px, var(--safe-top)) + 192px); right: 12px;
   display: flex; align-items: center; gap: 6px; padding: 5px 12px 5px 10px; border-radius: 99px;
   background: rgba(27, 36, 48, 0.88); color: #fff; box-shadow: var(--shadow);
   font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums;
@@ -170,7 +178,7 @@ body.touch #credits { bottom: auto; top: 200px; }
   #quest-title { font-size: 17px; }
   #quest-desc { font-size: 12px; }
   #prompt { bottom: 220px; }
-  #race-timer { top: calc(max(12px, env(safe-area-inset-top)) + 122px); font-size: 17px; padding: 4px 10px 4px 8px; }
+  #race-timer { top: calc(max(12px, var(--safe-top)) + 122px); font-size: 17px; padding: 4px 10px 4px 8px; }
   body.touch #credits { top: 132px; }
 }
 
@@ -200,7 +208,7 @@ body.dialog-open #prompt { display: none !important; }
 #bigmap-canvas { flex: 1; min-width: 0; height: 100%; display: block; touch-action: none; cursor: grab; }
 #bigmap-panel {
   width: 320px; max-width: 42vw; background: var(--paper); display: flex; flex-direction: column;
-  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) 14px;
+  padding: max(14px, var(--safe-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) 14px;
   gap: 10px; overflow: hidden;
 }
 .bm-head { display: flex; align-items: center; justify-content: space-between; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; }
@@ -244,7 +252,7 @@ body.dialog-open #prompt { display: none !important; }
 
 /* ---------- live-interview ---------- */
 #live-badge {
-  position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  position: absolute; top: max(14px, var(--safe-top)); left: 50%; transform: translateX(-50%);
   background: #d32f2f; color: #fff; font: 800 18px Inter, sans-serif; letter-spacing: 1px; padding: 6px 14px;
   border-radius: 6px; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow); z-index: 3;
 }
@@ -260,7 +268,7 @@ body.live::after {
 
 /* ---------- geluidsknop ---------- */
 #btn-sound {
-  position: absolute; top: max(12px, env(safe-area-inset-top)); right: 204px; width: 42px; height: 42px; border-radius: 50%;
+  position: absolute; top: max(12px, var(--safe-top)); right: 204px; width: 42px; height: 42px; border-radius: 50%;
   border: 0; background: rgba(255, 250, 240, 0.94); color: var(--ink); box-shadow: var(--shadow); pointer-events: auto;
   display: grid; place-items: center; cursor: pointer;
 }
@@ -306,13 +314,13 @@ body.live #quest-card { visibility: visible; }
 /* ---------- TikTok-opname (POV bij Zheng) ---------- */
 body.pov #speedo, body.pov #joystick, body.pov #minimap-wrap, body.pov #street-sign, body.pov #quest-card, body.pov #prompt, body.pov #race-timer, body.pov #btn-sound, body.pov #btn-vehicle { display: none !important; }
 .tt-overlay { position: absolute; inset: 0; pointer-events: auto; color: #fff; font-family: Inter, sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.6); user-select: none; -webkit-user-select: none; }
-.tt-top { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; }
+.tt-top { position: absolute; top: max(14px, var(--safe-top)); left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; }
 .tt-rec { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; background: rgba(0,0,0,.35); padding: 4px 10px; border-radius: 99px; }
 .tt-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff2d55; animation: tt-blink 1s steps(2) infinite; }
 @keyframes tt-blink { 50% { opacity: .2; } }
 .tt-views { font-weight: 600; font-size: 14px; background: rgba(0,0,0,.35); padding: 4px 10px; border-radius: 99px; }
 .tt-views b { font-family: 'Baloo 2', sans-serif; font-size: 20px; }
-.tt-pov { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 42px); left: 14px; right: 80px; font-weight: 700; font-size: 15px; }
+.tt-pov { position: absolute; top: calc(max(14px, var(--safe-top)) + 42px); left: 14px; right: 80px; font-weight: 700; font-size: 15px; }
 .tt-side { position: absolute; right: 12px; top: 38%; display: flex; flex-direction: column; gap: 16px; align-items: center; }
 .tt-ico { display: flex; flex-direction: column; align-items: center; font-size: 28px; line-height: 1; }
 .tt-ico small { font-size: 12px; font-weight: 700; margin-top: 3px; }
@@ -331,9 +339,9 @@ body.pov #speedo, body.pov #joystick, body.pov #minimap-wrap, body.pov #street-s
 .tt-needle { position: absolute; top: -3px; bottom: -3px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 6px rgba(0,0,0,.6); }
 .tt-mash { display: none; height: 18px; border-radius: 9px; background: rgba(255,255,255,.25); overflow: hidden; }
 .tt-mash-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff2d55, #ffd54f); transition: width .08s; }
-.tt-order { position: absolute; right: 12px; top: calc(max(14px, env(safe-area-inset-top)) + 80px); text-align: right; background: #fffdf5; color: #1b2430; text-shadow: none; padding: 6px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; transform: rotate(-2deg); box-shadow: var(--shadow); max-width: 46%; }
+.tt-order { position: absolute; right: 12px; top: calc(max(14px, var(--safe-top)) + 80px); text-align: right; background: #fffdf5; color: #1b2430; text-shadow: none; padding: 6px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; transform: rotate(-2deg); box-shadow: var(--shadow); max-width: 46%; }
 .tt-order small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8a7f6a; }
-.tt-stop { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 40px); right: 12px; border: 0; border-radius: 99px; padding: 6px 12px; background: rgba(0,0,0,.45); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+.tt-stop { position: absolute; top: calc(max(14px, var(--safe-top)) + 40px); right: 12px; border: 0; border-radius: 99px; padding: 6px 12px; background: rgba(0,0,0,.45); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
 body.touch .tt-task { bottom: 150px; }
 body.touch .tt-comments { bottom: 260px; }
 .tt-flash { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; white-space: nowrap; padding: 4px 16px; border-radius: 99px; background: rgba(0,0,0,.4); animation: tt-pop 1.4s ease-out forwards; pointer-events: none; }
@@ -352,12 +360,12 @@ body.touch .tt-comments { bottom: 260px; }
   font-family: Inter, sans-serif; font-size: 13px; animation: tt-in .4s ease-out;
 }
 #update-bar b { font-family: 'Baloo 2', sans-serif; font-size: 18px; }
-body.touch #update-bar { bottom: auto; top: max(12px, env(safe-area-inset-top)); }
+body.touch #update-bar { bottom: auto; top: max(12px, var(--safe-top)); }
 
 /* ---------- korte behendigheidsspellen (pils vangen, vogelschieten) ---------- */
 .mini-overlay { position: absolute; inset: 0; pointer-events: auto; display: flex; flex-direction: column; color: #fff; font-family: Inter, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
 .mini-overlay.aim { background: transparent; }
-.mini-head { display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 14px 8px; background: linear-gradient(rgba(0,0,0,.55), transparent); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.mini-head { display: flex; align-items: center; gap: 12px; padding: max(12px, var(--safe-top)) 14px 8px; background: linear-gradient(rgba(0,0,0,.55), transparent); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .mini-head b { font-family: 'Baloo 2', sans-serif; font-size: 22px; }
 .mini-score { font-weight: 700; font-size: 14px; flex: 1; }
 .mini-stop { border: 0; border-radius: 99px; padding: 6px 12px; background: rgba(0,0,0,.45); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
@@ -492,8 +500,8 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 /* snelheidsmeter niet tonen */
 #speedo { display: none !important; }
 /* straatnaambord linksboven, het missieblok eronder */
-#street-sign { left: 12px !important; right: auto; transform: none !important; top: max(12px, env(safe-area-inset-top)) !important; bottom: auto !important; font-size: 15px; padding: 3px 14px; }
-#quest-card { top: calc(max(12px, env(safe-area-inset-top)) + 46px); }
+#street-sign { left: 12px !important; right: auto; transform: none !important; top: max(12px, var(--safe-top)) !important; bottom: auto !important; font-size: 15px; padding: 3px 14px; }
+#quest-card { top: calc(max(12px, var(--safe-top)) + 46px); }
 /* startscherm: stappen */
 .steps { text-align: left; margin: 16px auto 0; padding-left: 22px; max-width: 400px; font-size: 14px; line-height: 1.5; }
 .steps li { margin: 3px 0; }
@@ -502,7 +510,7 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 @media (max-height: 560px) { .steps { font-size: 12px; margin-top: 8px; line-height: 1.35; } }
 
 /* warm-koudmeter bij de kabouterjacht */
-.gnome-meter { --heat: 0; position: absolute; left: 50%; transform: translateX(-50%); top: calc(max(12px, env(safe-area-inset-top)) + 4px); width: min(260px, 60vw); padding: 8px 12px 9px; border-radius: 14px; text-align: center; color: #fff; font-family: Inter, sans-serif; background-color: color-mix(in srgb, rgb(30, 90, 200) calc((1 - var(--heat)) * 100%), rgb(230, 60, 30)); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.04) 48%, rgba(0, 0, 0, 0.22)); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4), 0 2px 5px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 -3px 8px rgba(0, 0, 0, 0.22); pointer-events: none; z-index: 5; transition: background-color 0.3s; } /* glanzend bol paneel in plaats van een egaal vlak */
+.gnome-meter { --heat: 0; position: absolute; left: 50%; transform: translateX(-50%); top: calc(max(12px, var(--safe-top)) + 4px); width: min(260px, 60vw); padding: 8px 12px 9px; border-radius: 14px; text-align: center; color: #fff; font-family: Inter, sans-serif; background-color: color-mix(in srgb, rgb(30, 90, 200) calc((1 - var(--heat)) * 100%), rgb(230, 60, 30)); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.04) 48%, rgba(0, 0, 0, 0.22)); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4), 0 2px 5px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 -3px 8px rgba(0, 0, 0, 0.22); pointer-events: none; z-index: 5; transition: background-color 0.3s; } /* glanzend bol paneel in plaats van een egaal vlak */
 .gnome-meter .gm-label { font-weight: 800; font-size: 20px; letter-spacing: 0.02em; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); }
 .gnome-meter .gm-bar { position: relative; height: 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.28); margin: 5px 0 4px; overflow: hidden; } /* verzonken gleuf */
 .gnome-meter .gm-bar::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.7); } /* streepje in het midden: lauw */
@@ -513,7 +521,7 @@ body.intro #quest-card, body.intro #minimap-wrap, body.intro #btn-vehicle, body.
 @media (max-width: 900px) and (max-height: 520px) { .gnome-meter { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px); } }
 
 /* teller afgeronde missies, onder het straatnaambordje */
-#mission-tally { position: absolute; left: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 44px); padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(20, 24, 32, 0.72); color: #fff; font: 700 13px/1.2 Inter, sans-serif; pointer-events: auto; cursor: pointer; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
+#mission-tally { position: absolute; left: 12px; top: calc(max(12px, var(--safe-top)) + 44px); padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(20, 24, 32, 0.72); color: #fff; font: 700 13px/1.2 Inter, sans-serif; pointer-events: auto; cursor: pointer; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
 #mission-tally.all { background: linear-gradient(90deg, #e8a33d, #f2c14e); color: #2a1a00; }
 #mission-tally[hidden] { display: none; }
 /* keuzes in een gesprek: even zichtbaar invliegen, zodat je ziet dat er iets te kiezen valt */
@@ -568,16 +576,16 @@ body.penalty-on #speedo, body.penalty-on #joystick, body.penalty-on #minimap-wra
 /* drone: batterij, ringteller, pijl naar de volgende ring en de foto's aan het eind */
 body.drone-on #speedo, body.drone-on #minimap-wrap, body.drone-on #street-sign, body.drone-on #quest-card, body.drone-on #prompt, body.drone-on #btn-vehicle, body.drone-on #race-timer { display: none !important; }
 .drone-hud { position: absolute; inset: 0; pointer-events: none; color: #fff; font-family: Inter, sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
-.drone-hud .dr-top { display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 14px 8px; background: linear-gradient(rgba(0,0,0,.5), transparent); }
+.drone-hud .dr-top { display: flex; align-items: center; gap: 12px; padding: max(12px, var(--safe-top)) 14px 8px; background: linear-gradient(rgba(0,0,0,.5), transparent); }
 .drone-hud .dr-top b { font-family: 'Baloo 2', sans-serif; font-size: 22px; }
 .drone-hud .dr-rings { flex: 1; font-weight: 700; font-size: 14px; }
 .drone-hud .mini-stop { pointer-events: auto; }
-.drone-hud .dr-batt { position: absolute; left: 14px; top: calc(max(12px, env(safe-area-inset-top)) + 46px); width: 150px; height: 14px; border-radius: 8px; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.8); overflow: hidden; }
+.drone-hud .dr-batt { position: absolute; left: 14px; top: calc(max(12px, var(--safe-top)) + 46px); width: 150px; height: 14px; border-radius: 8px; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.8); overflow: hidden; }
 .drone-hud .dr-batt i { position: absolute; left: 0; top: 0; bottom: 0; background: #69f0ae; }
 .drone-hud .dr-batt span { position: absolute; left: 160px; top: -3px; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .drone-hud .dr-arrow { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 40px; color: #40c4ff; transform-origin: 50% 60%; }
 .drone-hud .dr-arrow.gold { color: #ffd54f; }
-.drone-hud .dr-alt { position: absolute; right: 16px; top: calc(max(12px, env(safe-area-inset-top)) + 46px); font-weight: 700; font-size: 14px; }
+.drone-hud .dr-alt { position: absolute; right: 16px; top: calc(max(12px, var(--safe-top)) + 46px); font-weight: 700; font-size: 14px; }
 .drone-hud .dr-hint { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); text-align: center; font-size: 13px; padding: 0 16px; }
 body.touch .drone-hud .dr-hint { bottom: 150px; }
 .dr-pop { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); font: 800 26px 'Baloo 2', sans-serif; animation: fx-pop 1.4s ease-out forwards; white-space: nowrap; }
@@ -677,18 +685,18 @@ body.touch .drone-hud .dr-hint { bottom: 150px; }
 
 /* ---------- terug naar start: altijd in beeld en altijd te bedienen (ook in minispellen, gesprekken en tussenfilmpjes) ---------- */
 #btn-home {
-  position: fixed; top: max(12px, env(safe-area-inset-top)); right: 254px; z-index: 60; width: 42px; height: 42px; border-radius: 50%;
+  position: fixed; top: max(12px, var(--safe-top)); right: 254px; z-index: 60; width: 42px; height: 42px; border-radius: 50%;
   border: 0; background: rgba(255, 250, 240, 0.94); color: var(--ink); box-shadow: var(--shadow); pointer-events: auto;
   display: grid; place-items: center; cursor: pointer; touch-action: manipulation;
 }
 #btn-home:active { transform: scale(.92); }
-#home-confirm { position: fixed; top: calc(max(12px, env(safe-area-inset-top)) + 50px); right: 160px; z-index: 61; display: flex; align-items: center; gap: 8px;
+#home-confirm { position: fixed; top: calc(max(12px, var(--safe-top)) + 50px); right: 160px; z-index: 61; display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; border-radius: 14px; background: rgba(255, 250, 240, 0.97); color: var(--ink); box-shadow: var(--shadow); font-weight: 700; font-size: 14px; pointer-events: auto; }
 #home-confirm[hidden] { display: none; }
 #home-confirm button { border: 0; border-radius: 999px; padding: 6px 14px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
 #home-yes { background: #e8a33c; color: #1b2430; }
 #home-no { background: rgba(27, 36, 48, .1); color: var(--ink); }
-@media (max-width: 640px) { #btn-home { top: calc(max(12px, env(safe-area-inset-top)) + 46px); right: 132px; width: 38px; height: 38px; } #home-confirm { top: calc(max(12px, env(safe-area-inset-top)) + 92px); right: 12px; font-size: 13px; } }
+@media (max-width: 640px) { #btn-home { top: calc(max(12px, var(--safe-top)) + 46px); right: 132px; width: 38px; height: 38px; } #home-confirm { top: calc(max(12px, var(--safe-top)) + 92px); right: 12px; font-size: 13px; } }
 /* in een minispel staat bovenaan de titelbalk met Stoppen: dan linksonder, boven de uitleg */
 body.pov #btn-home { top: auto; right: auto; left: 12px; bottom: calc(64px + env(safe-area-inset-bottom)); }
 body.pov #home-confirm { top: auto; right: auto; left: 12px; bottom: calc(112px + env(safe-area-inset-bottom)); }
@@ -720,13 +728,13 @@ body.map-open #btn-home, body.map-open #home-confirm { display: none !important;
 /* ---------- instellingen: één tandwiel, altijd in beeld en altijd te bedienen (ook in minispellen, gesprekken en
    tussenfilmpjes), met een paneel voor geluid, terug naar het startpunt en de beeldkwaliteit ---------- */
 #btn-settings {
-  position: fixed; top: max(12px, env(safe-area-inset-top)); right: 204px; z-index: 60; width: 42px; height: 42px; border-radius: 50%;
+  position: fixed; top: max(12px, var(--safe-top)); right: 204px; z-index: 60; width: 42px; height: 42px; border-radius: 50%;
   border: 0; background: rgba(255, 250, 240, 0.94); color: var(--ink); box-shadow: var(--shadow); pointer-events: auto;
   display: grid; place-items: center; cursor: pointer; touch-action: manipulation;
 }
 #btn-settings:active { transform: scale(.92); }
 #settings-panel {
-  position: fixed; top: calc(max(12px, env(safe-area-inset-top)) + 50px); right: 160px; z-index: 62; width: min(310px, calc(100vw - 24px));
+  position: fixed; top: calc(max(12px, var(--safe-top)) + 50px); right: 160px; z-index: 62; width: min(310px, calc(100vw - 24px));
   padding: 12px 14px 14px; border-radius: 16px; background: rgba(255, 250, 240, 0.98); color: var(--ink); box-shadow: var(--shadow);
   font-family: Inter, sans-serif; font-size: 14px; pointer-events: auto;
 }
@@ -749,7 +757,7 @@ body.map-open #btn-home, body.map-open #home-confirm { display: none !important;
 #settings-panel .sp-note { margin-top: 10px; font-size: 12px; line-height: 1.45; opacity: .75; }
 @media (max-width: 640px) {
   #btn-settings { right: 132px; width: 38px; height: 38px; }
-  #settings-panel { top: calc(max(12px, env(safe-area-inset-top)) + 46px); right: 12px; }
+  #settings-panel { top: calc(max(12px, var(--safe-top)) + 46px); right: 12px; }
 }
 /* in een minispel staat bovenaan de titelbalk met Stoppen: dan linksonder, boven de uitleg */
 body.pov #btn-settings { top: auto; right: auto; left: 12px; bottom: calc(64px + env(safe-area-inset-bottom)); }
