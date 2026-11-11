@@ -35,6 +35,10 @@
   <canvas id="scene"></canvas>
 
   <div id="loading">
+    <!-- achtergrond: het uitzicht vanaf de Gulperberg (zelfde beeld als bij het delen van de link), met een donker verloop voor de leesbaarheid.
+         Het beeld maak je opnieuw met tools/laadbeeld.cjs. -->
+    <img class="loading-bg" src="/laadbeeld.jpg" srcset="/laadbeeld-klein.jpg 960w, /laadbeeld.jpg 1920w" sizes="(orientation: portrait) 178vh, 100vw" alt="" decoding="async" onload="this.classList.add('in')" />
+    <div class="loading-shade"></div>
     <div class="loading-card">
       <!-- logo: "LOCALS" met een kaartspeld als O; de plaatsnaam staat op een straatnaambord (zie src/config.js) -->
       <h1 class="logo" aria-label="Locals: Gulpen">
@@ -42,6 +46,7 @@
         <span class="logo-place"><span id="logo-place">Gulpen</span></span>
       </h1>
       <div class="tagline">Van de Markt tot de Gulperberg</div>
+      <p class="load-sub">Loop, fiets of rij door het echte Gulpen.</p>
       <!-- tijdens het laden: balk met wat er gebeurt; daarna komt op dezelfde plek de knop Speel -->
       <div class="load-slot">
         <div class="load-busy">
@@ -50,12 +55,14 @@
         </div>
         <button id="start-btn" hidden>Speel</button>
       </div>
-      <!-- besturing in één regel -->
-      <div class="keys k-desk"><span><kbd>WASD</kbd> lopen</span><span><kbd>Slepen</kbd> kijken</span><span><kbd>E</kbd> praten</span><span><kbd>F</kbd> fiets</span><span><kbd>M</kbd> kaart</span></div>
-      <div class="keys k-touch"><span>Joystick: lopen</span><span>Ronde knop: praten</span><span>Kaart: missies</span></div>
-      <div id="quality-pick" hidden>
-        <div class="qp-row"><span>Beeldkwaliteit</span><button type="button" data-q="hoog">Hoog</button><button type="button" data-q="midden">Midden</button><button type="button" data-q="laag">Laag</button></div>
-        <div class="qp-tip">Laag is aanbevolen op mobiel.</div>
+      <div class="load-panel">
+        <!-- besturing in één regel -->
+        <div class="keys k-desk"><span><kbd>WASD</kbd> lopen</span><span><kbd>Slepen</kbd> kijken</span><span><kbd>E</kbd> praten</span><span><kbd>F</kbd> fiets</span><span><kbd>M</kbd> kaart</span></div>
+        <div class="keys k-touch"><span>Joystick: lopen</span><span>Ronde knop: praten</span><span>Kaart: missies</span></div>
+        <div id="quality-pick" hidden>
+          <div class="qp-row"><span>Beeldkwaliteit</span><button type="button" data-q="hoog">Hoog</button><button type="button" data-q="midden">Midden</button><button type="button" data-q="laag">Laag</button></div>
+          <div class="qp-tip">Laag is aanbevolen op mobiel.</div>
+        </div>
       </div>
       <div class="sources">Gebouwd met open data van 3D BAG en PDOK. Alle bronnen staan in het spel onder het tandwiel, bij Meer info.</div>
     </div>
