@@ -327,6 +327,8 @@ export class Missions {
       g.ui.setQuest(this.active.title, this.active.desc, this.active.progress || '');
       g.ui.setTally(null);
     } else {
+      // geen missie meer bezig: de fietsknop terug (sommige missies verbergen die, bijv. de verdwaalde toerist)
+      g.updateVehicleButton?.();
       g.ui.setQuest(null); // vrij rondlopen: geen tekstblok, wel de teller
       // tel alleen missies die in de lijst op de kaart staan (oude opgeslagen namen tellen niet mee)
       const items = this.list();
