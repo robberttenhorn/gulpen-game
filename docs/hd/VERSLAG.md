@@ -342,3 +342,10 @@ Bewust niet aangepast: muizen, de kruiwagen, de geit en inparkeren (die spelen h
 - Hulpmiddel `tools/hd-missiebeelden.cjs` maakt van elke missie een schermafbeelding, om voor en na te vergelijken.
 - De gevels zijn vergeleken op voor- en na-beelden van zes gevels overdag en twee 's avonds; geen fouten in de console.
 - Niet gecontroleerd: een echte telefoon of videokaart. De minispellen zijn op telefoonformaat (844x390) bekeken in de testbrowser, de snelheid op een toestel is niet gemeten.
+
+## Laadscherm met het uitzicht vanaf de Gulperberg
+
+Het laadscherm heeft dezelfde opzet gekregen als het beeld dat je ziet bij het delen van de link: het uitzicht vanaf de Gulperberg beeldvullend op de achtergrond, links donkerder gemaakt, met daaroverheen het logo, de tekst, de laadbalk of de knop Speel, en de besturing en beeldkwaliteit samen in een donker paneel. Op een staande telefoon staat alles in het midden.
+
+- Het achtergrondbeeld is een nieuwe, schone opname uit de game (1920 x 1080, `tools/laadbeeld.cjs`), opgeslagen in twee maten: `public/laadbeeld.jpg` (269 kB) en `public/laadbeeld-klein.jpg` (71 kB) voor kleine schermen. Het beeld vloeit in zodra het geladen is; tot die tijd staat er een egale donkerblauwe achtergrond.
+- Bekeken op computerformaat (1440 x 810), telefoon liggend (844 x 390) en telefoon staand (390 x 844), tijdens het laden en met de knop Speel: alles past zonder schuiven, geen fouten in de console.

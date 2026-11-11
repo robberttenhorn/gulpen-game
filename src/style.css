@@ -806,3 +806,57 @@ body:has(#loading:not([hidden])) #install-tip { bottom: calc(14px + env(safe-are
 /* niet tijdens een gesprek, minispel, tussenfilmpje of met de kaart open */
 body.dialog-open #install-tip, body.pov #install-tip, body.cutscene #install-tip, body.live #install-tip, body.map-open #install-tip, body.intro #install-tip { display: none; }
 body:has(.mini-overlay) #install-tip { display: none; }
+
+/* ---------- laadscherm met het uitzicht vanaf de Gulperberg erachter (zelfde opzet als het beeld bij het delen van de link) ---------- */
+#loading { place-items: center start; background: #16212e; }
+.loading-bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 64% 46%; opacity: 0; transition: opacity .7s ease; }
+.loading-bg.in { opacity: 1; }
+/* links donker voor het logo en de tekst, rechts blijft het uitzicht helder; onderaan iets donkerder */
+.loading-shade { position: fixed; inset: 0; background:
+  linear-gradient(100deg, rgba(16,26,38,.92) 0%, rgba(16,26,38,.74) 32%, rgba(16,26,38,.2) 62%, rgba(16,26,38,0) 100%),
+  linear-gradient(0deg, rgba(16,26,38,.55) 0%, rgba(16,26,38,0) 42%); }
+.loading-card { position: relative; box-sizing: border-box; text-align: left; width: auto; max-width: 640px; padding: 28px 24px 28px clamp(24px, 6.5vw, 104px); }
+#loading .logo { font-size: clamp(64px, 9.4vw, 136px); margin-left: 0.04em; }
+#loading .logo-main { text-shadow: 0 0.055em 0 var(--accent-dark), 0 0.12em 0.26em rgba(0,0,0,.5); }
+#loading .logo-pin { filter: drop-shadow(0 0.055em 0 var(--accent-dark)) drop-shadow(0 0.1em 0.14em rgba(0,0,0,.45)); }
+#loading .tagline { font-weight: 700; font-size: clamp(21px, 2.3vw, 32px); line-height: 1.15; margin: 0.9em 0 0; opacity: 1; text-shadow: 0 2px 12px rgba(0,0,0,.55); }
+.load-sub { margin: 8px 0 0; font-size: clamp(15px, 1.35vw, 19px); line-height: 1.4; opacity: .92; text-shadow: 0 2px 10px rgba(0,0,0,.55); }
+#loading .load-slot { margin-top: 22px; min-height: 72px; place-items: center start; }
+#loading .load-busy { max-width: 360px; }
+#loading .bar { height: 12px; background: rgba(255,255,255,.16); box-shadow: inset 0 1px 3px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.14); }
+#loading-bar { border-radius: 99px; background: linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,0) 60%), var(--accent); }
+#loading #loading-text { opacity: .9; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+#loading #start-btn { font-size: 30px; padding: 10px 58px; border-radius: 18px; box-shadow: 0 6px 0 var(--accent-dark), 0 16px 32px rgba(0,0,0,.4); }
+#loading #start-btn:active { box-shadow: 0 2px 0 var(--accent-dark), 0 8px 18px rgba(0,0,0,.4); }
+/* besturing en beeldkwaliteit samen in een rustig, donker paneel */
+.load-panel { display: inline-block; margin-top: 20px; padding: 14px 18px; border-radius: 16px; background: rgba(16,26,38,.58); box-shadow: 0 0 0 1px rgba(255,255,255,.13), 0 12px 30px rgba(0,0,0,.3); }
+#loading .keys { margin-top: 0; justify-content: flex-start; opacity: .95; }
+#loading #quality-pick { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.14); }
+#loading #quality-pick .qp-row { justify-content: flex-start; }
+#loading #quality-pick .qp-tip { opacity: .7; }
+#loading .sources { margin-top: 16px; max-width: 440px; opacity: .72; line-height: 1.45; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+/* lage schermen (telefoon gekanteld): compacter, zodat alles in beeld blijft */
+@media (max-height: 560px) {
+  .loading-card { padding: 10px 20px 10px clamp(20px, 5vw, 56px); }
+  #loading .logo { font-size: 52px; }
+  #loading .tagline { font-size: 18px; margin-top: 0.7em; }
+  .load-sub { display: none; }
+  #loading .load-slot { margin-top: 8px; min-height: 52px; }
+  #loading #start-btn { font-size: 24px; padding: 6px 44px; }
+  .load-panel { margin-top: 8px; padding: 9px 13px; border-radius: 13px; }
+  #loading .keys { font-size: 12px; }
+  #loading #quality-pick { margin-top: 8px; padding-top: 8px; }
+  #loading .sources { margin-top: 8px; }
+}
+/* staand scherm: alles in het midden, donker van boven naar beneden, met het dorp achter het logo */
+@media (orientation: portrait) and (max-width: 760px) {
+  #loading { place-items: center; }
+  .loading-bg { object-position: 79% 50%; }
+  .loading-shade { background: linear-gradient(180deg, rgba(16,26,38,.5) 0%, rgba(16,26,38,.34) 30%, rgba(16,26,38,.6) 62%, rgba(16,26,38,.84) 100%); }
+  .loading-card { text-align: center; padding: 24px; }
+  #loading .logo { font-size: clamp(56px, 17vw, 96px); margin-left: 0; }
+  #loading .load-slot { place-items: center; }
+  #loading .load-busy { margin: 0 auto; }
+  #loading .keys, #loading #quality-pick .qp-row { justify-content: center; }
+  #loading .sources { margin-left: auto; margin-right: auto; }
+}
