@@ -1441,7 +1441,11 @@ class Game {
     else this.updatePlayer(dt);
     this.penalty?.update(dt);
     // een fout in een minispel mag nooit de hele game laten vastlopen
+    const hadMini = this.minigame;
     try { this.minigame?.update(dt); } catch (e) { console.error('minispel', e); try { this.minigame?.stop?.(); } catch (e2) { /* negeren */ } this.minigame = null; this.player.lockedFor = false; }
+    // Minispel net afgelopen: een klik of tik uit het spel (bijv. op een keukendeurtje) telt niet als 'Praat'.
+    // Anders begon het gesprek met de opdrachtgever meteen opnieuw, nog vóór het afsluitende gesprek.
+    if (hadMini && !this.minigame) { this.input.actionPressed = false; this.talkCooldownUntil = performance.now() + 600; }
     this.updateFollowers(dt);
     this.facades.fitness?.tick(dt, this);
     for (const u of this.updaters) u(dt);
