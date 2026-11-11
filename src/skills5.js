@@ -1664,8 +1664,9 @@ export function startForellen(g, { need = 10, maxSmall = 2, limit = 50 } = {}) {
     vt += dt;
     ctx.drawImage(sc.bodem, 0, 0);
     // lichtvlekken van de zon die over de bodem schuiven (twee lagen die langs elkaar bewegen), onder de vissen door
+    // (bewust zwak gehouden: een druk lichtpatroon maakt het lastig om grote en kleine forellen te onderscheiden)
     ctx.globalCompositeOperation = 'lighter';
-    for (const [dx, dy, a] of [[vt * 1.6 * u, vt * 2.6 * u, 0.27], [sc.S * 0.5 - vt * 1.1 * u, sc.S * 0.3 + vt * 1.7 * u, 0.19]]) {
+    for (const [dx, dy, a] of [[vt * 1.6 * u, vt * 2.6 * u, 0.12], [sc.S * 0.5 - vt * 1.1 * u, sc.S * 0.3 + vt * 1.7 * u, 0.08]]) {
       const ox = ((dx % sc.S) + sc.S) % sc.S, oy = ((dy % sc.S) + sc.S) % sc.S;
       ctx.globalAlpha = a; ctx.translate(ox, oy); ctx.fillStyle = sc.caus; ctx.fillRect(-ox, H * 0.122 - oy, W, H * 0.878); ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
@@ -1674,7 +1675,7 @@ export function startForellen(g, { need = 10, maxSmall = 2, limit = 50 } = {}) {
     for (const f of fish) {
       if (f.gone && !f.wasGone) continue;
       const k = (f.len * H) / sc.Lr, co = Math.cos(f.a) * k, si = Math.sin(f.a) * k;
-      ctx.globalAlpha = (f.gone ? f.gone : 1) * 0.5;
+      ctx.globalAlpha = (f.gone ? f.gone : 1) * 0.8; // stevige schaduw: zo komt de vis los van de bodem
       ctx.setTransform(co, si, -si, co, f.x * W + 1.3 * u, f.y * H + 2.4 * u);
       ctx.drawImage(sc.schaduw, -sc.schaduw.width / 2, -sc.schaduw.height / 2);
     }
