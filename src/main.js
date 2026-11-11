@@ -146,7 +146,24 @@ class Game {
         b.addEventListener('click', () => { if (b.dataset.q !== Q.name) setQuality(b.dataset.q); });
       }
     }
-    await new Promise((r) => btn.addEventListener('click', r, { once: true }));
+    // Starten. Als app op het beginscherm van een iPhone kwam een tik op Speel soms niet aan (na het helemaal afsluiten
+    // en weer openen). Daarom start een korte tik nu ook via pointerup, en telt een tik ergens anders op het laadscherm
+    // (niet op de knoppen voor de beeldkwaliteit) ook als Speel. Gebeurt dat laatste, dan wordt dat anoniem geteld,
+    // zodat we kunnen zien of de tik naast de knop terechtkomt.
+    await new Promise((resolve) => {
+      const loading = document.getElementById('loading');
+      let done = false, down = null;
+      const go = (how) => { if (done) return; done = true; if (how) statsError('start', how); resolve(); };
+      btn.addEventListener('click', () => go(), { once: true });
+      loading.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+      loading.addEventListener('pointerup', (e) => {
+        const d = down; down = null;
+        if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 14 || performance.now() - d.t > 800) return; // slepen of lang vasthouden: geen tik
+        if (e.target.closest?.('#quality-pick, a, #install-tip')) return;
+        go(e.target.closest?.('#start-btn') ? null : 'naast-de-knop');
+      });
+      addEventListener('keydown', (e) => { if (!e.repeat && (e.code === 'Enter' || e.code === 'Space') && !document.getElementById('loading').hidden) go(); });
+    });
     document.getElementById('loading').hidden = true;
     document.getElementById('hud').hidden = false;
     this.sfx.start();
@@ -1997,3 +2014,5 @@ document.fonts.ready.then(() => game.init()).catch((e) => {
 });
 window.game = game;
 startUpdateCheck();
+// Haalt iOS de pagina terug uit het geheugen terwijl je nog op het laadscherm stond, dan opnieuw laden (vers begin).
+addEventListener('pageshow', (e) => { if (e.persisted && !game.started) location.reload(); });
