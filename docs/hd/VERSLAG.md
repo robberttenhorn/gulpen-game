@@ -333,6 +333,8 @@ Deze spellen zijn opnieuw getekend met volume, schaduw, glans en herkenbare mate
 - `src/skills3.js`, `src/skills4.js`: heg knippen (bladerdek, heggenschaar), BBQ (ketel met gloeiende kolen, rooster, burgers met korst), ijsjes (vitrine, bolletjes, schep), bonbons (marmer, lopende band, dozen), de warm-koudmeter van de kabouters.
 - `src/skills.js`, `src/verbouwing.js`, `src/fitness.js`, `src/knotwilg.js`: pils vangen (café achter de toog, glazen, dienblad), tegels (gestucte muur met tegellijm, geglazuurde tegels), biceps (spiegel, lijf met licht en schaduw), de houten vogel en het vizier van het vogelschieten, de zaag en meter van de knotwilgen, het doek van de slalompoortjes.
 
+- `src/skills5.js`: opgraving (kuil met planken en touwtjes, vondsten met reliëf), borden opmaken (gedekte eikenhouten tafel, porseleinen bord, onderdelen met volume), tappen (koperen tapzuil, glas met schuim en condens, houten bar), wildcamera (camerabehuizing, nachtfoto met korrel en flitslicht, dieren met vacht), forellen (vijverbodem met grind, forellen met vinnen en schaduw, schepnet). Bij de forellen is het bewegende lichtpatroon in het water bewust zwak gehouden: in de eerste versie vielen de vissen ertegen weg.
+
 Bij het vogelschieten zijn de oude blokken onzichtbaar gebleven als raakvlak; de nieuwe vogel is alleen wat je ziet.
 
 Bewust niet aangepast: muizen, de kruiwagen, de geit en inparkeren (die spelen helemaal in 3D), en de binnenruimtes. In de binnenruimtes is de vorm van de voorwerpen ook de botsvorm, dus een verbouwing zou daar de werking raken.
